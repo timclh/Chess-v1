@@ -1,6 +1,4 @@
-import React, {
-  Component
-} from "react";
+import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Chess from "chess.js"; // import Chess from  "chess.js"(default) if recieving an error about new Chess not being a constructor
 
@@ -9,61 +7,58 @@ const game = new Chess();
 
 class Stockfish extends Component {
   static propTypes = {
-    children: PropTypes.func
+    children: PropTypes.func,
   };
 
   state = {
-    fen: "start"
+    fen: "start",
   };
 
   componentDidMount() {
     this.setState({
-      fen: game.fen()
+      fen: game.fen(),
     });
 
     this.engineGame().prepareMove();
   }
 
-  onDrop = ({
-    sourceSquare,
-    targetSquare
-  }) => {
+  onDrop = ({ sourceSquare, targetSquare }) => {
     // see if the move is legal
     const move = game.move({
       from: sourceSquare,
       to: targetSquare,
-      promotion: "q"
+      promotion: "q",
     });
 
     // illegal move
     if (move === null) return;
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.setState({
-        fen: game.fen()
+        fen: game.fen(),
       });
       resolve();
     }).then(() => this.engineGame().prepareMove());
   };
 
-  engineGame = options => {
+  engineGame = (options) => {
     options = options || {};
 
     /// We can load Stockfish via Web Workers or via STOCKFISH() if loaded from a <script> tag.
     let engine =
-      typeof STOCKFISH === "function" ?
-      STOCKFISH() :
-      new Worker(options.stockfishjs || "stockfish.js");
+      typeof STOCKFISH === "function"
+        ? STOCKFISH()
+        : new Worker(options.stockfishjs || "stockfish.js");
     let evaler =
-      typeof STOCKFISH === "function" ?
-      STOCKFISH() :
-      new Worker(options.stockfishjs || "stockfish.js");
+      typeof STOCKFISH === "function"
+        ? STOCKFISH()
+        : new Worker(options.stockfishjs || "stockfish.js");
     let engineStatus = {};
     let time = {
       wtime: 3000,
       btime: 3000,
       winc: 1500,
-      binc: 1500
+      binc: 1500,
     };
     let playerColor = "black";
     let clockTimeoutID = null;
@@ -129,7 +124,7 @@ class Stockfish extends Component {
     function get_moves() {
       let moves = "";
       let history = game.history({
-        verbose: true
+        verbose: true,
       });
 
       for (let i = 0; i < history.length; ++i) {
@@ -156,15 +151,15 @@ class Stockfish extends Component {
           if (time && time.wtime) {
             uciCmd(
               "go " +
-              (time.depth ? "depth " + time.depth : "") +
-              " wtime " +
-              time.wtime +
-              " winc " +
-              time.winc +
-              " btime " +
-              time.btime +
-              " binc " +
-              time.binc
+                (time.depth ? "depth " + time.depth : "") +
+                " wtime " +
+                time.wtime +
+                " winc " +
+                time.winc +
+                " btime " +
+                time.btime +
+                " binc " +
+                time.binc
             );
           } else {
             uciCmd("go " + (time.depth ? "depth " + time.depth : ""));
@@ -198,7 +193,7 @@ class Stockfish extends Component {
       }
     };
 
-    engine.onmessage = event => {
+    engine.onmessage = (event) => {
       let line;
 
       if (event && typeof event === "object") {
@@ -219,10 +214,10 @@ class Stockfish extends Component {
           game.move({
             from: match[1],
             to: match[2],
-            promotion: match[3]
+            promotion: match[3],
           });
           this.setState({
-            fen: game.fen()
+            fen: game.fen(),
           });
           prepareMove();
           uciCmd("eval", evaler);
@@ -248,9 +243,9 @@ class Stockfish extends Component {
           /// Is the score bounded?
           if ((match = line.match(/\b(upper|lower)bound\b/))) {
             engineStatus.score =
-              ((match[1] === "upper") === (game.turn() === "w") ?
-                "<= " :
-                ">= ") + engineStatus.score;
+              ((match[1] === "upper") === (game.turn() === "w")
+                ? "<= "
+                : ">= ") + engineStatus.score;
           }
         }
       }
@@ -268,17 +263,15 @@ class Stockfish extends Component {
       },
       prepareMove: function () {
         prepareMove();
-      }
+      },
     };
   };
 
   render() {
-    const {
-      fen
-    } = this.state;
+    const { fen } = this.state;
     return this.props.children({
       position: fen,
-      onDrop: this.onDrop
+      onDrop: this.onDrop,
     });
   }
 }
