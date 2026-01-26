@@ -38,8 +38,9 @@ class ChessGame extends Component {
     if (!this.game || this.state.gameMode !== "coach") return;
 
     const analysis = analyzePosition(this.game);
-    // Use Expert-level depth (4) for best suggestions
-    const suggestedMoves = getTopMoves(this.game, 3, 4);
+    // Use selected difficulty for suggestions (balances speed vs quality)
+    const depth = this.state.aiDifficulty;
+    const suggestedMoves = getTopMoves(this.game, 3, depth);
 
     this.setState({ analysis, suggestedMoves });
 
@@ -329,12 +330,7 @@ class ChessGame extends Component {
   };
 
   setGameMode = (mode) => {
-    // Coach mode always uses Expert AI (strongest)
-    const newState = { gameMode: mode };
-    if (mode === "coach") {
-      newState.aiDifficulty = 4; // Expert
-    }
-    this.setState(newState, () => {
+    this.setState({ gameMode: mode }, () => {
       this.resetGame();
     });
   };
