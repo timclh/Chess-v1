@@ -1,10 +1,23 @@
+const http = require('http');
 const WebSocket = require('ws');
 
-const PORT = process.env.WS_PORT || 3030;
+const PORT = process.env.WS_PORT || process.env.PORT || 3030;
 
-const wss = new WebSocket.Server({ port: PORT });
+// Create HTTP server for health checks (required by Render.com)
+const server = http.createServer((req, res) => {
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'chess-websocket' }));
+  } else {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
+});
 
-console.log(`WebSocket server started on port ${PORT}`);
+// Create WebSocket server attached to HTTP server
+const wss = new WebSocket.Server({ server });
+
+console.log(`Server starting on port ${PORT}`);
 
 wss.on('connection', function connection(ws, req) {
   const clientIp = req.socket.remoteAddress;
@@ -36,14 +49,19 @@ wss.on('error', function error(err) {
   console.error('WebSocket server error:', err);
 });
 
+// Start the server
+server.listen(PORT, () => {
+  console.log(`HTTP + WebSocket server running on port ${PORT}`);
+});
+
 // Graceful shutdown
 function shutdown() {
-  console.log('Shutting down WebSocket server...');
+  console.log('Shutting down server...');
   wss.clients.forEach(function each(client) {
     client.close(1001, 'Server shutting down');
   });
-  wss.close(function () {
-    console.log('WebSocket server closed');
+  server.close(function () {
+    console.log('Server closed');
     process.exit(0);
   });
 }
