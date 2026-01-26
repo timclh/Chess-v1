@@ -132,16 +132,152 @@ body {
 
 /* Game Section */
 .game-section {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* Three Column Layout */
+.chess-game-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Left Panel - Settings */
+.settings-panel {
+  width: 220px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.mode-selector-vertical,
+.color-selector-vertical,
+.difficulty-selector-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mode-selector-vertical .mode-btn,
+.color-selector-vertical .color-btn,
+.difficulty-selector-vertical .diff-btn {
+  width: 100%;
+  text-align: center;
+}
+
+.toggle-btn {
+  width: 100%;
+  padding: 10px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.toggle-btn.active {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: white;
+}
+
+.controls-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 2px solid #e2e8f0;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.full-width:last-child {
+  margin-bottom: 0;
+}
+
+/* Center Panel - Board */
+.board-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   padding: 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
-.chess-game {
+/* Right Panel - Analysis */
+.analysis-panel-right {
+  width: 300px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+.analysis-section {
+  margin-bottom: 20px;
+}
+
+.analysis-section:last-child {
+  margin-bottom: 0;
+}
+
+.ai-explanation-box {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.5;
+  border: 1px solid #fcd34d;
+}
+
+.suggested-moves-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 10px;
+}
+
+.analysis-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 30px 10px;
 }
 
 /* Mode Selector */
@@ -240,6 +376,19 @@ body {
   margin-bottom: 20px;
 }
 
+/* Board Panel Game Status */
+.board-panel .game-status {
+  text-align: center;
+  font-size: 1.3em;
+  font-weight: 700;
+  padding: 12px 30px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  color: #1e293b;
+  min-width: 300px;
+}
+
 .game-status {
   text-align: center;
   font-size: 1.4em;
@@ -319,10 +468,9 @@ body {
   margin: 10px 0;
 }
 
-/* Coach Mode - Analysis Panel */
+/* Coach Mode - Analysis Panel (Right Panel) */
 .analysis-panel {
   width: 100%;
-  max-width: 520px;
   margin-bottom: 15px;
 }
 
@@ -392,7 +540,6 @@ body {
 /* Coach Mode - AI Explanation */
 .ai-explanation {
   width: 100%;
-  max-width: 520px;
   background: linear-gradient(135deg, #fef3c7, #fde68a);
   border-radius: 12px;
   padding: 12px 16px;
@@ -416,7 +563,6 @@ body {
 /* Coach Mode - Suggested Moves */
 .suggested-moves {
   width: 100%;
-  max-width: 520px;
   margin-bottom: 15px;
 }
 
@@ -500,8 +646,7 @@ body {
 }
 
 .move-history {
-  width: 100%;
-  max-width: 520px;
+  width: 520px;
   margin-top: 20px;
 }
 
@@ -549,6 +694,19 @@ body {
 }
 
 /* Responsive */
+@media (max-width: 1200px) {
+  .chess-game-layout {
+    flex-wrap: wrap;
+    max-width: 900px;
+  }
+
+  .analysis-panel-right {
+    width: 100%;
+    max-width: 570px;
+    max-height: none;
+  }
+}
+
 @media (max-width: 950px) {
   .App-content {
     flex-direction: column;
@@ -564,6 +722,30 @@ body {
   .game-section {
     order: 1;
   }
+
+  .chess-game-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .settings-panel {
+    width: 100%;
+    max-width: 520px;
+  }
+
+  .mode-selector-vertical,
+  .color-selector-vertical,
+  .difficulty-selector-vertical {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .mode-selector-vertical .mode-btn,
+  .color-selector-vertical .color-btn,
+  .difficulty-selector-vertical .diff-btn {
+    flex: 1;
+    min-width: auto;
+  }
 }
 
 @media (max-width: 560px) {
@@ -571,25 +753,32 @@ body {
     padding: 15px;
   }
 
-  .game-section {
+  .board-panel {
     padding: 15px;
   }
 
-  .mode-selector {
-    flex-direction: column;
-    width: 100%;
+  .settings-panel,
+  .analysis-panel-right {
+    padding: 15px;
   }
 
-  .mode-btn {
-    width: 100%;
-  }
-
-  .ai-options {
+  .mode-selector-vertical,
+  .color-selector-vertical {
     flex-direction: column;
   }
 
-  .difficulty-selector {
+  .mode-selector-vertical .mode-btn,
+  .color-selector-vertical .color-btn {
+    width: 100%;
+  }
+
+  .difficulty-selector-vertical {
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .difficulty-selector-vertical .diff-btn {
+    flex: 1;
+    min-width: 45%;
   }
 }

@@ -14,7 +14,7 @@ class ChessGame extends Component {
     gameMode: "ai", // "human", "ai", or "coach"
     playerColor: "w",
     aiThinking: false,
-    aiDifficulty: 3,
+    aiDifficulty: 2, // Default to Medium
     // Coach mode state
     analysis: null,
     suggestedMoves: [],
@@ -38,7 +38,8 @@ class ChessGame extends Component {
     if (!this.game || this.state.gameMode !== "coach") return;
 
     const analysis = analyzePosition(this.game);
-    const suggestedMoves = getTopMoves(this.game, 3, 2);
+    // Use Expert-level depth (4) for best suggestions
+    const suggestedMoves = getTopMoves(this.game, 3, 4);
 
     this.setState({ analysis, suggestedMoves });
 
@@ -327,7 +328,12 @@ class ChessGame extends Component {
   };
 
   setGameMode = (mode) => {
-    this.setState({ gameMode: mode }, () => {
+    // Coach mode always uses Expert AI (strongest)
+    const newState = { gameMode: mode };
+    if (mode === "coach") {
+      newState.aiDifficulty = 4; // Expert
+    }
+    this.setState(newState, () => {
       this.resetGame();
     });
   };
@@ -382,194 +388,225 @@ class ChessGame extends Component {
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
 
     return (
-      <div className="chess-game">
-        {/* Game Mode Selector */}
-        <div className="mode-selector">
-          <button
-            className={`mode-btn ${gameMode === "human" ? "active" : ""}`}
-            onClick={() => this.setGameMode("human")}
-          >
-            👥 vs Human
-          </button>
-          <button
-            className={`mode-btn ${gameMode === "ai" ? "active" : ""}`}
-            onClick={() => this.setGameMode("ai")}
-          >
-            🤖 vs AI
-          </button>
-          <button
-            className={`mode-btn ${gameMode === "coach" ? "active" : ""}`}
-            onClick={() => this.setGameMode("coach")}
-          >
-            📚 Coach
-          </button>
-        </div>
+      <div className="chess-game-layout">
+        {/* Left Panel - Settings */}
+        <div className="settings-panel">
+          <div className="panel-title">Game Settings</div>
 
-        {/* AI/Coach Options */}
-        {(gameMode === "ai" || gameMode === "coach") && (
-          <div className="ai-options">
-            <div className="option-group">
-              <label>Play as:</label>
-              <div className="color-selector">
-                <button
-                  className={`color-btn ${playerColor === "w" ? "active" : ""}`}
-                  onClick={() => this.setPlayerColor("w")}
-                >
-                  ⬜ White
-                </button>
-                <button
-                  className={`color-btn ${playerColor === "b" ? "active" : ""}`}
-                  onClick={() => this.setPlayerColor("b")}
-                >
-                  ⬛ Black
-                </button>
-              </div>
+          {/* Game Mode Selector */}
+          <div className="settings-section">
+            <div className="section-label">Game Mode</div>
+            <div className="mode-selector-vertical">
+              <button
+                className={`mode-btn ${gameMode === "human" ? "active" : ""}`}
+                onClick={() => this.setGameMode("human")}
+              >
+                👥 vs Human
+              </button>
+              <button
+                className={`mode-btn ${gameMode === "ai" ? "active" : ""}`}
+                onClick={() => this.setGameMode("ai")}
+              >
+                🤖 vs AI
+              </button>
+              <button
+                className={`mode-btn ${gameMode === "coach" ? "active" : ""}`}
+                onClick={() => this.setGameMode("coach")}
+              >
+                📚 Coach
+              </button>
             </div>
-            <div className="option-group">
-              <label>Difficulty:</label>
-              <div className="difficulty-selector">
-                {[1, 2, 3, 4].map((level) => (
+          </div>
+
+          {/* AI/Coach Options */}
+          {(gameMode === "ai" || gameMode === "coach") && (
+            <>
+              <div className="settings-section">
+                <div className="section-label">Play as</div>
+                <div className="color-selector-vertical">
                   <button
-                    key={level}
-                    className={`diff-btn ${aiDifficulty === level ? "active" : ""}`}
-                    onClick={() => this.setDifficulty(level)}
+                    className={`color-btn ${playerColor === "w" ? "active" : ""}`}
+                    onClick={() => this.setPlayerColor("w")}
                   >
-                    {level === 1 ? "Easy" : level === 2 ? "Medium" : level === 3 ? "Hard" : "Expert"}
+                    ⬜ White
                   </button>
-                ))}
-              </div>
-            </div>
-            {gameMode === "coach" && (
-              <div className="option-group">
-                <label>Hints:</label>
-                <button
-                  className={`color-btn ${showHints ? "active" : ""}`}
-                  onClick={this.toggleHints}
-                >
-                  {showHints ? "✓ On" : "Off"}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Win Probability (Coach Mode) */}
-        {gameMode === "coach" && analysis && (
-          <div className="analysis-panel">
-            <div className="win-probability">
-              <div className="prob-label">Win Probability</div>
-              <div className="prob-bar">
-                <div
-                  className="prob-white"
-                  style={{ width: `${analysis.winProbability.white * 100}%` }}
-                >
-                  {analysis.winProbability.white >= 0.15 && (
-                    <span>{Math.round(analysis.winProbability.white * 100)}%</span>
-                  )}
-                </div>
-                <div
-                  className="prob-black"
-                  style={{ width: `${analysis.winProbability.black * 100}%` }}
-                >
-                  {analysis.winProbability.black >= 0.15 && (
-                    <span>{Math.round(analysis.winProbability.black * 100)}%</span>
-                  )}
+                  <button
+                    className={`color-btn ${playerColor === "b" ? "active" : ""}`}
+                    onClick={() => this.setPlayerColor("b")}
+                  >
+                    ⬛ Black
+                  </button>
                 </div>
               </div>
-              <div className="evaluation-text">{analysis.evaluation}</div>
-            </div>
-          </div>
-        )}
 
-        {/* Game Status */}
-        <div className="game-info">
-          <div className={`game-status ${gameOver ? "game-over" : ""} ${aiThinking ? "thinking" : ""}`}>
-            {aiThinking ? "🤔 AI is thinking..." : gameStatus}
-          </div>
-          <div className="game-controls">
-            <button className="btn btn-primary" onClick={this.resetGame}>
+              <div className="settings-section">
+                <div className="section-label">AI Difficulty</div>
+                <div className="difficulty-selector-vertical">
+                  {[1, 2, 3, 4].map((level) => (
+                    <button
+                      key={level}
+                      className={`diff-btn ${aiDifficulty === level ? "active" : ""}`}
+                      onClick={() => this.setDifficulty(level)}
+                    >
+                      {level === 1 ? "Easy" : level === 2 ? "Medium" : level === 3 ? "Hard" : "Expert"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {gameMode === "coach" && (
+                <div className="settings-section">
+                  <div className="section-label">Show Hints</div>
+                  <button
+                    className={`toggle-btn ${showHints ? "active" : ""}`}
+                    onClick={this.toggleHints}
+                  >
+                    {showHints ? "✓ Enabled" : "Disabled"}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Game Controls in Settings */}
+          <div className="settings-section controls-section">
+            <button className="btn btn-primary full-width" onClick={this.resetGame}>
               New Game
             </button>
             <button
-              className="btn btn-secondary"
+              className="btn btn-secondary full-width"
               onClick={this.undoMove}
               disabled={history.length === 0 || aiThinking}
             >
-              Undo
+              Undo Move
             </button>
           </div>
         </div>
 
-        {/* AI Explanation (Coach Mode) */}
-        {gameMode === "coach" && lastAIExplanation && (
-          <div className="ai-explanation">
-            <div className="explanation-title">🤖 AI Move Explanation:</div>
-            <div className="explanation-text">{lastAIExplanation}</div>
+        {/* Center Panel - Board */}
+        <div className="board-panel">
+          {/* Game Status */}
+          <div className={`game-status ${gameOver ? "game-over" : ""} ${aiThinking ? "thinking" : ""}`}>
+            {aiThinking ? "🤔 AI is thinking..." : gameStatus}
           </div>
-        )}
 
-        {/* Suggested Moves (Coach Mode) */}
-        {gameMode === "coach" && suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
-          <div className="suggested-moves">
-            <div className="suggestions-title">💡 Recommended Moves:</div>
-            {suggestedMoves.map((item, index) => (
-              <div
-                key={index}
-                className={`suggestion ${index === 0 ? "best" : ""}`}
-                onClick={() => this.playSuggestedMove(item.move)}
-              >
-                <div className="suggestion-move">
-                  <span className="rank">#{item.rank}</span>
-                  <span className="san">{item.san}</span>
-                  <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
-                </div>
-                <div className="suggestion-reason">{item.explanation}</div>
-              </div>
-            ))}
+          {/* Chess Board */}
+          <div className="board-container">
+            <Chessboard
+              id="chessboard"
+              position={fen}
+              width={520}
+              orientation={boardOrientation}
+              onDrop={this.onDrop}
+              onSquareClick={this.onSquareClick}
+              onMouseOverSquare={this.onMouseOverSquare}
+              onMouseOutSquare={this.onMouseOutSquare}
+              squareStyles={squareStyles}
+              boardStyle={{
+                borderRadius: "8px",
+                boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
+              }}
+              lightSquareStyle={{ backgroundColor: "#f0d9b5" }}
+              darkSquareStyle={{ backgroundColor: "#b58863" }}
+              dropSquareStyle={{ boxShadow: "inset 0 0 1px 4px rgb(255, 255, 0)" }}
+              draggable={!aiThinking && !gameOver}
+            />
           </div>
-        )}
 
-        {/* Chess Board */}
-        <div className="board-container">
-          <Chessboard
-            id="chessboard"
-            position={fen}
-            width={520}
-            orientation={boardOrientation}
-            onDrop={this.onDrop}
-            onSquareClick={this.onSquareClick}
-            onMouseOverSquare={this.onMouseOverSquare}
-            onMouseOutSquare={this.onMouseOutSquare}
-            squareStyles={squareStyles}
-            boardStyle={{
-              borderRadius: "8px",
-              boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
-            }}
-            lightSquareStyle={{ backgroundColor: "#f0d9b5" }}
-            darkSquareStyle={{ backgroundColor: "#b58863" }}
-            dropSquareStyle={{ boxShadow: "inset 0 0 1px 4px rgb(255, 255, 0)" }}
-            draggable={!aiThinking && !gameOver}
-          />
+          {/* Move History under board */}
+          <div className="move-history">
+            <h3>Move History</h3>
+            <div className="moves-list">
+              {history.length === 0 ? (
+                <span className="no-moves">No moves yet</span>
+              ) : (
+                history.map((move, index) => (
+                  <span key={index} className="move">
+                    {index % 2 === 0 && (
+                      <span className="move-number">{Math.floor(index / 2) + 1}.</span>
+                    )}
+                    {move.san}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Move History */}
-        <div className="move-history">
-          <h3>Move History</h3>
-          <div className="moves-list">
-            {history.length === 0 ? (
-              <span className="no-moves">No moves yet</span>
-            ) : (
-              history.map((move, index) => (
-                <span key={index} className="move">
-                  {index % 2 === 0 && (
-                    <span className="move-number">{Math.floor(index / 2) + 1}.</span>
-                  )}
-                  {move.san}
-                </span>
-              ))
+        {/* Right Panel - Analysis (Coach Mode) */}
+        {gameMode === "coach" && (
+          <div className="analysis-panel-right">
+            <div className="panel-title">AI Analysis</div>
+
+            {/* Win Probability */}
+            {analysis && (
+              <div className="analysis-section">
+                <div className="section-label">Win Probability</div>
+                <div className="win-probability">
+                  <div className="prob-bar">
+                    <div
+                      className="prob-white"
+                      style={{ width: `${analysis.winProbability.white * 100}%` }}
+                    >
+                      {analysis.winProbability.white >= 0.15 && (
+                        <span>{Math.round(analysis.winProbability.white * 100)}%</span>
+                      )}
+                    </div>
+                    <div
+                      className="prob-black"
+                      style={{ width: `${analysis.winProbability.black * 100}%` }}
+                    >
+                      {analysis.winProbability.black >= 0.15 && (
+                        <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="evaluation-text">{analysis.evaluation}</div>
+                </div>
+              </div>
+            )}
+
+            {/* AI Explanation */}
+            {lastAIExplanation && (
+              <div className="analysis-section">
+                <div className="section-label">🤖 AI Move Explanation</div>
+                <div className="ai-explanation-box">
+                  {lastAIExplanation}
+                </div>
+              </div>
+            )}
+
+            {/* Suggested Moves */}
+            {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
+              <div className="analysis-section">
+                <div className="section-label">💡 Recommended Moves</div>
+                <div className="suggested-moves-list">
+                  {suggestedMoves.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`suggestion ${index === 0 ? "best" : ""}`}
+                      onClick={() => this.playSuggestedMove(item.move)}
+                    >
+                      <div className="suggestion-move">
+                        <span className="rank">#{item.rank}</span>
+                        <span className="san">{item.san}</span>
+                        <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                      </div>
+                      <div className="suggestion-reason">{item.explanation}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty state when no analysis yet */}
+            {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+              <div className="analysis-empty">
+                Start playing to see AI analysis and recommendations
+              </div>
             )}
           </div>
-        </div>
+        )}
       </div>
     );
   }
