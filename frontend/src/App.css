@@ -40,6 +40,52 @@ body {
   color: #94a3b8;
 }
 
+/* Navigation */
+.App-nav {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.nav-btn {
+  padding: 10px 24px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover {
+  border-color: #e94560;
+  color: #e94560;
+}
+
+.nav-btn.active {
+  background: linear-gradient(135deg, #e94560, #f39422);
+  border-color: transparent;
+  color: white;
+}
+
+/* Player Name Input */
+.player-name-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.player-name-input:focus {
+  outline: none;
+  border-color: #e94560;
+}
+
 .App-content {
   display: flex;
   justify-content: center;
@@ -780,5 +826,278 @@ body {
   .difficulty-selector-vertical .diff-btn {
     flex: 1;
     min-width: 45%;
+  }
+}
+
+/* Leaderboard Page */
+.leaderboard-page {
+  justify-content: center;
+}
+
+.leaderboard-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 900px;
+  width: 100%;
+}
+
+.leaderboard-header {
+  margin-bottom: 24px;
+}
+
+.leaderboard-header h2 {
+  margin: 0 0 16px;
+  font-size: 1.8em;
+  color: #1e293b;
+}
+
+.tab-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.tab-btn:hover {
+  border-color: #e94560;
+  color: #e94560;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #e94560, #f39422);
+  border-color: transparent;
+  color: white;
+}
+
+.leaderboard-content,
+.history-content {
+  margin-bottom: 24px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Leaderboard Table */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.leaderboard-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.leaderboard-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.leaderboard-table tr:hover {
+  background: #f8fafc;
+}
+
+.leaderboard-table tr.rank-gold {
+  background: linear-gradient(90deg, #fef3c7 0%, white 50%);
+}
+
+.leaderboard-table tr.rank-silver {
+  background: linear-gradient(90deg, #f1f5f9 0%, white 50%);
+}
+
+.leaderboard-table tr.rank-bronze {
+  background: linear-gradient(90deg, #fed7aa 0%, white 50%);
+}
+
+.rank-cell {
+  width: 60px;
+}
+
+.rank-icon {
+  font-size: 20px;
+}
+
+.rank-number {
+  font-weight: 700;
+  color: #64748b;
+}
+
+.player-name {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.score {
+  font-weight: 700;
+  color: #e94560;
+}
+
+.record .wins {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.record .losses {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.record .draws {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.win-rate {
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.streak {
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.expert-wins {
+  font-weight: 700;
+  color: #8b5cf6;
+}
+
+/* Games History */
+.games-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: all 0.2s;
+}
+
+.game-card:hover {
+  border-color: #94a3b8;
+}
+
+.game-card.result-win {
+  border-left: 4px solid #22c55e;
+}
+
+.game-card.result-loss {
+  border-left: 4px solid #ef4444;
+}
+
+.game-card.result-draw {
+  border-left: 4px solid #f59e0b;
+}
+
+.game-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.game-player {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.game-result {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.game-result.win {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.game-result.loss {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.game-result.draw {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.game-opponent {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.game-details {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.back-btn {
+  width: 100%;
+  padding: 14px 24px;
+  background: #64748b;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: #475569;
+}
+
+/* Responsive Leaderboard */
+@media (max-width: 768px) {
+  .leaderboard-table {
+    font-size: 12px;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 10px 8px;
+  }
+
+  .game-main {
+    flex-wrap: wrap;
+  }
+
+  .game-details {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }

@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
 import { findBestMove, getTopMoves, analyzePosition, explainAIMove, clearCache } from "./ChessAI";
+import { saveGameResult } from "./GameHistory";
 
 class ChessGame extends Component {
   state = {
@@ -20,12 +21,17 @@ class ChessGame extends Component {
     suggestedMoves: [],
     showHints: true,
     lastAIExplanation: "",
+    // Player tracking
+    playerName: localStorage.getItem('chess_player_name') || "",
+    gameStartTime: null,
+    gameSaved: false,
   };
 
   game = null;
 
   componentDidMount() {
     this.game = new Chess();
+    this.setState({ gameStartTime: Date.now() });
     this.updateGameStatus();
     this.updateAnalysis();
   }
@@ -67,9 +73,18 @@ class ChessGame extends Component {
     const turn = this.game.turn() === "w" ? "White" : "Black";
 
     if (this.game.game_over()) {
+      let gameResult = "draw";
+
       if (this.game.in_checkmate()) {
         const winner = this.game.turn() === "w" ? "Black" : "White";
         status = `Checkmate! ${winner} wins!`;
+        // Determine if player won or lost
+        const winnerColor = this.game.turn() === "w" ? "b" : "w";
+        if (this.state.gameMode === "human") {
+          gameResult = "draw"; // In human mode, we don't track specific winner
+        } else {
+          gameResult = winnerColor === this.state.playerColor ? "win" : "loss";
+        }
       } else if (this.game.in_stalemate()) {
         status = "Draw by stalemate";
       } else if (this.game.in_threefold_repetition()) {
@@ -79,7 +94,10 @@ class ChessGame extends Component {
       } else if (this.game.in_draw()) {
         status = "Draw";
       }
-      this.setState({ gameOver: true, gameStatus: status });
+
+      this.setState({ gameOver: true, gameStatus: status }, () => {
+        this.saveGame(gameResult);
+      });
     } else {
       if (this.game.in_check()) {
         status = `${turn} is in check!`;
@@ -88,6 +106,31 @@ class ChessGame extends Component {
       }
       this.setState({ gameOver: false, gameStatus: status });
     }
+  };
+
+  saveGame = (result) => {
+    if (this.state.gameSaved || !this.state.playerName) return;
+
+    const duration = this.state.gameStartTime
+      ? Math.round((Date.now() - this.state.gameStartTime) / 1000)
+      : 0;
+
+    saveGameResult({
+      playerName: this.state.playerName,
+      playerColor: this.state.playerColor,
+      opponent: this.state.gameMode,
+      difficulty: this.state.aiDifficulty,
+      result: result,
+      moves: this.state.history.length,
+      duration: duration,
+    });
+
+    this.setState({ gameSaved: true });
+  };
+
+  setPlayerName = (name) => {
+    this.setState({ playerName: name });
+    localStorage.setItem('chess_player_name', name);
   };
 
   makeAIMove = () => {
@@ -293,6 +336,8 @@ class ChessGame extends Component {
       lastAIExplanation: "",
       analysis: null,
       suggestedMoves: [],
+      gameStartTime: Date.now(),
+      gameSaved: false,
     });
     this.updateGameStatus();
 
@@ -389,6 +434,18 @@ class ChessGame extends Component {
         {/* Left Panel - Settings */}
         <div className="settings-panel">
           <div className="panel-title">Game Settings</div>
+
+          {/* Player Name */}
+          <div className="settings-section">
+            <div className="section-label">Player Name</div>
+            <input
+              type="text"
+              className="player-name-input"
+              placeholder="Enter your name"
+              value={this.state.playerName}
+              onChange={(e) => this.setPlayerName(e.target.value)}
+            />
+          </div>
 
           {/* Game Mode Selector */}
           <div className="settings-section">
