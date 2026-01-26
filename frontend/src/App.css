@@ -319,6 +319,186 @@ body {
   margin: 10px 0;
 }
 
+/* Coach Mode - Analysis Panel */
+.analysis-panel {
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 15px;
+}
+
+.win-probability {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+}
+
+.prob-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.prob-bar {
+  display: flex;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prob-white {
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.5s ease;
+  min-width: 0;
+}
+
+.prob-white span {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.prob-black {
+  background: linear-gradient(135deg, #334155, #1e293b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.5s ease;
+  min-width: 0;
+}
+
+.prob-black span {
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+}
+
+.evaluation-text {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* Coach Mode - AI Explanation */
+.ai-explanation {
+  width: 100%;
+  max-width: 520px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 15px;
+  border: 1px solid #fcd34d;
+}
+
+.explanation-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 6px;
+}
+
+.explanation-text {
+  font-size: 14px;
+  color: #78350f;
+  line-height: 1.5;
+}
+
+/* Coach Mode - Suggested Moves */
+.suggested-moves {
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 15px;
+}
+
+.suggestions-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.suggestion {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion:hover {
+  border-color: #3b82f6;
+  transform: translateX(4px);
+}
+
+.suggestion.best {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+}
+
+.suggestion.best:hover {
+  border-color: #16a34a;
+}
+
+.suggestion-move {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.suggestion-move .rank {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+  width: 24px;
+}
+
+.suggestion.best .rank {
+  color: #22c55e;
+}
+
+.suggestion-move .san {
+  font-family: "SF Mono", Monaco, "Consolas", monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  flex: 1;
+}
+
+.suggestion-move .win-prob {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.suggestion.best .win-prob {
+  background: #22c55e;
+  color: white;
+}
+
+.suggestion-reason {
+  font-size: 13px;
+  color: #64748b;
+  padding-left: 36px;
+}
+
 .move-history {
   width: 100%;
   max-width: 520px;

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
-import { findBestMove } from "./ChessAI";
+import { findBestMove, getTopMoves, analyzePosition, explainAIMove } from "./ChessAI";
 
 class ChessGame extends Component {
   state = {
@@ -11,10 +11,15 @@ class ChessGame extends Component {
     pieceSquare: "",
     gameOver: false,
     gameStatus: "White to move",
-    gameMode: "ai", // "human" or "ai"
-    playerColor: "w", // player plays white by default
+    gameMode: "ai", // "human", "ai", or "coach"
+    playerColor: "w",
     aiThinking: false,
-    aiDifficulty: 3, // search depth (1-4)
+    aiDifficulty: 3,
+    // Coach mode state
+    analysis: null,
+    suggestedMoves: [],
+    showHints: true,
+    lastAIExplanation: "",
   };
 
   game = null;
@@ -22,11 +27,36 @@ class ChessGame extends Component {
   componentDidMount() {
     this.game = new Chess();
     this.updateGameStatus();
+    this.updateAnalysis();
   }
 
   componentWillUnmount() {
     this.game = null;
   }
+
+  updateAnalysis = () => {
+    if (!this.game || this.state.gameMode !== "coach") return;
+
+    const analysis = analyzePosition(this.game);
+    const suggestedMoves = getTopMoves(this.game, 3, 2);
+
+    this.setState({ analysis, suggestedMoves });
+
+    // Highlight suggested move squares
+    if (this.state.showHints && suggestedMoves.length > 0) {
+      const bestMove = suggestedMoves[0].move;
+      this.highlightSuggestedMove(bestMove.from, bestMove.to);
+    }
+  };
+
+  highlightSuggestedMove = (from, to) => {
+    this.setState({
+      squareStyles: {
+        [from]: { backgroundColor: "rgba(46, 204, 113, 0.5)" },
+        [to]: { backgroundColor: "rgba(46, 204, 113, 0.7)" },
+      },
+    });
+  };
 
   updateGameStatus = () => {
     if (!this.game) return;
@@ -64,17 +94,24 @@ class ChessGame extends Component {
 
     this.setState({ aiThinking: true });
 
-    // Use setTimeout to allow UI to update before AI thinks
     setTimeout(() => {
       const bestMove = findBestMove(this.game, this.state.aiDifficulty);
       if (bestMove && this.game) {
+        // Get explanation before making the move (for coach mode)
+        let explanation = "";
+        if (this.state.gameMode === "coach") {
+          explanation = explainAIMove(this.game, bestMove);
+        }
+
         this.game.move(bestMove);
         this.setState({
           fen: this.game.fen(),
           history: this.game.history({ verbose: true }),
           aiThinking: false,
+          lastAIExplanation: explanation,
         });
         this.updateGameStatus();
+        this.updateAnalysis();
       } else {
         this.setState({ aiThinking: false });
       }
@@ -123,6 +160,9 @@ class ChessGame extends Component {
     this.setState(({ pieceSquare }) => {
       if (pieceSquare === square) {
         this.removeHighlightSquare();
+        if (this.state.gameMode === "coach") {
+          this.updateAnalysis();
+        }
         return { pieceSquare: "" };
       }
 
@@ -141,11 +181,17 @@ class ChessGame extends Component {
             fen: this.game.fen(),
             history: this.game.history({ verbose: true }),
             pieceSquare: "",
+            lastAIExplanation: "",
           };
 
-          // Trigger AI move after state update
-          if (this.state.gameMode === "ai") {
-            setTimeout(() => this.makeAIMove(), 300);
+          if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
+            setTimeout(() => {
+              this.makeAIMove();
+            }, 300);
+          }
+
+          if (this.state.gameMode === "coach") {
+            setTimeout(() => this.updateAnalysis(), 100);
           }
 
           return newState;
@@ -189,18 +235,23 @@ class ChessGame extends Component {
       fen: this.game.fen(),
       history: this.game.history({ verbose: true }),
       pieceSquare: "",
+      lastAIExplanation: "",
     });
     this.updateGameStatus();
 
-    // Trigger AI move
-    if (this.state.gameMode === "ai") {
+    if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
       setTimeout(() => this.makeAIMove(), 300);
+    }
+
+    if (this.state.gameMode === "coach") {
+      setTimeout(() => this.updateAnalysis(), 100);
     }
   };
 
   onMouseOverSquare = (square) => {
     if (!this.game || this.state.gameOver || this.state.aiThinking) return;
     if (!this.isPlayerTurn()) return;
+    if (this.state.pieceSquare) return; // Don't override selection highlight
 
     const piece = this.game.get(square);
     if (!piece || piece.color !== this.game.turn()) return;
@@ -218,7 +269,11 @@ class ChessGame extends Component {
 
   onMouseOutSquare = () => {
     if (!this.state.pieceSquare) {
-      this.removeHighlightSquare();
+      if (this.state.gameMode === "coach" && this.state.showHints) {
+        this.updateAnalysis();
+      } else {
+        this.removeHighlightSquare();
+      }
     }
   };
 
@@ -232,11 +287,17 @@ class ChessGame extends Component {
       pieceSquare: "",
       gameOver: false,
       aiThinking: false,
+      lastAIExplanation: "",
+      analysis: null,
+      suggestedMoves: [],
     });
     this.updateGameStatus();
 
-    // If AI plays white, make AI move
-    if (this.state.gameMode === "ai" && this.state.playerColor === "b") {
+    if (this.state.gameMode === "coach") {
+      setTimeout(() => this.updateAnalysis(), 100);
+    }
+
+    if ((this.state.gameMode === "ai" || this.state.gameMode === "coach") && this.state.playerColor === "b") {
       setTimeout(() => this.makeAIMove(), 500);
     }
   };
@@ -244,8 +305,7 @@ class ChessGame extends Component {
   undoMove = () => {
     if (!this.game || this.state.history.length === 0 || this.state.aiThinking) return;
 
-    // In AI mode, undo both player and AI move
-    if (this.state.gameMode === "ai" && this.state.history.length >= 2) {
+    if ((this.state.gameMode === "ai" || this.state.gameMode === "coach") && this.state.history.length >= 2) {
       this.game.undo();
       this.game.undo();
     } else {
@@ -257,8 +317,13 @@ class ChessGame extends Component {
       history: this.game.history({ verbose: true }),
       squareStyles: {},
       pieceSquare: "",
+      lastAIExplanation: "",
     });
     this.updateGameStatus();
+
+    if (this.state.gameMode === "coach") {
+      setTimeout(() => this.updateAnalysis(), 100);
+    }
   };
 
   setGameMode = (mode) => {
@@ -277,13 +342,44 @@ class ChessGame extends Component {
     this.setState({ aiDifficulty: level });
   };
 
+  toggleHints = () => {
+    this.setState(
+      (state) => ({ showHints: !state.showHints }),
+      () => {
+        if (this.state.showHints) {
+          this.updateAnalysis();
+        } else {
+          this.removeHighlightSquare();
+        }
+      }
+    );
+  };
+
+  playSuggestedMove = (move) => {
+    if (!this.game || this.state.gameOver || this.state.aiThinking) return;
+
+    this.game.move(move.san);
+    this.setState({
+      fen: this.game.fen(),
+      history: this.game.history({ verbose: true }),
+      pieceSquare: "",
+      lastAIExplanation: "",
+    });
+    this.updateGameStatus();
+
+    if (this.state.gameMode === "coach") {
+      setTimeout(() => this.makeAIMove(), 300);
+    }
+  };
+
   render() {
     const {
       fen, squareStyles, gameStatus, gameOver, history,
-      gameMode, playerColor, aiThinking, aiDifficulty
+      gameMode, playerColor, aiThinking, aiDifficulty,
+      analysis, suggestedMoves, showHints, lastAIExplanation
     } = this.state;
 
-    const boardOrientation = gameMode === "ai" && playerColor === "b" ? "black" : "white";
+    const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
 
     return (
       <div className="chess-game">
@@ -301,10 +397,16 @@ class ChessGame extends Component {
           >
             🤖 vs AI
           </button>
+          <button
+            className={`mode-btn ${gameMode === "coach" ? "active" : ""}`}
+            onClick={() => this.setGameMode("coach")}
+          >
+            📚 Coach
+          </button>
         </div>
 
-        {/* AI Options */}
-        {gameMode === "ai" && (
+        {/* AI/Coach Options */}
+        {(gameMode === "ai" || gameMode === "coach") && (
           <div className="ai-options">
             <div className="option-group">
               <label>Play as:</label>
@@ -337,6 +439,45 @@ class ChessGame extends Component {
                 ))}
               </div>
             </div>
+            {gameMode === "coach" && (
+              <div className="option-group">
+                <label>Hints:</label>
+                <button
+                  className={`color-btn ${showHints ? "active" : ""}`}
+                  onClick={this.toggleHints}
+                >
+                  {showHints ? "✓ On" : "Off"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Win Probability (Coach Mode) */}
+        {gameMode === "coach" && analysis && (
+          <div className="analysis-panel">
+            <div className="win-probability">
+              <div className="prob-label">Win Probability</div>
+              <div className="prob-bar">
+                <div
+                  className="prob-white"
+                  style={{ width: `${analysis.winProbability.white * 100}%` }}
+                >
+                  {analysis.winProbability.white >= 0.15 && (
+                    <span>{Math.round(analysis.winProbability.white * 100)}%</span>
+                  )}
+                </div>
+                <div
+                  className="prob-black"
+                  style={{ width: `${analysis.winProbability.black * 100}%` }}
+                >
+                  {analysis.winProbability.black >= 0.15 && (
+                    <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                  )}
+                </div>
+              </div>
+              <div className="evaluation-text">{analysis.evaluation}</div>
+            </div>
           </div>
         )}
 
@@ -358,6 +499,35 @@ class ChessGame extends Component {
             </button>
           </div>
         </div>
+
+        {/* AI Explanation (Coach Mode) */}
+        {gameMode === "coach" && lastAIExplanation && (
+          <div className="ai-explanation">
+            <div className="explanation-title">🤖 AI Move Explanation:</div>
+            <div className="explanation-text">{lastAIExplanation}</div>
+          </div>
+        )}
+
+        {/* Suggested Moves (Coach Mode) */}
+        {gameMode === "coach" && suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
+          <div className="suggested-moves">
+            <div className="suggestions-title">💡 Recommended Moves:</div>
+            {suggestedMoves.map((item, index) => (
+              <div
+                key={index}
+                className={`suggestion ${index === 0 ? "best" : ""}`}
+                onClick={() => this.playSuggestedMove(item.move)}
+              >
+                <div className="suggestion-move">
+                  <span className="rank">#{item.rank}</span>
+                  <span className="san">{item.san}</span>
+                  <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                </div>
+                <div className="suggestion-reason">{item.explanation}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Chess Board */}
         <div className="board-container">
