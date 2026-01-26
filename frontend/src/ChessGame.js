@@ -14,7 +14,7 @@ class ChessGame extends Component {
     gameMode: "ai", // "human", "ai", or "coach"
     playerColor: "w",
     aiThinking: false,
-    aiDifficulty: 4, // Default to Expert
+    aiDifficulty: 2, // Default to Medium
     // Coach mode state
     analysis: null,
     suggestedMoves: [],
