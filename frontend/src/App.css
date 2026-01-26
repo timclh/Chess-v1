@@ -54,7 +54,7 @@ body {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   padding: 20px;
-  width: 350px;
+  width: 320px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
 }
 
@@ -85,7 +85,7 @@ body {
 }
 
 .content {
-  height: 250px;
+  height: 300px;
   background: #f8fafc;
   border-radius: 12px;
   width: 100%;
@@ -144,6 +144,97 @@ body {
   align-items: center;
 }
 
+/* Mode Selector */
+.mode-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mode-btn {
+  padding: 12px 24px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  background: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.mode-btn:hover {
+  border-color: #e94560;
+  color: #e94560;
+}
+
+.mode-btn.active {
+  background: linear-gradient(135deg, #e94560, #f39422);
+  border-color: transparent;
+  color: white;
+}
+
+/* AI Options */
+.ai-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8fafc;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.option-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.option-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.color-selector,
+.difficulty-selector {
+  display: flex;
+  gap: 6px;
+}
+
+.color-btn,
+.diff-btn {
+  padding: 8px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #64748b;
+}
+
+.color-btn:hover,
+.diff-btn:hover {
+  border-color: #0f3460;
+  color: #0f3460;
+}
+
+.color-btn.active,
+.diff-btn.active {
+  background: #0f3460;
+  border-color: #0f3460;
+  color: white;
+}
+
+/* Game Info */
 .game-info {
   width: 100%;
   margin-bottom: 20px;
@@ -166,9 +257,20 @@ body {
   animation: pulse 1.5s infinite;
 }
 
+.game-status.thinking {
+  background: linear-gradient(135deg, #dbeafe, #93c5fd);
+  color: #1e40af;
+  animation: thinking 1s infinite;
+}
+
 @keyframes pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
+}
+
+@keyframes thinking {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .game-controls {
@@ -219,6 +321,7 @@ body {
 
 .move-history {
   width: 100%;
+  max-width: 520px;
   margin-top: 20px;
 }
 
@@ -266,7 +369,7 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 800px) {
+@media (max-width: 950px) {
   .App-content {
     flex-direction: column;
     align-items: center;
@@ -274,6 +377,39 @@ body {
 
   .chat-section {
     width: 100%;
-    max-width: 400px;
+    max-width: 520px;
+    order: 2;
+  }
+
+  .game-section {
+    order: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .App-content {
+    padding: 15px;
+  }
+
+  .game-section {
+    padding: 15px;
+  }
+
+  .mode-selector {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .mode-btn {
+    width: 100%;
+  }
+
+  .ai-options {
+    flex-direction: column;
+  }
+
+  .difficulty-selector {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
