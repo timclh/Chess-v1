@@ -1,5 +1,16 @@
 // Chess AI with Educational Features
-// Uses Minimax with Alpha-Beta Pruning + Move Ordering + Quiescence Search
+// Uses Minimax with Alpha-Beta Pruning + Move Ordering + Transposition Table
+
+// Transposition table for caching evaluated positions
+const transpositionTable = new Map();
+const MAX_CACHE_SIZE = 100000;
+
+// Clear cache when it gets too large
+function clearCacheIfNeeded() {
+  if (transpositionTable.size > MAX_CACHE_SIZE) {
+    transpositionTable.clear();
+  }
+}
 
 // Piece values for evaluation
 const pieceValues = {
@@ -229,7 +240,7 @@ function orderMoves(game, moves) {
 function quiescence(game, alpha, beta, isMaximizing, depth = 0) {
   const standPat = evaluateBoard(game);
 
-  if (depth >= 4) return standPat; // Limit quiescence depth
+  if (depth >= 2) return standPat; // Reduced depth for speed
 
   if (isMaximizing) {
     if (standPat >= beta) return beta;
@@ -260,12 +271,21 @@ function quiescence(game, alpha, beta, isMaximizing, depth = 0) {
   return isMaximizing ? alpha : beta;
 }
 
-// Minimax with Alpha-Beta Pruning and Move Ordering
+// Minimax with Alpha-Beta Pruning, Move Ordering, and Transposition Table
 function minimax(game, depth, alpha, beta, isMaximizing, useQuiescence = true) {
+  // Check transposition table
+  const fen = game.fen();
+  const cacheKey = `${fen}_${depth}_${isMaximizing}`;
+  const cached = transpositionTable.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   if (depth === 0) {
-    return useQuiescence
+    const score = useQuiescence
       ? quiescence(game, alpha, beta, isMaximizing)
       : evaluateBoard(game);
+    return score;
   }
 
   if (game.game_over()) {
@@ -273,6 +293,7 @@ function minimax(game, depth, alpha, beta, isMaximizing, useQuiescence = true) {
   }
 
   const moves = orderMoves(game, game.moves());
+  let result;
 
   if (isMaximizing) {
     let maxEval = -Infinity;
@@ -284,7 +305,7 @@ function minimax(game, depth, alpha, beta, isMaximizing, useQuiescence = true) {
       alpha = Math.max(alpha, evalScore);
       if (beta <= alpha) break;
     }
-    return maxEval;
+    result = maxEval;
   } else {
     let minEval = Infinity;
     for (const move of moves) {
@@ -295,8 +316,14 @@ function minimax(game, depth, alpha, beta, isMaximizing, useQuiescence = true) {
       beta = Math.min(beta, evalScore);
       if (beta <= alpha) break;
     }
-    return minEval;
+    result = minEval;
   }
+
+  // Store in transposition table
+  clearCacheIfNeeded();
+  transpositionTable.set(cacheKey, result);
+
+  return result;
 }
 
 // Get all moves with their evaluation scores
@@ -568,6 +595,11 @@ export function findBestMove(game, depth = 3) {
   return bestMove;
 }
 
+// Clear transposition table (call on new game)
+export function clearCache() {
+  transpositionTable.clear();
+}
+
 export default {
   findBestMove,
   evaluateBoard,
@@ -575,4 +607,5 @@ export default {
   analyzePosition,
   explainAIMove,
   scoreToWinProbability,
+  clearCache,
 };

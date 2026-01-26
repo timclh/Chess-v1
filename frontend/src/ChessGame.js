@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
-import { findBestMove, getTopMoves, analyzePosition, explainAIMove } from "./ChessAI";
+import { findBestMove, getTopMoves, analyzePosition, explainAIMove, clearCache } from "./ChessAI";
 
 class ChessGame extends Component {
   state = {
@@ -281,6 +281,7 @@ class ChessGame extends Component {
   resetGame = () => {
     if (!this.game) return;
     this.game.reset();
+    clearCache(); // Clear AI cache for new game
     this.setState({
       fen: this.game.fen(),
       history: [],
