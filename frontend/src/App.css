@@ -1,45 +1,279 @@
-.App {
-  text-align: center;
+* {
+  box-sizing: border-box;
 }
 
-.App-logo {
-  animation: App-logo-spin infinite 20s linear;
-  height: 80px;
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  min-height: 100vh;
+}
+
+.App {
+  min-height: 100vh;
 }
 
 .App-header {
-  background-color: #222;
-  height: 150px;
+  background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
   padding: 20px;
   color: white;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .App-title {
-  font-size: 1.5em;
+  margin: 0;
+  font-size: 2.5em;
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #e94560, #f39422);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.App-intro {
-  font-size: large;
+.App-subtitle {
+  margin: 8px 0 0;
+  font-size: 1em;
+  opacity: 0.8;
+  color: #94a3b8;
+}
+
+.App-content {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 30px;
+  padding: 30px;
+  flex-wrap: wrap;
+}
+
+/* Chat Section */
+.chat-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 20px;
+  width: 350px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.chat-section > div > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.chat-section label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.chat-section input[type="text"] {
+  padding: 10px 14px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.chat-section input[type="text"]:focus {
+  outline: none;
+  border-color: #e94560;
 }
 
 .content {
-  height: 200px;
-  background-color: #ffff;
-  width: 500px;
-  margin: 0 auto;
-  overflow-y: scroll;
-}
-.content-message {
-  height: 2000px;
-  background-color: #8a8b8c;
-  margin: 0 auto;
+  height: 250px;
+  background: #f8fafc;
+  border-radius: 12px;
+  width: 100%;
+  margin: 15px 0;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.content > div {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: white;
+  border-radius: 8px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Chat Input Form */
+.chat-section form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-section form input {
+  flex: 1;
+}
+
+.chat-section form button {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #e94560, #f39422);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chat-section form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+/* Game Section */
+.game-section {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.chess-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-info {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.game-status {
+  text-align: center;
+  font-size: 1.4em;
+  font-weight: 700;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  border-radius: 12px;
+  margin-bottom: 15px;
+  color: #1e293b;
+}
+
+.game-status.game-over {
+  background: linear-gradient(135deg, #fef3c7, #fcd34d);
+  color: #92400e;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #e94560, #f39422);
+  color: white;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+.btn-secondary {
+  background: #64748b;
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #475569;
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.board-container {
+  margin: 10px 0;
+}
+
+.move-history {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.move-history h3 {
+  margin: 0 0 10px;
+  font-size: 1em;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.moves-list {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 15px;
+  min-height: 60px;
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-content: flex-start;
+}
+
+.no-moves {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.move {
+  display: inline-block;
+  padding: 4px 8px;
+  background: white;
+  border-radius: 4px;
+  font-family: "SF Mono", Monaco, "Consolas", monospace;
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.move-number {
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 4px;
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .App-content {
+    flex-direction: column;
+    align-items: center;
   }
-  to {
-    transform: rotate(360deg);
+
+  .chat-section {
+    width: 100%;
+    max-width: 400px;
   }
 }
