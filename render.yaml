@@ -27,6 +27,8 @@ services:
     envVars:
       - key: REACT_APP_WS_URL
         value: wss://chess-backend-w3pp.onrender.com
+      - key: NODE_OPTIONS
+        value: --openssl-legacy-provider
     staticPublishPath: build
     headers:
       - path: /*
