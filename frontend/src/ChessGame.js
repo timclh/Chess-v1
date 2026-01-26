@@ -328,7 +328,12 @@ class ChessGame extends Component {
   };
 
   setGameMode = (mode) => {
-    this.setState({ gameMode: mode }, () => {
+    // Coach mode always uses Expert AI (strongest)
+    const newState = { gameMode: mode };
+    if (mode === "coach") {
+      newState.aiDifficulty = 4; // Expert
+    }
+    this.setState(newState, () => {
       this.resetGame();
     });
   };
