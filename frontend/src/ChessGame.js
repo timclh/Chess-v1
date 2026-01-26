@@ -38,8 +38,8 @@ class ChessGame extends Component {
     if (!this.game || this.state.gameMode !== "coach") return;
 
     const analysis = analyzePosition(this.game);
-    // Use deeper analysis (depth 3) for better suggestions
-    const suggestedMoves = getTopMoves(this.game, 3, 3);
+    // Use Expert-level depth (4) for best suggestions
+    const suggestedMoves = getTopMoves(this.game, 3, 4);
 
     this.setState({ analysis, suggestedMoves });
 
