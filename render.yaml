@@ -24,6 +24,9 @@ services:
     runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
+    envVars:
+      - key: REACT_APP_WS_URL
+        value: wss://chess-backend-w3pp.onrender.com
     staticPublishPath: build
     headers:
       - path: /*
