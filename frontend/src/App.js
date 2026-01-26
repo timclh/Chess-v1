@@ -3,14 +3,40 @@ import "./App.css";
 import Chat from "./Chat";
 import ChessGame from "./ChessGame";
 import Leaderboard from "./Leaderboard";
+import Login from "./Login";
+import { AuthProvider } from "./AuthContext";
+import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
-class App extends Component {
+class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game' or 'leaderboard'
+    currentPage: "game", // 'game', 'leaderboard', or 'login'
+    user: null,
+    showLogin: false,
+  };
+
+  componentDidMount() {
+    this.unsubscribe = onAuthChange((user) => {
+      this.setState({ user, showLogin: false });
+    });
+  }
+
+  componentWillUnmount() {
+    if (this.unsubscribe) {
+      this.unsubscribe();
+    }
+  }
+
+  handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   render() {
-    const { currentPage } = this.state;
+    const { currentPage, user, showLogin } = this.state;
+    const configured = isFirebaseConfigured();
 
     return (
       <div className="App">
@@ -30,6 +56,22 @@ class App extends Component {
             >
               Leaderboard
             </button>
+            <div className="nav-spacer" />
+            {user ? (
+              <div className="user-menu">
+                <span className="user-name">{user.displayName || user.email}</span>
+                <button className="nav-btn logout-btn" onClick={this.handleLogout}>
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                className="nav-btn login-nav-btn"
+                onClick={() => this.setState({ showLogin: true })}
+              >
+                {configured ? "Login" : "Login (Local)"}
+              </button>
+            )}
           </nav>
         </header>
 
@@ -39,7 +81,7 @@ class App extends Component {
               <Chat />
             </div>
             <div className="game-section">
-              <ChessGame />
+              <ChessGame user={user} />
             </div>
           </div>
         )}
@@ -49,7 +91,24 @@ class App extends Component {
             <Leaderboard onBack={() => this.setState({ currentPage: "game" })} />
           </div>
         )}
+
+        {showLogin && (
+          <Login
+            onClose={() => this.setState({ showLogin: false })}
+            onSuccess={() => this.setState({ showLogin: false })}
+          />
+        )}
       </div>
+    );
+  }
+}
+
+class App extends Component {
+  render() {
+    return (
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     );
   }
 }

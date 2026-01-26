@@ -1,5 +1,5 @@
 // Chess AI with Educational Features
-// Uses Minimax with Alpha-Beta Pruning + Move Ordering + Transposition Table
+// Uses Minimax with Alpha-Beta Pruning + Move Ordering + Transposition Table + Opening Book
 
 // Transposition table for caching evaluated positions
 const transpositionTable = new Map();
@@ -10,6 +10,47 @@ function clearCacheIfNeeded() {
   if (transpositionTable.size > MAX_CACHE_SIZE) {
     transpositionTable.clear();
   }
+}
+
+// Opening book for instant responses in common positions
+const openingBook = {
+  // Starting position - common first moves
+  'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': ['e4', 'd4', 'Nf3', 'c4'],
+  // After 1.e4
+  'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': ['e5', 'c5', 'e6', 'c6'],
+  // After 1.d4
+  'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq -': ['d5', 'Nf6', 'e6'],
+  // After 1.e4 e5
+  'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -': ['Nf3', 'Nc3', 'Bc4'],
+  // After 1.e4 e5 2.Nf3
+  'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -': ['Nc6', 'Nf6', 'd6'],
+  // After 1.e4 c5 (Sicilian)
+  'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -': ['Nf3', 'Nc3', 'd4'],
+  // After 1.d4 d5
+  'rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -': ['c4', 'Nf3', 'Bf4'],
+  // After 1.d4 Nf6
+  'rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -': ['c4', 'Nf3', 'Bg5'],
+  // Italian Game setup
+  'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq -': ['Bc4', 'Bb5', 'd4'],
+  // After Bc4
+  'r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq -': ['Bc5', 'Nf6', 'Be7'],
+};
+
+// Get opening book move (returns null if not in book)
+function getOpeningMove(game) {
+  const fen = game.fen().split(' ').slice(0, 4).join(' '); // Position without move counts
+  const moves = openingBook[fen];
+  if (moves && moves.length > 0) {
+    // Randomly select from good opening moves
+    const validMoves = moves.filter(m => {
+      const legalMoves = game.moves();
+      return legalMoves.includes(m);
+    });
+    if (validMoves.length > 0) {
+      return validMoves[Math.floor(Math.random() * validMoves.length)];
+    }
+  }
+  return null;
 }
 
 // Piece values for evaluation
@@ -337,7 +378,11 @@ export function getMovesWithScores(game, depth = 3) {
   // Order moves first for better search
   const orderedMoves = orderMoves(game, moves.map(m => m.san));
 
-  for (const moveSan of orderedMoves) {
+  // Limit analysis to top candidates for speed
+  const maxAnalyze = depth >= 4 ? 8 : 12;
+  const movesToAnalyze = orderedMoves.slice(0, maxAnalyze);
+
+  for (const moveSan of movesToAnalyze) {
     const move = moves.find(m => m.san === moveSan);
     game.move(moveSan);
     const score = minimax(game, depth - 1, -Infinity, Infinity, !isWhite, true);
@@ -567,6 +612,12 @@ export function findBestMove(game, depth = 3) {
   const moves = game.moves();
   if (moves.length === 0) return null;
 
+  // Try opening book first for instant response
+  const bookMove = getOpeningMove(game);
+  if (bookMove) {
+    return bookMove;
+  }
+
   const isWhite = game.turn() === 'w';
   let bestMove = moves[0];
   let bestValue = isWhite ? -Infinity : Infinity;
@@ -574,7 +625,11 @@ export function findBestMove(game, depth = 3) {
   // Order moves for better search
   const orderedMoves = orderMoves(game, moves);
 
-  for (const move of orderedMoves) {
+  // Limit search for faster response
+  const maxMoves = depth >= 4 ? 15 : 20; // Search fewer moves at higher depths
+  const movesToSearch = orderedMoves.slice(0, maxMoves);
+
+  for (const move of movesToSearch) {
     game.move(move);
     const moveValue = minimax(game, depth - 1, -Infinity, Infinity, !isWhite, true);
     game.undo();

@@ -108,14 +108,17 @@ class ChessGame extends Component {
     }
   };
 
-  saveGame = (result) => {
+  saveGame = async (result) => {
     if (this.state.gameSaved || !this.state.playerName) return;
 
     const duration = this.state.gameStartTime
       ? Math.round((Date.now() - this.state.gameStartTime) / 1000)
       : 0;
 
-    saveGameResult({
+    // Get user ID if logged in (passed from App via props)
+    const userId = this.props.user?.uid || null;
+
+    await saveGameResult({
       playerName: this.state.playerName,
       playerColor: this.state.playerColor,
       opponent: this.state.gameMode,
@@ -123,7 +126,7 @@ class ChessGame extends Component {
       result: result,
       moves: this.state.history.length,
       duration: duration,
-    });
+    }, userId);
 
     this.setState({ gameSaved: true });
   };
