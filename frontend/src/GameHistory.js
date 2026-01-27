@@ -91,11 +91,33 @@ export function getPlayers() {
   }
 }
 
+// Point values for scoring
+const POINTS = {
+  aiWin: { 1: 1, 2: 2, 3: 3, 4: 5 }, // Easy: 1, Medium: 2, Hard: 3, Expert: 5
+  aiDraw: { 1: 0.5, 2: 1, 3: 1.5, 4: 2.5 }, // Half points for draw
+  humanWin: 5,
+  humanDraw: 2.5,
+};
+
+// Calculate points for a game result
+function calculatePoints(gameRecord) {
+  const isHuman = gameRecord.opponent === 'human';
+  const difficulty = gameRecord.difficulty || 2;
+
+  if (gameRecord.result === 'win') {
+    return isHuman ? POINTS.humanWin : (POINTS.aiWin[difficulty] || 2);
+  } else if (gameRecord.result === 'draw') {
+    return isHuman ? POINTS.humanDraw : (POINTS.aiDraw[difficulty] || 1);
+  }
+  return 0;
+}
+
 // Update player statistics (local)
 function updatePlayerStats(gameRecord) {
   try {
     const players = getPlayers();
     const name = gameRecord.playerName;
+    const isHuman = gameRecord.opponent === 'human';
 
     if (!players[name]) {
       players[name] = {
@@ -107,7 +129,11 @@ function updatePlayerStats(gameRecord) {
         winStreak: 0,
         bestWinStreak: 0,
         lastPlayed: null,
+        score: 0,
         difficultyWins: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        // Separate stats for AI and Human
+        aiStats: { wins: 0, losses: 0, draws: 0, games: 0 },
+        humanStats: { wins: 0, losses: 0, draws: 0, games: 0 },
       };
     }
 
@@ -115,23 +141,38 @@ function updatePlayerStats(gameRecord) {
     player.gamesPlayed++;
     player.lastPlayed = gameRecord.timestamp;
 
+    // Initialize if missing (for existing players)
+    if (!player.aiStats) player.aiStats = { wins: 0, losses: 0, draws: 0, games: 0 };
+    if (!player.humanStats) player.humanStats = { wins: 0, losses: 0, draws: 0, games: 0 };
+    if (!player.score) player.score = 0;
+
+    // Update category-specific stats
+    const categoryStats = isHuman ? player.humanStats : player.aiStats;
+    categoryStats.games++;
+
     if (gameRecord.result === 'win') {
       player.wins++;
+      categoryStats.wins++;
       player.winStreak++;
       if (player.winStreak > player.bestWinStreak) {
         player.bestWinStreak = player.winStreak;
       }
-      if (gameRecord.difficulty && gameRecord.opponent !== 'human') {
+      if (!isHuman && gameRecord.difficulty) {
         player.difficultyWins[gameRecord.difficulty] =
           (player.difficultyWins[gameRecord.difficulty] || 0) + 1;
       }
     } else if (gameRecord.result === 'loss') {
       player.losses++;
+      categoryStats.losses++;
       player.winStreak = 0;
     } else {
       player.draws++;
+      categoryStats.draws++;
       player.winStreak = 0;
     }
+
+    // Calculate new score
+    player.score = (player.score || 0) + calculatePoints(gameRecord);
 
     localStorage.setItem(PLAYERS_KEY, JSON.stringify(players));
   } catch (e) {
@@ -189,26 +230,48 @@ async function updateCloudStats(userId, gameRecord) {
   }
 }
 
+// Rank titles for top players
+const RANK_TITLES = [
+  { rank: 1, title: "黄金战神", titleEn: "Golden Warlord", color: "#FFD700" },
+  { rank: 2, title: "白银圣手", titleEn: "Silver Grandmaster", color: "#C0C0C0" },
+  { rank: 3, title: "青铜智者", titleEn: "Bronze Sage", color: "#CD7F32" },
+];
+
+// Get rank title for a position
+export function getRankTitle(position) {
+  return RANK_TITLES.find(t => t.rank === position) || null;
+}
+
 // Get leaderboard (local, or cloud if configured)
 export function getLeaderboard() {
   const players = getPlayers();
   const leaderboard = Object.values(players).map(player => {
-    const baseScore = player.wins * 3 + player.draws;
-    const difficultyBonus =
-      (player.difficultyWins[3] || 0) * 2 +
-      (player.difficultyWins[4] || 0) * 5;
-    const score = baseScore + difficultyBonus;
+    // Use stored score, or calculate if missing (backwards compatibility)
+    const score = player.score || (player.wins * 3 + player.draws);
 
     return {
       ...player,
-      score,
+      score: Math.round(score * 10) / 10, // Round to 1 decimal
       winRate: player.gamesPlayed > 0
         ? Math.round((player.wins / player.gamesPlayed) * 100)
         : 0,
+      aiStats: player.aiStats || { wins: 0, losses: 0, draws: 0, games: 0 },
+      humanStats: player.humanStats || { wins: 0, losses: 0, draws: 0, games: 0 },
     };
   });
 
   leaderboard.sort((a, b) => b.score - a.score);
+
+  // Add rank titles
+  leaderboard.forEach((player, index) => {
+    const rankTitle = getRankTitle(index + 1);
+    if (rankTitle) {
+      player.rankTitle = rankTitle.title;
+      player.rankTitleEn = rankTitle.titleEn;
+      player.rankColor = rankTitle.color;
+    }
+  });
+
   return leaderboard;
 }
 
