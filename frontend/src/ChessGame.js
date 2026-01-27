@@ -12,7 +12,7 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: Pawn",
     description: "兵只能向前移动一格，但捕获时需要斜向移动。第一次移动可以走两格。",
     descriptionEn: "Pawns move forward one square, but capture diagonally. On first move, they can advance two squares.",
-    fen: "8/8/8/8/8/8/4P3/8 w - - 0 1",
+    fen: "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
     objective: "将兵移动到e4",
     objectiveEn: "Move the pawn to e4",
     correctMove: "e4",
@@ -25,10 +25,11 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: Rook",
     description: "车可以水平或垂直移动任意格数。",
     descriptionEn: "Rooks move horizontally or vertically any number of squares.",
-    fen: "8/8/8/8/8/8/8/R7 w - - 0 1",
+    fen: "4k3/8/8/8/8/8/8/R3K3 w - - 0 1",
     objective: "将车移动到a8",
     objectiveEn: "Move the rook to a8",
-    correctMove: "Ra8",
+    correctMove: "Ra8+",
+    alternativeMoves: ["Ra8"],
     hint: "车可以沿直线移动整个棋盘",
     hintEn: "Rooks can move in straight lines across the entire board",
   },
@@ -38,7 +39,7 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: Bishop",
     description: "象只能斜向移动任意格数。",
     descriptionEn: "Bishops move diagonally any number of squares.",
-    fen: "8/8/8/8/8/8/8/2B5 w - - 0 1",
+    fen: "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1",
     objective: "将象移动到h6",
     objectiveEn: "Move the bishop to h6",
     correctMove: "Bh6",
@@ -51,7 +52,7 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: Knight",
     description: "马走L形：两格直线加一格垂直（或相反）。马是唯一可以跳过其他棋子的棋子。",
     descriptionEn: "Knights move in an L-shape: two squares in one direction and one perpendicular. Knights can jump over pieces.",
-    fen: "8/8/8/8/8/8/8/1N6 w - - 0 1",
+    fen: "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
     objective: "将马移动到c3",
     objectiveEn: "Move the knight to c3",
     correctMove: "Nc3",
@@ -64,10 +65,11 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: Queen",
     description: "后是最强大的棋子，可以水平、垂直和斜向移动任意格数。",
     descriptionEn: "The Queen is the most powerful piece. It moves horizontally, vertically, or diagonally any number of squares.",
-    fen: "8/8/8/8/3Q4/8/8/8 w - - 0 1",
+    fen: "4k3/8/8/8/3Q4/8/8/4K3 w - - 0 1",
     objective: "将后移动到h8",
     objectiveEn: "Move the queen to h8",
-    correctMove: "Qh8",
+    correctMove: "Qh8+",
+    alternativeMoves: ["Qh8"],
     hint: "后可以像车和象一样移动",
     hintEn: "The Queen combines the moves of a rook and bishop",
   },
@@ -77,7 +79,7 @@ const TUTORIAL_LESSONS = [
     titleEn: "Piece Movement: King",
     description: "王每次只能移动一格，但可以向任何方向移动。保护好你的王！",
     descriptionEn: "The King moves one square in any direction. Protect your King at all costs!",
-    fen: "8/8/8/8/4K3/8/8/8 w - - 0 1",
+    fen: "4k3/8/8/8/4K3/8/8/8 w - - 0 1",
     objective: "将王移动到e5",
     objectiveEn: "Move the king to e5",
     correctMove: "Ke5",
@@ -104,7 +106,7 @@ const TUTORIAL_LESSONS = [
     titleEn: "Capturing",
     description: "通过移动到对方棋子所在的格子来吃子。",
     descriptionEn: "Capture pieces by moving to the square they occupy.",
-    fen: "8/8/8/3p4/4N3/8/8/8 w - - 0 1",
+    fen: "4k3/8/3p4/4N3/8/8/8/4K3 w - - 0 1",
     objective: "用马吃掉黑兵",
     objectiveEn: "Capture the black pawn with the knight",
     correctMove: "Nxd6",
@@ -755,12 +757,6 @@ class ChessGame extends Component {
             <div className="section-label">Game Mode</div>
             <div className="mode-selector-vertical">
               <button
-                className={`mode-btn ${gameMode === "human" ? "active" : ""}`}
-                onClick={() => this.setGameMode("human")}
-              >
-                👥 vs Human
-              </button>
-              <button
                 className={`mode-btn ${gameMode === "ai" ? "active" : ""}`}
                 onClick={() => this.setGameMode("ai")}
               >
@@ -778,6 +774,11 @@ class ChessGame extends Component {
               >
                 🎓 Tutorial
               </button>
+            </div>
+            <div className="online-hint">
+              👥 Want to play vs Human?
+              <br />
+              Use <strong>Online</strong> mode in the navbar!
             </div>
           </div>
 
