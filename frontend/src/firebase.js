@@ -32,15 +32,16 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 
-// Firebase configuration - Your Chess Arena project
+// Firebase configuration - loaded from environment variables
+// Create a .env file in frontend/ with your Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyB2HHuBhGc41Z7TDdDBWwvmZdTjJVA9XuA",
-  authDomain: "chessv1-97369.firebaseapp.com",
-  projectId: "chessv1-97369",
-  storageBucket: "chessv1-97369.firebasestorage.app",
-  messagingSenderId: "694658964329",
-  appId: "1:694658964329:web:f7fb4d459e6f61e7933bf8",
-  measurementId: "G-LNESLRPKK8"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Check if Firebase is configured
