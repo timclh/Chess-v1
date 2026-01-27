@@ -4,12 +4,13 @@ import Chat from "./Chat";
 import ChessGame from "./ChessGame";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
+import Multiplayer from "./Multiplayer";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game', 'leaderboard', or 'login'
+    currentPage: "game", // 'game', 'multiplayer', 'leaderboard', or 'login'
     user: null,
     showLogin: false,
   };
@@ -51,6 +52,12 @@ class AppContent extends Component {
               Play Game
             </button>
             <button
+              className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
+              onClick={() => this.setState({ currentPage: "multiplayer" })}
+            >
+              Online
+            </button>
+            <button
               className={`nav-btn ${currentPage === "leaderboard" ? "active" : ""}`}
               onClick={() => this.setState({ currentPage: "leaderboard" })}
             >
@@ -83,6 +90,12 @@ class AppContent extends Component {
             <div className="game-section">
               <ChessGame user={user} />
             </div>
+          </div>
+        )}
+
+        {currentPage === "multiplayer" && (
+          <div className="App-content multiplayer-page">
+            <Multiplayer onBack={() => this.setState({ currentPage: "game" })} />
           </div>
         )}
 

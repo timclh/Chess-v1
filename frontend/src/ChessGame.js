@@ -88,7 +88,7 @@ const TUTORIAL_LESSONS = [
     id: 7,
     title: "将军 (Check)",
     titleEn: "Check",
-    description: "当王被攻击时，这叫做"将军"。你必须立即解除将军。",
+    description: "当王被攻击时，这叫做「将军」。你必须立即解除将军。",
     descriptionEn: "When the King is under attack, it's called 'check'. You must get out of check immediately.",
     fen: "8/8/8/8/8/5q2/4K3/8 w - - 0 1",
     objective: "王被将军了！将王移动到安全的位置",
