@@ -12,6 +12,7 @@ import {
 
 const STORAGE_KEY = 'chess_game_history';
 const PLAYERS_KEY = 'chess_players';
+const SAVED_GAME_KEY = 'chess_saved_game';
 
 // Get all game history (local)
 export function getGameHistory() {
@@ -243,6 +244,48 @@ export function clearAllData() {
   localStorage.removeItem(PLAYERS_KEY);
 }
 
+// Save game state (mid-game progress)
+export function saveGameState(gameState) {
+  try {
+    const saveData = {
+      fen: gameState.fen,
+      history: gameState.history,
+      gameMode: gameState.gameMode,
+      playerColor: gameState.playerColor,
+      aiDifficulty: gameState.aiDifficulty,
+      playerName: gameState.playerName,
+      gameStartTime: gameState.gameStartTime,
+      savedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(SAVED_GAME_KEY, JSON.stringify(saveData));
+    return true;
+  } catch (e) {
+    console.error('Error saving game state:', e);
+    return false;
+  }
+}
+
+// Load saved game state
+export function loadGameState() {
+  try {
+    const data = localStorage.getItem(SAVED_GAME_KEY);
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    console.error('Error loading game state:', e);
+    return null;
+  }
+}
+
+// Check if there's a saved game
+export function hasSavedGame() {
+  return localStorage.getItem(SAVED_GAME_KEY) !== null;
+}
+
+// Delete saved game
+export function deleteSavedGame() {
+  localStorage.removeItem(SAVED_GAME_KEY);
+}
+
 // Get recent games for a player
 export function getPlayerGames(playerName, limit = 10) {
   const history = getGameHistory();
@@ -261,4 +304,8 @@ export default {
   getPlayer,
   getPlayerGames,
   clearAllData,
+  saveGameState,
+  loadGameState,
+  hasSavedGame,
+  deleteSavedGame,
 };

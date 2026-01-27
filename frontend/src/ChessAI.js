@@ -546,65 +546,147 @@ export function analyzePosition(game) {
   };
 }
 
-// Explain why a move was made (for AI moves)
+// Piece names in Chinese
+const pieceNamesCN = {
+  p: '兵',
+  n: '马',
+  b: '象',
+  r: '车',
+  q: '后',
+  k: '王',
+};
+
+// Explain why a move was made (for AI moves) - Bilingual
 export function explainAIMove(game, moveSan) {
   const moves = game.moves({ verbose: true });
   const move = moves.find(m => m.san === moveSan);
 
-  if (!move) return 'Move played.';
+  if (!move) return '已走棋 / Move played.';
 
   const explanations = [];
   const piece = pieceNames[move.piece] || 'Piece';
+  const pieceCN = pieceNamesCN[move.piece] || '棋子';
 
   // Capture explanation
   if (move.captured) {
     const capturedName = pieceNames[move.captured];
+    const capturedNameCN = pieceNamesCN[move.captured];
     const capturedValue = pieceValues[move.captured];
     const pieceValue = pieceValues[move.piece];
 
     if (capturedValue > pieceValue) {
-      explanations.push(`Winning material: ${piece} takes ${capturedName} (+${Math.round((capturedValue - pieceValue) / 100)} pawns value)`);
+      const gain = Math.round((capturedValue - pieceValue) / 100);
+      explanations.push(`🎯 赢子！${pieceCN}吃${capturedNameCN}（+${gain}兵价值）/ Winning material: ${piece} takes ${capturedName} (+${gain} pawns value)`);
     } else if (capturedValue === pieceValue) {
-      explanations.push(`Trading: ${piece} takes ${capturedName}`);
+      explanations.push(`🔄 兑子：${pieceCN}吃${capturedNameCN} / Trading: ${piece} takes ${capturedName}`);
     } else {
-      explanations.push(`${piece} captures ${capturedName}`);
+      explanations.push(`⚔️ ${pieceCN}吃${capturedNameCN} / ${piece} captures ${capturedName}`);
     }
   }
 
   // Check/Checkmate
   if (moveSan.includes('#')) {
-    explanations.push('Checkmate! Game over.');
+    explanations.push('👑 将死！游戏结束 / Checkmate! Game over.');
   } else if (moveSan.includes('+')) {
-    explanations.push('Check! You must defend your king.');
+    explanations.push('⚠️ 将军！你必须保护你的王 / Check! You must defend your king.');
   }
 
   // Castling
-  if (moveSan === 'O-O' || moveSan === 'O-O-O') {
-    explanations.push('Castling for king safety and rook activation.');
+  if (moveSan === 'O-O') {
+    explanations.push('🏰 短易位：保护王并激活车 / Kingside castling for king safety and rook activation.');
+  } else if (moveSan === 'O-O-O') {
+    explanations.push('🏰 长易位：保护王并激活车 / Queenside castling for king safety and rook activation.');
   }
 
   // Promotion
   if (move.promotion) {
-    explanations.push(`Pawn promotes to ${pieceNames[move.promotion]}!`);
+    const promoName = pieceNames[move.promotion];
+    const promoNameCN = pieceNamesCN[move.promotion];
+    explanations.push(`🎉 升变！兵升变为${promoNameCN} / Pawn promotes to ${promoName}!`);
   }
 
   // Center control
   const centerSquares = ['e4', 'd4', 'e5', 'd5'];
-  if (centerSquares.includes(move.to)) {
-    explanations.push('Controlling the center.');
+  if (centerSquares.includes(move.to) && !move.captured) {
+    explanations.push('🎯 控制中心 / Controlling the center.');
   }
 
   // Development
   if (['n', 'b'].includes(move.piece) && ['1', '8'].includes(move.from[1])) {
-    explanations.push('Developing a piece.');
+    explanations.push(`📈 出子：${pieceCN}开始活动 / Developing the ${piece}.`);
+  }
+
+  // Open file for rook
+  if (move.piece === 'r') {
+    const file = move.to[0];
+    explanations.push(`📊 车占${file}列 / Rook controls the ${file}-file.`);
+  }
+
+  // Knight outpost
+  if (move.piece === 'n' && ['4', '5'].includes(move.to[1])) {
+    explanations.push(`🐴 马到前哨位置 / Knight reaches an outpost.`);
   }
 
   // Default explanation
   if (explanations.length === 0) {
-    explanations.push(`${piece} to ${move.to} - improving position.`);
+    explanations.push(`${pieceCN}到${move.to}，改善位置 / ${piece} to ${move.to} - improving position.`);
   }
 
   return explanations.join(' ');
+}
+
+// Get strategic advice for current position (for coach mode)
+export function getStrategicAdvice(game) {
+  const advice = [];
+  const fen = game.fen();
+  const moveCount = game.history().length;
+
+  // Opening phase advice
+  if (moveCount < 10) {
+    advice.push({
+      cn: '开局阶段：专注于发展棋子和控制中心',
+      en: 'Opening phase: Focus on developing pieces and controlling the center',
+      priority: 'high'
+    });
+
+    // Check if castled
+    if (!fen.includes('K') || fen.includes('K') && fen.includes('R')) {
+      advice.push({
+        cn: '考虑尽早王车易位保护你的王',
+        en: 'Consider castling early to protect your king',
+        priority: 'medium'
+      });
+    }
+  }
+
+  // Check for undefended pieces
+  if (game.in_check()) {
+    advice.push({
+      cn: '你正在被将军！必须立即应对',
+      en: 'You are in check! You must respond immediately',
+      priority: 'critical'
+    });
+  }
+
+  // Middlegame advice
+  if (moveCount >= 10 && moveCount < 30) {
+    advice.push({
+      cn: '中局阶段：寻找战术机会和弱点',
+      en: 'Middlegame phase: Look for tactical opportunities and weaknesses',
+      priority: 'medium'
+    });
+  }
+
+  // Endgame advice
+  if (moveCount >= 30) {
+    advice.push({
+      cn: '残局阶段：激活你的王，推进兵',
+      en: 'Endgame phase: Activate your king and push your pawns',
+      priority: 'medium'
+    });
+  }
+
+  return advice;
 }
 
 // Find the best move for the AI
@@ -661,6 +743,7 @@ export default {
   getTopMoves,
   analyzePosition,
   explainAIMove,
+  getStrategicAdvice,
   scoreToWinProbability,
   clearCache,
 };
