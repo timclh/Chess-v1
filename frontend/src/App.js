@@ -5,12 +5,13 @@ import ChessGame from "./ChessGame";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
 import Multiplayer from "./Multiplayer";
+import Puzzles from "./Puzzles";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game', 'multiplayer', 'leaderboard', or 'login'
+    currentPage: "game", // 'game', 'puzzles', 'multiplayer', 'leaderboard', or 'login'
     user: null,
     showLogin: false,
   };
@@ -52,6 +53,12 @@ class AppContent extends Component {
               Play Game
             </button>
             <button
+              className={`nav-btn ${currentPage === "puzzles" ? "active" : ""}`}
+              onClick={() => this.setState({ currentPage: "puzzles" })}
+            >
+              🧩 Puzzles
+            </button>
+            <button
               className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
               onClick={() => this.setState({ currentPage: "multiplayer" })}
             >
@@ -90,6 +97,12 @@ class AppContent extends Component {
             <div className="game-section">
               <ChessGame user={user} />
             </div>
+          </div>
+        )}
+
+        {currentPage === "puzzles" && (
+          <div className="App-content puzzles-page">
+            <Puzzles />
           </div>
         )}
 
