@@ -149,7 +149,7 @@ class ChessGame extends Component {
     pieceSquare: "",
     gameOver: false,
     gameStatus: "White to move",
-    gameMode: "ai", // "human", "ai", "coach", or "tutorial"
+    gameMode: "ai", // "ai", "coach", or "tutorial"
     playerColor: "w",
     aiThinking: false,
     aiDifficulty: 2, // Default to Medium
@@ -163,6 +163,9 @@ class ChessGame extends Component {
     playerName: localStorage.getItem('chess_player_name') || "",
     gameStartTime: null,
     gameSaved: false,
+    // Pending game result (before user confirms submission)
+    pendingResult: null, // { result: 'win'/'loss'/'draw', status: 'Checkmate!...' }
+    showResultDialog: false,
     // Save/Load state
     hasSavedGame: false,
     showSaveNotification: false,
@@ -230,11 +233,7 @@ class ChessGame extends Component {
         status = `Checkmate! ${winner} wins!`;
         // Determine if player won or lost
         const winnerColor = this.game.turn() === "w" ? "b" : "w";
-        if (this.state.gameMode === "human") {
-          gameResult = "draw"; // In human mode, we don't track specific winner
-        } else {
-          gameResult = winnerColor === this.state.playerColor ? "win" : "loss";
-        }
+        gameResult = winnerColor === this.state.playerColor ? "win" : "loss";
       } else if (this.game.in_stalemate()) {
         status = "Draw by stalemate";
       } else if (this.game.in_threefold_repetition()) {
@@ -245,9 +244,17 @@ class ChessGame extends Component {
         status = "Draw";
       }
 
-      this.setState({ gameOver: true, gameStatus: status }, () => {
-        this.saveGame(gameResult);
-      });
+      // Don't auto-save - show dialog for user to decide
+      if (!this.state.gameSaved && !this.state.pendingResult) {
+        this.setState({
+          gameOver: true,
+          gameStatus: status,
+          pendingResult: { result: gameResult, status: status },
+          showResultDialog: true,
+        });
+      } else {
+        this.setState({ gameOver: true, gameStatus: status });
+      }
     } else {
       if (this.game.in_check()) {
         status = `${turn} is in check!`;
@@ -256,6 +263,19 @@ class ChessGame extends Component {
       }
       this.setState({ gameOver: false, gameStatus: status });
     }
+  };
+
+  // Submit the game score
+  submitScore = async () => {
+    if (!this.state.pendingResult || this.state.gameSaved) return;
+
+    await this.saveGame(this.state.pendingResult.result);
+    this.setState({ showResultDialog: false });
+  };
+
+  // Continue exploring without submitting score
+  continueExploring = () => {
+    this.setState({ showResultDialog: false });
   };
 
   saveGame = async (result) => {
@@ -531,6 +551,9 @@ class ChessGame extends Component {
   undoMove = () => {
     if (!this.game || this.state.history.length === 0 || this.state.aiThinking) return;
 
+    // Check if we're undoing from a game over state
+    const wasGameOver = this.state.gameOver;
+
     if ((this.state.gameMode === "ai" || this.state.gameMode === "coach") && this.state.history.length >= 2) {
       this.game.undo();
       this.game.undo();
@@ -544,11 +567,20 @@ class ChessGame extends Component {
       squareStyles: {},
       pieceSquare: "",
       lastAIExplanation: "",
+      // Reset game over state when undoing - allow continued play
+      gameOver: false,
+      pendingResult: null,
+      showResultDialog: false,
     });
     this.updateGameStatus();
 
     if (this.state.gameMode === "coach") {
       setTimeout(() => this.updateAnalysis(), 100);
+    }
+
+    // If AI's turn after undo and we were in a finished game, make AI move
+    if (wasGameOver && (this.state.gameMode === "ai" || this.state.gameMode === "coach")) {
+      setTimeout(() => this.makeAIMove(), 300);
     }
   };
 
@@ -727,7 +759,7 @@ class ChessGame extends Component {
       fen, squareStyles, gameStatus, gameOver, history,
       gameMode, playerColor, aiThinking, aiDifficulty,
       analysis, suggestedMoves, strategicAdvice, showHints, lastAIExplanation,
-      hasSavedGame, showSaveNotification,
+      hasSavedGame, showSaveNotification, pendingResult, showResultDialog,
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress
     } = this.state;
 
@@ -911,6 +943,54 @@ class ChessGame extends Component {
               draggable={!aiThinking && (!gameOver || gameMode === "tutorial") && !(gameMode === "tutorial" && lessonComplete)}
             />
           </div>
+
+          {/* Game Result Dialog */}
+          {showResultDialog && pendingResult && (
+            <div className="result-dialog-overlay">
+              <div className={`result-dialog ${pendingResult.result}`}>
+                <div className="result-icon">
+                  {pendingResult.result === 'win' ? '🏆' : pendingResult.result === 'loss' ? '😞' : '🤝'}
+                </div>
+                <h3 className="result-title">{pendingResult.status}</h3>
+                <p className="result-description">
+                  {pendingResult.result === 'win'
+                    ? '恭喜你赢了！要提交成绩还是继续研究棋局？'
+                    : pendingResult.result === 'loss'
+                    ? '很遗憾，你输了。要提交成绩还是悔棋继续？'
+                    : '和棋结束。要提交成绩还是继续研究？'}
+                </p>
+                <p className="result-description-en">
+                  {pendingResult.result === 'win'
+                    ? 'Congratulations! Submit your score or continue exploring?'
+                    : pendingResult.result === 'loss'
+                    ? 'You lost. Submit score or undo to continue?'
+                    : 'Game drawn. Submit score or continue exploring?'}
+                </p>
+                <div className="result-actions">
+                  <button
+                    className="btn btn-primary result-btn"
+                    onClick={this.submitScore}
+                    disabled={!this.state.playerName}
+                  >
+                    📊 Submit Score
+                  </button>
+                  <button
+                    className="btn btn-secondary result-btn"
+                    onClick={this.continueExploring}
+                  >
+                    🔍 Continue Exploring
+                  </button>
+                </div>
+                {!this.state.playerName && (
+                  <p className="result-warning">
+                    请先输入玩家名称才能提交成绩
+                    <br />
+                    Please enter a player name to submit your score
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Move History under board (not in tutorial mode) */}
           {gameMode !== "tutorial" && (
