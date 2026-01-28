@@ -1,7 +1,10 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
-import { findBestMove, getTopMoves, analyzePosition, explainAIMove, getStrategicAdvice, clearCache } from "./ChessAI";
+import {
+  findBestMove, getTopMoves, analyzePosition, explainAIMove, getStrategicAdvice, clearCache,
+  quickEvaluate, analyzeGame, generateLearningTips, COMMON_PATTERNS_LIBRARY
+} from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
 
 // Tutorial lessons for beginners
@@ -174,6 +177,13 @@ class ChessGame extends Component {
     lessonComplete: false,
     showTutorialHint: false,
     tutorialProgress: JSON.parse(localStorage.getItem('chess_tutorial_progress') || '[]'),
+    // Retrospect mode state
+    showRetrospect: false,
+    evaluations: [], // { score, winProbability } for each position
+    criticalMoments: [], // analyzed critical moments
+    learningTips: [], // generated tips based on game
+    retrospectMoveIndex: -1, // current move being viewed in retrospect
+    showPatternLibrary: false,
   };
 
   game = null;
@@ -328,6 +338,7 @@ class ChessGame extends Component {
           aiThinking: false,
           lastAIExplanation: explanation,
         });
+        this.recordEvaluation();
         this.updateGameStatus();
         this.updateAnalysis();
       } else {
@@ -405,6 +416,7 @@ class ChessGame extends Component {
             };
           }
 
+          this.recordEvaluation();
           this.updateGameStatus();
 
           const newState = {
@@ -480,6 +492,7 @@ class ChessGame extends Component {
       pieceSquare: "",
       lastAIExplanation: "",
     });
+    this.recordEvaluation();
     this.updateGameStatus();
 
     if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
@@ -524,6 +537,10 @@ class ChessGame extends Component {
     if (!this.game) return;
     this.game.reset();
     clearCache(); // Clear AI cache for new game
+
+    // Initialize with starting position evaluation
+    const initialEval = quickEvaluate(this.game);
+
     this.setState({
       fen: this.game.fen(),
       history: [],
@@ -536,6 +553,14 @@ class ChessGame extends Component {
       suggestedMoves: [],
       gameStartTime: Date.now(),
       gameSaved: false,
+      // Reset retrospect state
+      evaluations: [initialEval],
+      criticalMoments: [],
+      learningTips: [],
+      showRetrospect: false,
+      retrospectMoveIndex: -1,
+      pendingResult: null,
+      showResultDialog: false,
     });
     this.updateGameStatus();
 
@@ -582,6 +607,82 @@ class ChessGame extends Component {
     if (wasGameOver && (this.state.gameMode === "ai" || this.state.gameMode === "coach")) {
       setTimeout(() => this.makeAIMove(), 300);
     }
+  };
+
+  // Record evaluation after a move
+  recordEvaluation = () => {
+    if (!this.game) return;
+    const evaluation = quickEvaluate(this.game);
+    this.setState(state => ({
+      evaluations: [...state.evaluations, evaluation],
+    }));
+  };
+
+  // Enter retrospect mode - analyze the game
+  enterRetrospect = () => {
+    const { history, evaluations, playerColor } = this.state;
+    if (history.length < 2) return;
+
+    // Analyze the game
+    const criticalMoments = analyzeGame(history, evaluations);
+    const learningTips = generateLearningTips(criticalMoments, playerColor);
+
+    this.setState({
+      showRetrospect: true,
+      criticalMoments,
+      learningTips,
+      retrospectMoveIndex: history.length - 1,
+    });
+  };
+
+  // Exit retrospect mode
+  exitRetrospect = () => {
+    this.setState({
+      showRetrospect: false,
+      retrospectMoveIndex: -1,
+    });
+  };
+
+  // Go to a specific move in retrospect
+  goToMove = (moveIndex) => {
+    if (!this.game || moveIndex < -1 || moveIndex >= this.state.history.length) return;
+
+    // Create a new game and replay moves to get to position
+    const tempGame = new Chess();
+    for (let i = 0; i <= moveIndex; i++) {
+      const move = this.state.history[i];
+      tempGame.move(move.san);
+    }
+
+    this.setState({
+      retrospectMoveIndex: moveIndex,
+      fen: moveIndex === -1 ? 'start' : tempGame.fen(),
+    });
+  };
+
+  // Navigate to previous critical moment
+  prevCriticalMoment = () => {
+    const { criticalMoments, retrospectMoveIndex } = this.state;
+    const prevMoment = [...criticalMoments]
+      .reverse()
+      .find(m => m.moveIndex < retrospectMoveIndex);
+    if (prevMoment) {
+      this.goToMove(prevMoment.moveIndex);
+    }
+  };
+
+  // Navigate to next critical moment
+  nextCriticalMoment = () => {
+    const { criticalMoments, retrospectMoveIndex } = this.state;
+    const nextMoment = criticalMoments.find(m => m.moveIndex > retrospectMoveIndex);
+    if (nextMoment) {
+      this.goToMove(nextMoment.moveIndex);
+    }
+  };
+
+  // Toggle pattern library display
+  togglePatternLibrary = () => {
+    this.setState(state => ({ showPatternLibrary: !state.showPatternLibrary }));
   };
 
   // Save current game progress
@@ -760,7 +861,9 @@ class ChessGame extends Component {
       gameMode, playerColor, aiThinking, aiDifficulty,
       analysis, suggestedMoves, strategicAdvice, showHints, lastAIExplanation,
       hasSavedGame, showSaveNotification, pendingResult, showResultDialog,
-      currentLesson, lessonComplete, showTutorialHint, tutorialProgress
+      currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
+      showRetrospect, evaluations, criticalMoments, learningTips,
+      retrospectMoveIndex, showPatternLibrary
     } = this.state;
 
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
@@ -865,7 +968,7 @@ class ChessGame extends Component {
           )}
 
           {/* Game Controls in Settings */}
-          {gameMode !== "tutorial" && (
+          {gameMode !== "tutorial" && !showRetrospect && (
             <div className="settings-section controls-section">
               <button className="btn btn-primary full-width" onClick={this.resetGame}>
                 New Game
@@ -876,6 +979,30 @@ class ChessGame extends Component {
                 disabled={history.length === 0 || aiThinking}
               >
                 Undo Move
+              </button>
+              {(gameOver || history.length >= 4) && (
+                <button
+                  className="btn btn-retrospect full-width"
+                  onClick={this.enterRetrospect}
+                  disabled={history.length < 4}
+                >
+                  📈 Analyze Game
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Retrospect Mode Controls */}
+          {showRetrospect && (
+            <div className="settings-section controls-section">
+              <button className="btn btn-primary full-width" onClick={this.exitRetrospect}>
+                ← Back to Game
+              </button>
+              <button
+                className="btn btn-secondary full-width"
+                onClick={this.togglePatternLibrary}
+              >
+                {showPatternLibrary ? '📊 Show Analysis' : '📚 Pattern Library'}
               </button>
             </div>
           )}
@@ -979,6 +1106,13 @@ class ChessGame extends Component {
                     onClick={this.continueExploring}
                   >
                     🔍 Continue Exploring
+                  </button>
+                  <button
+                    className="btn btn-retrospect result-btn"
+                    onClick={() => { this.continueExploring(); this.enterRetrospect(); }}
+                    disabled={history.length < 4}
+                  >
+                    📈 Review Game
                   </button>
                 </div>
                 {!this.state.playerName && (
@@ -1208,6 +1342,210 @@ class ChessGame extends Component {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right Panel - Retrospect Mode */}
+        {showRetrospect && !showPatternLibrary && (
+          <div className="retrospect-panel-right">
+            <div className="panel-title">📈 Game Analysis / 复盘分析</div>
+
+            {/* Win Probability Timeline */}
+            <div className="retrospect-section">
+              <div className="section-label">Win Probability Timeline / 胜率曲线</div>
+              <div className="win-prob-timeline">
+                <div className="timeline-graph">
+                  {evaluations.map((eval_, index) => {
+                    const height = eval_.winProbability * 100;
+                    const isCurrentMove = index === retrospectMoveIndex + 1;
+                    const isCritical = criticalMoments.some(m => m.moveIndex === index - 1);
+                    return (
+                      <div
+                        key={index}
+                        className={`timeline-bar ${isCurrentMove ? 'current' : ''} ${isCritical ? 'critical' : ''}`}
+                        style={{ height: `${height}%` }}
+                        onClick={() => this.goToMove(index - 1)}
+                        title={`Move ${index}: ${Math.round(eval_.winProbability * 100)}% white`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="timeline-labels">
+                  <span>White</span>
+                  <span>Black</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Move Navigation */}
+            <div className="retrospect-section">
+              <div className="section-label">Navigation / 导航</div>
+              <div className="retrospect-nav">
+                <button
+                  className="btn btn-sm"
+                  onClick={() => this.goToMove(-1)}
+                  disabled={retrospectMoveIndex === -1}
+                >
+                  ⏮ Start
+                </button>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => this.goToMove(retrospectMoveIndex - 1)}
+                  disabled={retrospectMoveIndex <= -1}
+                >
+                  ◀ Prev
+                </button>
+                <span className="move-counter">
+                  {retrospectMoveIndex + 1} / {history.length}
+                </span>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => this.goToMove(retrospectMoveIndex + 1)}
+                  disabled={retrospectMoveIndex >= history.length - 1}
+                >
+                  Next ▶
+                </button>
+                <button
+                  className="btn btn-sm"
+                  onClick={() => this.goToMove(history.length - 1)}
+                  disabled={retrospectMoveIndex === history.length - 1}
+                >
+                  End ⏭
+                </button>
+              </div>
+              <div className="critical-nav">
+                <button
+                  className="btn btn-sm btn-critical"
+                  onClick={this.prevCriticalMoment}
+                  disabled={!criticalMoments.some(m => m.moveIndex < retrospectMoveIndex)}
+                >
+                  ◀ Prev Critical
+                </button>
+                <button
+                  className="btn btn-sm btn-critical"
+                  onClick={this.nextCriticalMoment}
+                  disabled={!criticalMoments.some(m => m.moveIndex > retrospectMoveIndex)}
+                >
+                  Next Critical ▶
+                </button>
+              </div>
+            </div>
+
+            {/* Current Move Info */}
+            {retrospectMoveIndex >= 0 && retrospectMoveIndex < history.length && (
+              <div className="retrospect-section">
+                <div className="section-label">Current Move / 当前着法</div>
+                <div className="current-move-info">
+                  <span className="move-san">
+                    {Math.floor(retrospectMoveIndex / 2) + 1}.
+                    {retrospectMoveIndex % 2 === 1 ? '..' : ''}
+                    {history[retrospectMoveIndex].san}
+                  </span>
+                  {evaluations[retrospectMoveIndex + 1] && (
+                    <span className="move-eval">
+                      {Math.round(evaluations[retrospectMoveIndex + 1].winProbability * 100)}% White
+                    </span>
+                  )}
+                </div>
+                {/* Show if this is a critical moment */}
+                {criticalMoments.find(m => m.moveIndex === retrospectMoveIndex) && (
+                  <div className="critical-moment-badge">
+                    <span style={{ color: criticalMoments.find(m => m.moveIndex === retrospectMoveIndex).classification.color }}>
+                      {criticalMoments.find(m => m.moveIndex === retrospectMoveIndex).classification.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Critical Moments List */}
+            <div className="retrospect-section">
+              <div className="section-label">
+                Critical Moments / 关键时刻 ({criticalMoments.length})
+              </div>
+              <div className="critical-moments-list">
+                {criticalMoments.length === 0 ? (
+                  <div className="no-critical">
+                    No significant turning points found.
+                    <br />
+                    没有发现显著的转折点。
+                  </div>
+                ) : (
+                  criticalMoments.slice(0, 8).map((moment, index) => (
+                    <div
+                      key={index}
+                      className={`critical-moment-item ${moment.moveIndex === retrospectMoveIndex ? 'active' : ''}`}
+                      onClick={() => this.goToMove(moment.moveIndex)}
+                    >
+                      <div className="moment-header">
+                        <span className="moment-move">
+                          {Math.floor(moment.moveIndex / 2) + 1}.
+                          {moment.moveIndex % 2 === 1 ? '..' : ''} {moment.moveSan}
+                        </span>
+                        <span
+                          className="moment-classification"
+                          style={{ color: moment.classification.color }}
+                        >
+                          {moment.classification.label}
+                        </span>
+                      </div>
+                      <div className="moment-change">
+                        {moment.change > 0 ? '↑' : '↓'}
+                        {Math.round(Math.abs(moment.change) * 100)}%
+                        {moment.isTurningPoint && ' ⚡ Turning Point'}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Learning Tips */}
+            {learningTips.length > 0 && (
+              <div className="retrospect-section">
+                <div className="section-label">💡 Learning Tips / 学习建议</div>
+                <div className="learning-tips-list">
+                  {learningTips.map((tip, index) => (
+                    <div key={index} className={`learning-tip priority-${tip.priority}`}>
+                      <p className="tip-cn">{tip.cn}</p>
+                      <p className="tip-en">{tip.en}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Right Panel - Pattern Library */}
+        {showRetrospect && showPatternLibrary && (
+          <div className="retrospect-panel-right pattern-library">
+            <div className="panel-title">📚 Pattern Library / 棋型库</div>
+
+            <div className="pattern-intro">
+              <p>学习这些常见模式可以提升你的棋艺</p>
+              <p>Learn these common patterns to improve your game</p>
+            </div>
+
+            <div className="patterns-list">
+              {COMMON_PATTERNS_LIBRARY.map((pattern, index) => (
+                <div key={index} className={`pattern-card category-${pattern.category}`}>
+                  <div className="pattern-header">
+                    <span className="pattern-name">{pattern.name}</span>
+                    <span className="pattern-category">{pattern.category}</span>
+                  </div>
+                  <div className="pattern-description">
+                    <p>{pattern.descriptionCn || pattern.description}</p>
+                    <p className="desc-en">{pattern.descriptionEn || pattern.description}</p>
+                  </div>
+                  {pattern.example && (
+                    <div className="pattern-example">
+                      <strong>Example:</strong> {pattern.example}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
