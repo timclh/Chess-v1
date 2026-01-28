@@ -2296,3 +2296,364 @@ body {
   border-radius: 8px;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
+/* ========================================
+   RETROSPECT MODE STYLES
+   ======================================== */
+
+.retrospect-panel-right {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 20px;
+  width: 360px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+}
+
+.retrospect-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.retrospect-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* Win Probability Timeline */
+.win-prob-timeline {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.timeline-graph {
+  display: flex;
+  align-items: flex-end;
+  height: 100px;
+  gap: 2px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.8) 50%, rgba(0,0,0,0.05) 50%);
+  border-radius: 4px;
+  padding: 4px;
+  overflow-x: auto;
+}
+
+.timeline-bar {
+  flex: 1;
+  min-width: 4px;
+  max-width: 12px;
+  background: linear-gradient(to top, #3b82f6, #60a5fa);
+  border-radius: 2px 2px 0 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.timeline-bar:hover {
+  background: linear-gradient(to top, #2563eb, #3b82f6);
+  transform: scaleY(1.05);
+}
+
+.timeline-bar.current {
+  background: linear-gradient(to top, #22c55e, #4ade80);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.timeline-bar.critical {
+  background: linear-gradient(to top, #ef4444, #f87171);
+}
+
+.timeline-bar.critical.current {
+  background: linear-gradient(to top, #dc2626, #ef4444);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* Retrospect Navigation */
+.retrospect-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.retrospect-nav .btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retrospect-nav .btn-sm:hover:not(:disabled) {
+  background: #cbd5e1;
+}
+
+.retrospect-nav .btn-sm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.move-counter {
+  font-weight: 600;
+  color: #1e293b;
+  min-width: 60px;
+  text-align: center;
+}
+
+.critical-nav {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-critical {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: white !important;
+}
+
+.btn-critical:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+}
+
+/* Current Move Info */
+.current-move-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.move-san {
+  font-weight: 700;
+  font-size: 18px;
+  color: #1e293b;
+}
+
+.move-eval {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.critical-moment-badge {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Critical Moments List */
+.critical-moments-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.critical-moment-item {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.critical-moment-item:hover {
+  background: #f1f5f9;
+}
+
+.critical-moment-item.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.moment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.moment-move {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.moment-classification {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.moment-change {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.no-critical {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+  font-size: 13px;
+}
+
+/* Learning Tips */
+.learning-tips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.learning-tip {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.learning-tip.priority-high {
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+}
+
+.learning-tip.priority-medium {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+}
+
+.learning-tip.priority-positive {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+}
+
+.learning-tip .tip-cn {
+  color: #1e293b;
+  margin: 0 0 4px 0;
+}
+
+.learning-tip .tip-en {
+  color: #64748b;
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Pattern Library */
+.pattern-library .pattern-intro {
+  text-align: center;
+  color: #64748b;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.pattern-library .pattern-intro p {
+  margin: 4px 0;
+}
+
+.patterns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pattern-card {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 14px;
+  border-left: 4px solid #3b82f6;
+}
+
+.pattern-card.category-opening {
+  border-left-color: #8b5cf6;
+}
+
+.pattern-card.category-tactic {
+  border-left-color: #ef4444;
+}
+
+.pattern-card.category-endgame {
+  border-left-color: #22c55e;
+}
+
+.pattern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pattern-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.pattern-category {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.pattern-description {
+  font-size: 13px;
+}
+
+.pattern-description p {
+  margin: 0 0 4px 0;
+  color: #1e293b;
+}
+
+.pattern-description .desc-en {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.pattern-example {
+  margin-top: 8px;
+  padding: 8px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #475569;
+  font-family: monospace;
+}
+
+/* Retrospect button styling */
+.btn-retrospect {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.btn-retrospect:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+}
+
+.btn-retrospect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .retrospect-panel-right {
+    width: 100%;
+    max-width: 400px;
+  }
+}

@@ -737,6 +737,379 @@ export function clearCache() {
   transpositionTable.clear();
 }
 
+// ============================================
+// RETROSPECT MODE - Game Analysis Functions
+// ============================================
+
+// Common chess patterns for educational purposes
+const CHESS_PATTERNS = {
+  fork: {
+    name: 'Fork / 双击',
+    nameEn: 'Fork',
+    nameCn: '双击',
+    description: 'One piece attacks two or more enemy pieces simultaneously.',
+    descriptionCn: '一个棋子同时攻击两个或更多敌方棋子。',
+    icon: '⚔️',
+  },
+  pin: {
+    name: 'Pin / 牵制',
+    nameEn: 'Pin',
+    nameCn: '牵制',
+    description: 'A piece cannot move without exposing a more valuable piece behind it.',
+    descriptionCn: '一个棋子无法移动，否则会暴露后面更有价值的棋子。',
+    icon: '📌',
+  },
+  skewer: {
+    name: 'Skewer / 串击',
+    nameEn: 'Skewer',
+    nameCn: '串击',
+    description: 'A valuable piece is attacked and must move, exposing a piece behind it.',
+    descriptionCn: '一个有价值的棋子被攻击必须移动，从而暴露后面的棋子。',
+    icon: '🔪',
+  },
+  discoveredAttack: {
+    name: 'Discovered Attack / 闪击',
+    nameEn: 'Discovered Attack',
+    nameCn: '闪击',
+    description: 'Moving one piece reveals an attack from another piece.',
+    descriptionCn: '移动一个棋子后，暴露出另一个棋子的攻击。',
+    icon: '💥',
+  },
+  sacrifice: {
+    name: 'Sacrifice / 弃子',
+    nameEn: 'Sacrifice',
+    nameCn: '弃子',
+    description: 'Giving up material for positional or tactical advantage.',
+    descriptionCn: '牺牲子力以获得位置或战术优势。',
+    icon: '🎁',
+  },
+  trap: {
+    name: 'Trap / 陷阱',
+    nameEn: 'Trap',
+    nameCn: '陷阱',
+    description: 'A move that appears good but leads to losing material.',
+    descriptionCn: '看起来是好棋但实际上会丢子的着法。',
+    icon: '🪤',
+  },
+  blunder: {
+    name: 'Blunder / 严重失误',
+    nameEn: 'Blunder',
+    nameCn: '严重失误',
+    description: 'A very bad move that significantly worsens the position.',
+    descriptionCn: '大大恶化局面的严重错误。',
+    icon: '❌',
+  },
+  mistake: {
+    name: 'Mistake / 失误',
+    nameEn: 'Mistake',
+    nameCn: '失误',
+    description: 'A move that loses some advantage.',
+    descriptionCn: '损失一些优势的着法。',
+    icon: '⚠️',
+  },
+  brilliant: {
+    name: 'Brilliant Move / 妙手',
+    nameEn: 'Brilliant Move',
+    nameCn: '妙手',
+    description: 'An exceptional move that significantly improves the position.',
+    descriptionCn: '大大改善局面的精彩着法。',
+    icon: '✨',
+  },
+  bestMove: {
+    name: 'Best Move / 最佳着法',
+    nameEn: 'Best Move',
+    nameCn: '最佳着法',
+    description: 'The optimal move in the position.',
+    descriptionCn: '在此局面下的最优选择。',
+    icon: '✓',
+  },
+  hangingPiece: {
+    name: 'Hanging Piece / 悬子',
+    nameEn: 'Hanging Piece',
+    nameCn: '悬子',
+    description: 'An undefended piece that can be captured for free.',
+    descriptionCn: '没有保护可以被白吃的棋子。',
+    icon: '🎯',
+  },
+  checkmate: {
+    name: 'Checkmate / 将死',
+    nameEn: 'Checkmate',
+    nameCn: '将死',
+    description: 'The king is in check and cannot escape.',
+    descriptionCn: '王被将军且无法逃脱。',
+    icon: '👑',
+  },
+};
+
+// Detect patterns in a given position
+export function detectPatterns(game, move, evalBefore, evalAfter) {
+  const patterns = [];
+  const evalChange = evalAfter - evalBefore;
+  const playerColor = move.color;
+  const isPositiveForPlayer = (playerColor === 'w' && evalChange > 0) || (playerColor === 'b' && evalChange < 0);
+
+  // Check for checkmate
+  if (move.san.includes('#')) {
+    patterns.push({
+      ...CHESS_PATTERNS.checkmate,
+      severity: 'critical',
+      evalChange: evalChange,
+    });
+    return patterns; // Checkmate is the only pattern that matters
+  }
+
+  // Classify move quality based on evaluation change
+  const absChange = Math.abs(evalChange);
+
+  if (isPositiveForPlayer) {
+    // Good move for the player
+    if (absChange > 300) {
+      patterns.push({
+        ...CHESS_PATTERNS.brilliant,
+        severity: 'excellent',
+        evalChange: evalChange,
+      });
+    } else if (absChange > 100) {
+      patterns.push({
+        ...CHESS_PATTERNS.bestMove,
+        severity: 'good',
+        evalChange: evalChange,
+      });
+    }
+  } else {
+    // Bad move for the player
+    if (absChange > 300) {
+      patterns.push({
+        ...CHESS_PATTERNS.blunder,
+        severity: 'critical',
+        evalChange: evalChange,
+      });
+    } else if (absChange > 100) {
+      patterns.push({
+        ...CHESS_PATTERNS.mistake,
+        severity: 'warning',
+        evalChange: evalChange,
+      });
+    }
+  }
+
+  // Check for captures (potential tactics)
+  if (move.captured) {
+    const capturedValue = pieceValues[move.captured] || 0;
+    const pieceValue = pieceValues[move.piece] || 0;
+
+    if (capturedValue > pieceValue + 100) {
+      // Won material - could be a fork result, discovery, etc.
+      if (!isPositiveForPlayer && absChange > 200) {
+        patterns.push({
+          ...CHESS_PATTERNS.trap,
+          severity: 'warning',
+          evalChange: evalChange,
+        });
+      }
+    } else if (capturedValue < pieceValue - 100 && isPositiveForPlayer) {
+      // Gave up material but position improved - sacrifice
+      patterns.push({
+        ...CHESS_PATTERNS.sacrifice,
+        severity: 'interesting',
+        evalChange: evalChange,
+      });
+    }
+  }
+
+  // Check for check (potential discovered attack or fork setup)
+  if (move.san.includes('+')) {
+    if (absChange > 150) {
+      patterns.push({
+        ...CHESS_PATTERNS.discoveredAttack,
+        severity: 'tactical',
+        evalChange: evalChange,
+      });
+    }
+  }
+
+  return patterns;
+}
+
+// Analyze a complete game and find critical moments
+export function analyzeGame(gameHistory, evaluations) {
+  const criticalMoments = [];
+  const THRESHOLD = 0.15; // 15% win probability change is considered critical
+
+  for (let i = 1; i < evaluations.length; i++) {
+    const prevWinProb = evaluations[i - 1].winProbability;
+    const currWinProb = evaluations[i].winProbability;
+    const change = currWinProb - prevWinProb;
+    const absChange = Math.abs(change);
+
+    if (absChange >= THRESHOLD) {
+      const move = gameHistory[i - 1];
+      const isTurningPoint = (change > 0 && prevWinProb < 0.5) || (change < 0 && prevWinProb > 0.5);
+
+      criticalMoments.push({
+        moveIndex: i - 1,
+        move: move,
+        moveSan: move.san,
+        evalBefore: evaluations[i - 1].score,
+        evalAfter: evaluations[i].score,
+        winProbBefore: prevWinProb,
+        winProbAfter: currWinProb,
+        change: change,
+        absChange: absChange,
+        isTurningPoint: isTurningPoint,
+        patterns: detectPatterns(
+          null, // game object not needed for basic pattern detection
+          move,
+          evaluations[i - 1].score,
+          evaluations[i].score
+        ),
+        classification: classifyMove(change, move),
+      });
+    }
+  }
+
+  // Sort by significance (absolute change)
+  criticalMoments.sort((a, b) => b.absChange - a.absChange);
+
+  return criticalMoments;
+}
+
+// Classify a move based on evaluation change
+function classifyMove(change, move) {
+  const absChange = Math.abs(change);
+  const isPositive = (move.color === 'w' && change > 0) || (move.color === 'b' && change < 0);
+
+  if (move.san.includes('#')) {
+    return { type: 'checkmate', label: '将死 Checkmate', color: '#22c55e' };
+  }
+
+  if (isPositive) {
+    if (absChange > 0.3) return { type: 'brilliant', label: '✨ 妙手 Brilliant', color: '#22c55e' };
+    if (absChange > 0.15) return { type: 'great', label: '👍 好棋 Great Move', color: '#4ade80' };
+    return { type: 'good', label: '✓ 不错 Good', color: '#86efac' };
+  } else {
+    if (absChange > 0.3) return { type: 'blunder', label: '❌ 严重失误 Blunder', color: '#ef4444' };
+    if (absChange > 0.15) return { type: 'mistake', label: '⚠️ 失误 Mistake', color: '#f59e0b' };
+    return { type: 'inaccuracy', label: '? 欠准 Inaccuracy', color: '#fbbf24' };
+  }
+}
+
+// Calculate position evaluation for retrospect (simplified for speed)
+export function quickEvaluate(game) {
+  const score = evaluateBoard(game);
+  const winProb = scoreToWinProbability(score, true);
+  return {
+    score: score,
+    winProbability: winProb,
+  };
+}
+
+// Get best move for comparison in retrospect
+export function getBestMoveForRetrospect(game, depth = 2) {
+  const moves = getMovesWithScores(game, depth);
+  return moves.length > 0 ? moves[0] : null;
+}
+
+// Generate learning tips based on game analysis
+export function generateLearningTips(criticalMoments, playerColor) {
+  const tips = [];
+  const blunders = criticalMoments.filter(m => m.classification.type === 'blunder');
+  const mistakes = criticalMoments.filter(m => m.classification.type === 'mistake');
+  const brilliantMoves = criticalMoments.filter(m => m.classification.type === 'brilliant');
+
+  if (blunders.length > 0) {
+    tips.push({
+      cn: `本局有 ${blunders.length} 个严重失误。下棋前多花时间检查对手的威胁。`,
+      en: `You had ${blunders.length} blunder(s). Take more time to check opponent's threats before moving.`,
+      priority: 'high',
+    });
+  }
+
+  if (mistakes.length > 0) {
+    tips.push({
+      cn: `本局有 ${mistakes.length} 个失误。尝试在走子前计算2-3步。`,
+      en: `You made ${mistakes.length} mistake(s). Try calculating 2-3 moves ahead.`,
+      priority: 'medium',
+    });
+  }
+
+  if (brilliantMoves.length > 0) {
+    tips.push({
+      cn: `太棒了！你走出了 ${brilliantMoves.length} 步妙手！`,
+      en: `Great job! You played ${brilliantMoves.length} brilliant move(s)!`,
+      priority: 'positive',
+    });
+  }
+
+  // Check for opening issues (if critical moments in first 10 moves)
+  const earlyMistakes = criticalMoments.filter(m => m.moveIndex < 10 && (m.classification.type === 'blunder' || m.classification.type === 'mistake'));
+  if (earlyMistakes.length > 0) {
+    tips.push({
+      cn: '开局阶段有失误。建议学习一些基本开局原则：控制中心、发展棋子、保护王。',
+      en: 'Mistakes in the opening. Study basic opening principles: control center, develop pieces, protect king.',
+      priority: 'medium',
+    });
+  }
+
+  return tips;
+}
+
+// Common opening patterns for reference
+export const COMMON_PATTERNS_LIBRARY = [
+  {
+    name: '后翼弃兵 Queen\'s Gambit',
+    fen: 'rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq -',
+    description: '白方用c4兵进攻黑方d5兵。',
+    descriptionEn: 'White offers the c4 pawn to attack Black\'s d5 pawn.',
+    category: 'opening',
+  },
+  {
+    name: '西西里防御 Sicilian Defense',
+    fen: 'rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -',
+    description: '黑方以c5应对e4，寻求不对称局面。',
+    descriptionEn: 'Black plays c5 against e4, seeking asymmetrical positions.',
+    category: 'opening',
+  },
+  {
+    name: '骑士叉 Knight Fork',
+    fen: '4k3/8/8/3N4/8/8/8/4K3 w - -',
+    description: '马同时攻击两个或更多目标。',
+    descriptionEn: 'Knight attacks two or more targets simultaneously.',
+    category: 'tactic',
+    example: 'Nc7+ forks king and rook',
+  },
+  {
+    name: '后背将军 Back Rank Mate',
+    fen: '6k1/5ppp/8/8/8/8/8/R3K3 w - -',
+    description: '王被困在底线，被车或后将死。',
+    descriptionEn: 'King trapped on back rank, checkmated by rook or queen.',
+    category: 'tactic',
+    example: 'Ra8#',
+  },
+  {
+    name: '闷杀 Smothered Mate',
+    fen: '6rk/5Npp/8/8/8/8/8/4K3 w - -',
+    description: '王被自己的棋子包围，被马将死。',
+    descriptionEn: 'King surrounded by own pieces, checkmated by knight.',
+    category: 'tactic',
+    example: 'Nf7# or Nh6#',
+  },
+  {
+    name: '牵制 Pin',
+    fen: '4k3/4r3/8/8/4B3/8/8/4K3 w - -',
+    description: '象牵制住车，车无法移动否则暴露王。',
+    descriptionEn: 'Bishop pins the rook to the king.',
+    category: 'tactic',
+  },
+  {
+    name: '串击 Skewer',
+    fen: '4k3/8/8/4R3/8/8/8/4K3 w - -',
+    description: '攻击一个高价值目标，迫使它移动后吃掉后面的目标。',
+    descriptionEn: 'Attack valuable piece forcing it to move, then capture piece behind.',
+    category: 'tactic',
+  },
+];
+
 export default {
   findBestMove,
   evaluateBoard,
@@ -746,4 +1119,12 @@ export default {
   getStrategicAdvice,
   scoreToWinProbability,
   clearCache,
+  // Retrospect mode exports
+  detectPatterns,
+  analyzeGame,
+  quickEvaluate,
+  getBestMoveForRetrospect,
+  generateLearningTips,
+  CHESS_PATTERNS,
+  COMMON_PATTERNS_LIBRARY,
 };
