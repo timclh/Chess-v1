@@ -6,12 +6,13 @@ import Leaderboard from "./Leaderboard";
 import Login from "./Login";
 import Multiplayer from "./Multiplayer";
 import Puzzles from "./Puzzles";
+import OpeningExplorer from "./OpeningExplorer";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game', 'puzzles', 'multiplayer', 'leaderboard', or 'login'
+    currentPage: "game", // 'game', 'puzzles', 'openings', 'multiplayer', 'leaderboard', or 'login'
     user: null,
     showLogin: false,
   };
@@ -59,6 +60,12 @@ class AppContent extends Component {
               🧩 Puzzles
             </button>
             <button
+              className={`nav-btn ${currentPage === "openings" ? "active" : ""}`}
+              onClick={() => this.setState({ currentPage: "openings" })}
+            >
+              📖 Openings
+            </button>
+            <button
               className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
               onClick={() => this.setState({ currentPage: "multiplayer" })}
             >
@@ -103,6 +110,12 @@ class AppContent extends Component {
         {currentPage === "puzzles" && (
           <div className="App-content puzzles-page">
             <Puzzles />
+          </div>
+        )}
+
+        {currentPage === "openings" && (
+          <div className="App-content openings-page">
+            <OpeningExplorer />
           </div>
         )}
 

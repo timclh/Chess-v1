@@ -638,55 +638,232 @@ export function explainAIMove(game, moveSan) {
 // Get strategic advice for current position (for coach mode)
 export function getStrategicAdvice(game) {
   const advice = [];
-  const fen = game.fen();
+  const board = game.board();
   const moveCount = game.history().length;
+  const turn = game.turn();
 
-  // Opening phase advice
+  // Check for immediate threats
+  if (game.in_check()) {
+    advice.push({
+      cn: '⚠️ 你正在被将军！必须立即应对：移动王、阻挡、或吃掉攻击者',
+      en: '⚠️ You are in check! Options: move king, block the check, or capture the attacker',
+      priority: 'critical'
+    });
+    return advice; // Return immediately for check
+  }
+
+  // Analyze piece development
+  const development = analyzeDevelopment(board, turn);
+
+  // Opening phase (first 10 moves)
   if (moveCount < 10) {
     advice.push({
-      cn: '开局阶段：专注于发展棋子和控制中心',
-      en: 'Opening phase: Focus on developing pieces and controlling the center',
-      priority: 'high'
+      cn: `📖 开局阶段 (第${Math.floor(moveCount/2) + 1}回合)`,
+      en: `📖 Opening Phase (Move ${Math.floor(moveCount/2) + 1})`,
+      priority: 'info'
     });
 
-    // Check if castled
-    if (!fen.includes('K') || fen.includes('K') && fen.includes('R')) {
+    if (development.undevelopedMinors > 0) {
       advice.push({
-        cn: '考虑尽早王车易位保护你的王',
-        en: 'Consider castling early to protect your king',
+        cn: `还有 ${development.undevelopedMinors} 个轻子未发展。马象应该尽早出动！`,
+        en: `You have ${development.undevelopedMinors} minor pieces undeveloped. Develop knights and bishops early!`,
+        priority: 'high'
+      });
+    }
+
+    if (!development.castled && moveCount >= 6) {
+      advice.push({
+        cn: '🏰 考虑王车易位！开局10步内易位是好习惯',
+        en: '🏰 Consider castling! Castling within the first 10 moves is a good habit',
+        priority: 'high'
+      });
+    }
+
+    if (!development.centerControl) {
+      advice.push({
+        cn: '🎯 尝试用兵或子控制中心格 (d4, d5, e4, e5)',
+        en: '🎯 Try to control the central squares (d4, d5, e4, e5) with pawns or pieces',
         priority: 'medium'
       });
     }
   }
 
-  // Check for undefended pieces
-  if (game.in_check()) {
+  // Middlegame phase
+  else if (moveCount >= 10 && moveCount < 30) {
     advice.push({
-      cn: '你正在被将军！必须立即应对',
-      en: 'You are in check! You must respond immediately',
-      priority: 'critical'
+      cn: '⚔️ 中局阶段：寻找战术机会！',
+      en: '⚔️ Middlegame: Look for tactical opportunities!',
+      priority: 'info'
     });
+
+    // Check for tactical patterns
+    const tactics = findTacticalPatterns(game);
+    if (tactics.length > 0) {
+      tactics.forEach(t => advice.push(t));
+    }
+
+    if (!development.castled) {
+      advice.push({
+        cn: '⚠️ 你的王还没有易位，这很危险！',
+        en: '⚠️ Your king has not castled yet - this is risky!',
+        priority: 'high'
+      });
+    }
   }
 
-  // Middlegame advice
-  if (moveCount >= 10 && moveCount < 30) {
+  // Endgame phase
+  else {
     advice.push({
-      cn: '中局阶段：寻找战术机会和弱点',
-      en: 'Middlegame phase: Look for tactical opportunities and weaknesses',
+      cn: '🏁 残局阶段：激活你的王！',
+      en: '🏁 Endgame: Activate your king!',
+      priority: 'info'
+    });
+
+    advice.push({
+      cn: '在残局中，王是一个强大的棋子，应该积极参与战斗',
+      en: 'In the endgame, the king is a strong piece and should actively participate',
       priority: 'medium'
     });
-  }
 
-  // Endgame advice
-  if (moveCount >= 30) {
     advice.push({
-      cn: '残局阶段：激活你的王，推进兵',
-      en: 'Endgame phase: Activate your king and push your pawns',
+      cn: '推进通路兵（前方没有敌兵的兵）是取胜的关键',
+      en: 'Pushing passed pawns (pawns with no enemy pawns ahead) is key to winning',
       priority: 'medium'
     });
   }
 
   return advice;
+}
+
+// Analyze piece development for coaching
+function analyzeDevelopment(board, turn) {
+  let undevelopedMinors = 0;
+  let castled = false;
+  let centerControl = false;
+
+  const startRank = turn === 'w' ? 7 : 0;
+  const color = turn;
+
+  // Check for undeveloped knights and bishops
+  const startSquares = turn === 'w' ?
+    [{ r: 7, c: 1 }, { r: 7, c: 2 }, { r: 7, c: 5 }, { r: 7, c: 6 }] :
+    [{ r: 0, c: 1 }, { r: 0, c: 2 }, { r: 0, c: 5 }, { r: 0, c: 6 }];
+
+  startSquares.forEach(sq => {
+    const piece = board[sq.r][sq.c];
+    if (piece && piece.color === color && (piece.type === 'n' || piece.type === 'b')) {
+      undevelopedMinors++;
+    }
+  });
+
+  // Check if castled (simplified: king not on starting square)
+  const kingCol = turn === 'w' ? 4 : 4;
+  const kingRank = turn === 'w' ? 7 : 0;
+  const king = board[kingRank][kingCol];
+  if (!king || king.type !== 'k') {
+    castled = true;
+  }
+
+  // Check center control
+  const centerSquares = [[3, 3], [3, 4], [4, 3], [4, 4]]; // d4, e4, d5, e5
+  centerSquares.forEach(([r, c]) => {
+    const piece = board[r][c];
+    if (piece && piece.color === color) {
+      centerControl = true;
+    }
+  });
+
+  return { undevelopedMinors, castled, centerControl };
+}
+
+// Find tactical patterns in the position
+function findTacticalPatterns(game) {
+  const patterns = [];
+  const moves = game.moves({ verbose: true });
+
+  // Check for capturing moves
+  const captures = moves.filter(m => m.captured);
+  if (captures.length > 0) {
+    const highValueCaptures = captures.filter(m =>
+      pieceValues[m.captured] > pieceValues[m.piece]
+    );
+    if (highValueCaptures.length > 0) {
+      patterns.push({
+        cn: '💰 发现可以赢子的机会！检查吃子是否安全',
+        en: '💰 There might be a winning capture! Check if the capture is safe',
+        priority: 'high'
+      });
+    }
+  }
+
+  // Check for checks
+  const checks = moves.filter(m => m.san.includes('+') || m.san.includes('#'));
+  if (checks.length > 0) {
+    if (checks.some(m => m.san.includes('#'))) {
+      patterns.push({
+        cn: '👑 有将杀的机会！仔细看看...',
+        en: '👑 There might be a checkmate! Look carefully...',
+        priority: 'critical'
+      });
+    } else {
+      patterns.push({
+        cn: '⚡ 可以将军。将军有时能创造战术机会',
+        en: '⚡ You can give check. Checks can create tactical opportunities',
+        priority: 'medium'
+      });
+    }
+  }
+
+  return patterns;
+}
+
+// Get position summary for AI Coach
+export function getPositionSummary(game) {
+  const analysis = analyzePosition(game);
+  const board = game.board();
+  const turn = game.turn();
+
+  // Count material
+  let whiteMaterial = 0;
+  let blackMaterial = 0;
+
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      const piece = board[i][j];
+      if (piece && piece.type !== 'k') {
+        const value = pieceValues[piece.type] || 0;
+        if (piece.color === 'w') {
+          whiteMaterial += value;
+        } else {
+          blackMaterial += value;
+        }
+      }
+    }
+  }
+
+  const materialDiff = whiteMaterial - blackMaterial;
+  let materialText = '';
+  if (Math.abs(materialDiff) < 50) {
+    materialText = { cn: '子力相等', en: 'Material is equal' };
+  } else if (materialDiff > 0) {
+    materialText = {
+      cn: `白方多 ${Math.round(materialDiff / 100)} 个兵的价值`,
+      en: `White is up ~${Math.round(materialDiff / 100)} pawn(s) of material`
+    };
+  } else {
+    materialText = {
+      cn: `黑方多 ${Math.round(-materialDiff / 100)} 个兵的价值`,
+      en: `Black is up ~${Math.round(-materialDiff / 100)} pawn(s) of material`
+    };
+  }
+
+  return {
+    evaluation: analysis.evaluation,
+    winProbability: analysis.winProbability,
+    material: materialText,
+    turn: turn === 'w' ? { cn: '白方走', en: 'White to move' } : { cn: '黑方走', en: 'Black to move' },
+    moveCount: game.history().length,
+  };
 }
 
 // Find the best move for the AI
