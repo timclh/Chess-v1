@@ -3,7 +3,8 @@ import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
 import {
   findBestMove, getTopMoves, analyzePosition, explainAIMove, getStrategicAdvice, clearCache,
-  quickEvaluate, analyzeGame, generateLearningTips, COMMON_PATTERNS_LIBRARY
+  quickEvaluate, analyzeGame, generateLearningTips, COMMON_PATTERNS_LIBRARY,
+  getBestMoveForRetrospect, scoreToWinProbability
 } from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
 
@@ -184,6 +185,9 @@ class ChessGame extends Component {
     learningTips: [], // generated tips based on game
     retrospectMoveIndex: -1, // current move being viewed in retrospect
     showPatternLibrary: false,
+    // Best move comparison
+    retrospectBestMove: null, // { san, score, winProb } best move at current position
+    retrospectAnalyzing: false, // loading state for analysis
   };
 
   game = null;
@@ -647,17 +651,56 @@ class ChessGame extends Component {
   goToMove = (moveIndex) => {
     if (!this.game || moveIndex < -1 || moveIndex >= this.state.history.length) return;
 
-    // Create a new game and replay moves to get to position
+    // Create a new game and replay moves to get to BEFORE the move was played
     const tempGame = new Chess();
-    for (let i = 0; i <= moveIndex; i++) {
+    for (let i = 0; i < moveIndex; i++) {
       const move = this.state.history[i];
       tempGame.move(move.san);
+    }
+
+    // Get the position before the move
+    const fenBeforeMove = moveIndex === 0 ? 'start' : tempGame.fen();
+
+    // Now play the move to show the position after
+    if (moveIndex >= 0) {
+      tempGame.move(this.state.history[moveIndex].san);
     }
 
     this.setState({
       retrospectMoveIndex: moveIndex,
       fen: moveIndex === -1 ? 'start' : tempGame.fen(),
+      retrospectBestMove: null,
+      retrospectAnalyzing: true,
     });
+
+    // Calculate best move for the position BEFORE the move was played
+    if (moveIndex >= 0) {
+      setTimeout(() => {
+        const positionGame = new Chess(fenBeforeMove === 'start' ? undefined : fenBeforeMove);
+        const bestMove = getBestMoveForRetrospect(positionGame, 2);
+
+        if (bestMove) {
+          const actualMove = this.state.history[moveIndex];
+          const wasBestMove = actualMove.san === bestMove.san;
+
+          this.setState({
+            retrospectBestMove: {
+              san: bestMove.san,
+              score: bestMove.score,
+              winProb: bestMove.winProbability,
+              wasBestMove: wasBestMove,
+              actualMove: actualMove.san,
+              scoreDiff: Math.abs(bestMove.score - (this.state.evaluations[moveIndex + 1]?.score || 0)),
+            },
+            retrospectAnalyzing: false,
+          });
+        } else {
+          this.setState({ retrospectAnalyzing: false });
+        }
+      }, 50);
+    } else {
+      this.setState({ retrospectAnalyzing: false });
+    }
   };
 
   // Navigate to previous critical moment
@@ -863,7 +906,8 @@ class ChessGame extends Component {
       hasSavedGame, showSaveNotification, pendingResult, showResultDialog,
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       showRetrospect, evaluations, criticalMoments, learningTips,
-      retrospectMoveIndex, showPatternLibrary
+      retrospectMoveIndex, showPatternLibrary,
+      retrospectBestMove, retrospectAnalyzing
     } = this.state;
 
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
@@ -1454,6 +1498,60 @@ class ChessGame extends Component {
                     <span style={{ color: criticalMoments.find(m => m.moveIndex === retrospectMoveIndex).classification.color }}>
                       {criticalMoments.find(m => m.moveIndex === retrospectMoveIndex).classification.label}
                     </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Best Move Comparison */}
+            {retrospectMoveIndex >= 0 && (
+              <div className="retrospect-section">
+                <div className="section-label">🎯 Best Move Analysis / 最佳着法分析</div>
+                {retrospectAnalyzing ? (
+                  <div className="analyzing-indicator">
+                    Analyzing... / 分析中...
+                  </div>
+                ) : retrospectBestMove ? (
+                  <div className="best-move-comparison">
+                    <div className="move-comparison-row">
+                      <div className="comparison-item played">
+                        <div className="comparison-label">You Played / 你走的</div>
+                        <div className="comparison-move">{retrospectBestMove.actualMove}</div>
+                      </div>
+                      <div className="comparison-vs">vs</div>
+                      <div className="comparison-item best">
+                        <div className="comparison-label">Best Move / 最佳</div>
+                        <div className="comparison-move">{retrospectBestMove.san}</div>
+                      </div>
+                    </div>
+                    {retrospectBestMove.wasBestMove ? (
+                      <div className="best-move-result correct">
+                        ✓ 你走出了最佳着法！
+                        <br />
+                        You played the best move!
+                      </div>
+                    ) : (
+                      <div className="best-move-result incorrect">
+                        <div className="better-move-info">
+                          <span className="better-label">Better: </span>
+                          <span className="better-san">{retrospectBestMove.san}</span>
+                          <span className="better-prob">
+                            ({Math.round(retrospectBestMove.winProb * 100)}% win)
+                          </span>
+                        </div>
+                        {retrospectBestMove.scoreDiff > 50 && (
+                          <div className="score-loss">
+                            Lost ~{Math.round(retrospectBestMove.scoreDiff / 100 * 10) / 10} pawns value
+                            <br />
+                            损失约 {Math.round(retrospectBestMove.scoreDiff / 100 * 10) / 10} 个兵的价值
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="no-analysis">
+                    Unable to analyze this position
                   </div>
                 )}
               </div>
