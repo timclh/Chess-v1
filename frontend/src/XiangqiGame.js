@@ -284,8 +284,23 @@ class XiangqiGame extends Component {
       return;
     }
 
+    // If deselecting (null passed)
+    if (row === null || col === null) {
+      this.setState({ validMoves: [] });
+      return;
+    }
+
+    const { gameMode, playerColor } = this.state;
+    const canSelectColor = gameMode === 'tutorial' ? 'r' : playerColor;
+
+    // Check if it's player's turn
+    if (gameMode !== 'tutorial' && this.game.turn !== canSelectColor) {
+      this.setState({ validMoves: [] });
+      return;
+    }
+
     const piece = this.game.board[row][col];
-    if (piece && piece.color === this.game.turn) {
+    if (piece && piece.color === canSelectColor) {
       const moves = this.game.getValidMoves(row, col);
       this.setState({ validMoves: moves });
     } else {
@@ -614,6 +629,7 @@ class XiangqiGame extends Component {
                 width={450}
                 orientation={boardOrientation}
                 turn={this.game.turn}
+                playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
                 validMoves={validMoves}
                 lastMove={lastMove}
                 onMove={this.handleMove}
