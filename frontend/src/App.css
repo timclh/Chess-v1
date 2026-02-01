@@ -3754,3 +3754,281 @@ body {
   padding: 16px;
   font-size: 13px;
 }
+
+/* ==========================================
+   CHINESE CHESS (XIANGQI) STYLES
+   中国象棋样式
+   ========================================== */
+
+/* Navigation */
+.nav-btn.xiangqi-nav {
+  background: linear-gradient(135deg, #c41e3a, #8b0000);
+  color: #ffd700;
+  font-weight: bold;
+}
+
+.nav-btn.xiangqi-nav:hover {
+  background: linear-gradient(135deg, #8b0000, #5c0000);
+}
+
+.nav-btn.xiangqi-nav.active {
+  background: linear-gradient(135deg, #ffd700, #daa520);
+  color: #8b0000;
+}
+
+/* Xiangqi Page Layout */
+.xiangqi-page {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+.xiangqi-game-layout {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 1200px;
+  padding: 20px;
+}
+
+/* Xiangqi Settings Panel */
+.xiangqi-settings {
+  background: linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%);
+  border: 2px solid #8b4513;
+}
+
+.xiangqi-settings .panel-title {
+  color: #ffd700;
+  border-bottom-color: #8b4513;
+}
+
+.xiangqi-settings .section-label {
+  color: #daa520;
+}
+
+/* Color selector for Xiangqi */
+.color-btn.xiangqi-red {
+  background: linear-gradient(135deg, #c41e3a, #8b0000);
+  color: #fff;
+}
+
+.color-btn.xiangqi-red:hover,
+.color-btn.xiangqi-red.active {
+  background: linear-gradient(135deg, #ff3355, #c41e3a);
+  box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);
+}
+
+.color-btn.xiangqi-black {
+  background: linear-gradient(135deg, #2c2c2c, #0a0a0a);
+  color: #fff;
+}
+
+.color-btn.xiangqi-black:hover,
+.color-btn.xiangqi-black.active {
+  background: linear-gradient(135deg, #444, #2c2c2c);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Xiangqi Board Panel */
+.xiangqi-board-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.xiangqi-board-wrapper {
+  background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 3px solid #daa520;
+}
+
+/* Xiangqi Board Container */
+.xiangqi-board-container {
+  background: #f5d6a8;
+  border-radius: 4px;
+  cursor: default;
+  user-select: none;
+}
+
+.xiangqi-board-svg {
+  display: block;
+}
+
+/* Xiangqi Pieces */
+.xiangqi-piece {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: bold;
+  border-radius: 50%;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3),
+              inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  transition: transform 0.1s ease;
+  user-select: none;
+}
+
+.xiangqi-piece:hover {
+  transform: scale(1.05);
+}
+
+.xiangqi-piece.red {
+  background: linear-gradient(145deg, #ff6b6b, #c41e3a);
+  color: #fff;
+  border: 2px solid #8b0000;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.xiangqi-piece.black {
+  background: linear-gradient(145deg, #4a4a4a, #1a1a1a);
+  color: #fff;
+  border: 2px solid #000;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.xiangqi-piece.dragging {
+  transform: scale(1.1);
+  box-shadow: 4px 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+/* Xiangqi Highlights */
+.xiangqi-highlight.selected {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+}
+
+.xiangqi-highlight.valid-move {
+  z-index: 5;
+}
+
+.xiangqi-highlight.valid-move.capture {
+  animation: pulse-capture 1s infinite;
+}
+
+@keyframes pulse-capture {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+}
+
+/* Xiangqi Move History */
+.xiangqi-history {
+  background: linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%);
+  border: 1px solid #8b4513;
+}
+
+.xiangqi-history h3 {
+  color: #ffd700;
+}
+
+.xiangqi-history .move {
+  color: #daa520;
+}
+
+/* Xiangqi Analysis Panel */
+.xiangqi-analysis {
+  background: linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%);
+  border: 2px solid #8b4513;
+}
+
+.xiangqi-analysis .panel-title {
+  color: #ffd700;
+  border-bottom-color: #8b4513;
+}
+
+.xiangqi-analysis .section-label {
+  color: #daa520;
+}
+
+/* Win probability bar for Xiangqi */
+.prob-red {
+  background: linear-gradient(90deg, #c41e3a, #ff6b6b);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  transition: width 0.3s ease;
+}
+
+.prob-black-xiangqi {
+  background: linear-gradient(90deg, #1a1a1a, #4a4a4a);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  transition: width 0.3s ease;
+}
+
+/* Xiangqi Tutorial Panel */
+.xiangqi-tutorial {
+  background: linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%);
+  border: 2px solid #8b4513;
+}
+
+.xiangqi-tutorial .panel-title {
+  color: #ffd700;
+  border-bottom-color: #8b4513;
+}
+
+.xiangqi-tutorial .section-label {
+  color: #daa520;
+}
+
+.xiangqi-tutorial .lesson-title {
+  color: #ffd700;
+}
+
+.xiangqi-tutorial .progress-fill {
+  background: linear-gradient(90deg, #c41e3a, #ffd700);
+}
+
+.xiangqi-tutorial .lesson-item.active {
+  background: rgba(196, 30, 58, 0.4);
+  border-color: #c41e3a;
+}
+
+.xiangqi-tutorial .lesson-item.completed {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: #ffd700;
+}
+
+.xiangqi-tutorial .lesson-complete {
+  background: linear-gradient(135deg, rgba(196, 30, 58, 0.2), rgba(255, 215, 0, 0.2));
+  border-color: #ffd700;
+}
+
+.xiangqi-tutorial .lesson-complete .complete-icon {
+  color: #ffd700;
+}
+
+/* Responsive adjustments for Xiangqi */
+@media (max-width: 1100px) {
+  .xiangqi-game-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .xiangqi-settings,
+  .xiangqi-analysis,
+  .xiangqi-tutorial {
+    width: 100%;
+    max-width: 450px;
+  }
+}
+
+@media (max-width: 500px) {
+  .xiangqi-board-wrapper {
+    padding: 8px;
+  }
+
+  .xiangqi-piece {
+    font-size: 22px;
+  }
+}

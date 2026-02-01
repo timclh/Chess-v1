@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import "./App.css";
 import Chat from "./Chat";
 import ChessGame from "./ChessGame";
+import XiangqiGame from "./XiangqiGame";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
 import Multiplayer from "./Multiplayer";
@@ -12,7 +13,7 @@ import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game', 'puzzles', 'openings', 'multiplayer', 'leaderboard', or 'login'
+    currentPage: "game", // 'game', 'xiangqi', 'puzzles', 'openings', 'multiplayer', 'leaderboard', or 'login'
     user: null,
     showLogin: false,
   };
@@ -51,7 +52,13 @@ class AppContent extends Component {
               className={`nav-btn ${currentPage === "game" ? "active" : ""}`}
               onClick={() => this.setState({ currentPage: "game" })}
             >
-              Play Game
+              Chess
+            </button>
+            <button
+              className={`nav-btn xiangqi-nav ${currentPage === "xiangqi" ? "active" : ""}`}
+              onClick={() => this.setState({ currentPage: "xiangqi" })}
+            >
+              象棋
             </button>
             <button
               className={`nav-btn ${currentPage === "puzzles" ? "active" : ""}`}
@@ -104,6 +111,12 @@ class AppContent extends Component {
             <div className="game-section">
               <ChessGame user={user} />
             </div>
+          </div>
+        )}
+
+        {currentPage === "xiangqi" && (
+          <div className="App-content xiangqi-page">
+            <XiangqiGame />
           </div>
         )}
 
