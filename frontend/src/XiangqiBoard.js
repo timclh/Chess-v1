@@ -339,7 +339,7 @@ class XiangqiBoard extends Component {
         </div>
 
         {/* Pieces layer */}
-        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
+        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10 }}>
           {board && board.map((row, rowIdx) =>
             row.map((piece, colIdx) => {
               if (!piece) return null;
@@ -392,15 +392,15 @@ class XiangqiBoard extends Component {
           )}
         </div>
 
-        {/* Click targets (invisible) */}
-        <div className="xiangqi-click-targets" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
+        {/* Click targets (invisible) - for empty squares */}
+        <div className="xiangqi-click-targets" style={{ position: 'absolute', top: 0, left: 0, width, height, pointerEvents: 'none' }}>
           {[...Array(10)].map((_, rowIdx) =>
             [...Array(9)].map((_, colIdx) => {
               const actualRow = flipped ? 9 - rowIdx : rowIdx;
               const actualCol = flipped ? 8 - colIdx : colIdx;
               const piece = board[actualRow][actualCol];
 
-              // Only create click targets for empty squares or opponent pieces when a piece is selected
+              // Only create click targets for empty squares
               if (piece) return null;
 
               return (
@@ -413,6 +413,7 @@ class XiangqiBoard extends Component {
                     width: cellSize * 2 / 3,
                     height: cellSize * 2 / 3,
                     cursor: 'pointer',
+                    pointerEvents: 'auto',
                   }}
                   onClick={() => this.handleClick(actualRow, actualCol)}
                 />
