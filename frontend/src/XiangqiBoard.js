@@ -56,10 +56,16 @@ class XiangqiBoard extends Component {
 
   // Handle square click
   handleClick = (row, col) => {
-    const { onMove, board, turn, disabled, validMoves = [] } = this.props;
+    const { onMove, board, turn, playerColor, disabled, validMoves = [] } = this.props;
     const { selectedSquare } = this.state;
 
     if (disabled) return;
+
+    // Use playerColor if provided, otherwise fall back to turn (for tutorial mode)
+    const canSelectColor = playerColor || turn;
+
+    // Check if it's player's turn (in AI mode, player can only move on their turn)
+    const isPlayerTurn = turn === canSelectColor;
 
     const piece = board[row][col];
 
@@ -72,7 +78,7 @@ class XiangqiBoard extends Component {
         m => m.row === row && m.col === col
       );
 
-      if (isValidMove) {
+      if (isValidMove && isPlayerTurn) {
         // Make the move
         if (onMove) {
           const from = String.fromCharCode('a'.charCodeAt(0) + fromCol) + (9 - fromRow);
@@ -83,8 +89,8 @@ class XiangqiBoard extends Component {
         return;
       }
 
-      // If clicking on own piece, select it instead
-      if (piece && piece.color === turn) {
+      // If clicking on own piece and it's player's turn, select it instead
+      if (piece && piece.color === canSelectColor && isPlayerTurn) {
         this.setState({ selectedSquare: { row, col } });
         if (this.props.onSquareSelect) {
           this.props.onSquareSelect(row, col);
@@ -94,11 +100,14 @@ class XiangqiBoard extends Component {
 
       // Otherwise deselect
       this.setState({ selectedSquare: null });
+      if (this.props.onSquareSelect) {
+        this.props.onSquareSelect(null, null);
+      }
       return;
     }
 
-    // Select own piece
-    if (piece && piece.color === turn) {
+    // Select own piece only if it's player's turn
+    if (piece && piece.color === canSelectColor && isPlayerTurn) {
       this.setState({ selectedSquare: { row, col } });
       if (this.props.onSquareSelect) {
         this.props.onSquareSelect(row, col);
@@ -108,11 +117,15 @@ class XiangqiBoard extends Component {
 
   // Handle mouse down for dragging
   handleMouseDown = (e, row, col) => {
-    const { board, turn, disabled } = this.props;
+    const { board, turn, playerColor, disabled } = this.props;
     if (disabled) return;
 
+    // Use playerColor if provided, otherwise fall back to turn
+    const canSelectColor = playerColor || turn;
+    const isPlayerTurn = turn === canSelectColor;
+
     const piece = board[row][col];
-    if (piece && piece.color === turn) {
+    if (piece && piece.color === canSelectColor && isPlayerTurn) {
       const rect = this.boardRef.current.getBoundingClientRect();
       this.setState({
         selectedSquare: { row, col },
