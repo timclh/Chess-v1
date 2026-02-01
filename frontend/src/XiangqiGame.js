@@ -165,6 +165,7 @@ class XiangqiGame extends Component {
     suggestedMoves: [],
     strategicAdvice: [],
     showHints: true,
+    showCoachInAI: false, // Show coach hints in AI mode
     lastAIExplanation: '',
     // Tutorial state
     currentLesson: 0,
@@ -264,7 +265,13 @@ class XiangqiGame extends Component {
           } : null,
         });
         this.updateGameStatus();
-        this.updateAnalysis();
+
+        // Update analysis based on mode
+        if (this.state.gameMode === 'coach') {
+          this.updateAnalysis();
+        } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
+          this.updateAnalysisForAI();
+        }
       } else {
         this.setState({ aiThinking: false });
       }
@@ -354,6 +361,11 @@ class XiangqiGame extends Component {
 
     if (this.state.gameMode === 'coach') {
       setTimeout(() => this.updateAnalysis(), 100);
+    }
+
+    // Update analysis for AI mode with coach hints
+    if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
+      setTimeout(() => this.updateAnalysisForAI(), 100);
     }
   };
 
@@ -508,6 +520,26 @@ class XiangqiGame extends Component {
     });
   };
 
+  // Toggle coach hints in AI mode
+  toggleCoachInAI = () => {
+    this.setState(state => ({ showCoachInAI: !state.showCoachInAI }), () => {
+      if (this.state.showCoachInAI) {
+        this.updateAnalysisForAI();
+      }
+    });
+  };
+
+  // Update analysis for AI mode (on demand)
+  updateAnalysisForAI = () => {
+    if (!this.game) return;
+
+    const analysis = analyzePosition(this.game);
+    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
+    const strategicAdvice = getStrategicAdvice(this.game);
+
+    this.setState({ analysis, suggestedMoves, strategicAdvice });
+  };
+
   render() {
     const {
       fen, gameStatus, gameOver, history,
@@ -598,6 +630,18 @@ class XiangqiGame extends Component {
                   </button>
                 </div>
               )}
+
+              {gameMode === 'ai' && (
+                <div className="settings-section">
+                  <div className="section-label">教练提示 / Coach Hints</div>
+                  <button
+                    className={`toggle-btn coach-hint-btn ${this.state.showCoachInAI ? 'active' : ''}`}
+                    onClick={this.toggleCoachInAI}
+                  >
+                    {this.state.showCoachInAI ? '💡 已开启' : '💡 获取提示'}
+                  </button>
+                </div>
+              )}
             </>
           )}
 
@@ -663,10 +707,10 @@ class XiangqiGame extends Component {
           )}
         </div>
 
-        {/* Right Panel - Analysis (Coach Mode) */}
-        {gameMode === 'coach' && (
+        {/* Right Panel - Analysis (Coach Mode or AI with hints) */}
+        {(gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI)) && (
           <div className="analysis-panel-right xiangqi-analysis">
-            <div className="panel-title">AI 分析</div>
+            <div className="panel-title">{gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}</div>
 
             {/* Win Probability */}
             {analysis && (
