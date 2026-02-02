@@ -396,17 +396,8 @@ function cloneGame(game) {
 
 // Find best move
 function findBestMove(game, difficulty = 2) {
-  // Check opening book first for higher difficulties
-  if (difficulty >= 2 && isOpeningPhase(game)) {
-    const bookMove = getOpeningBookMove(game);
-    if (bookMove) {
-      const legalMoves = game.moves({ verbose: true });
-      const matchedMove = legalMoves.find(m => m.from === bookMove.from && m.to === bookMove.to);
-      if (matchedMove) {
-        return matchedMove;
-      }
-    }
-  }
+  // AI opponent does NOT use opening book - keep it simple and weak
+  // Only use basic minimax with low depth
 
   // AI opponent depths - all set to 2 for easy opponents
   const depths = { 1: 2, 2: 2, 3: 2, 4: 2 };
