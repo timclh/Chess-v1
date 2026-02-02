@@ -433,6 +433,9 @@ function findBestMove(game, difficulty = 2) {
 
 // Get top N moves for coach mode - uses deep search for accurate evaluation
 function getTopMoves(game, n = 3, difficulty = 4) {
+  // Clear cache to ensure fresh evaluation
+  transpositionTable.clear();
+
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
   const inOpening = isOpeningPhase(game);
@@ -469,33 +472,17 @@ function getTopMoves(game, n = 3, difficulty = 4) {
   // Coach suggestion depths - all set to 6 for strong guidance
   const depths = { 1: 6, 2: 6, 3: 6, 4: 6 };
   const searchDepth = depths[difficulty] || 6;
-  const timeLimit = 15000; // 15 seconds for suggestions
+  const timeLimit = 30000; // 30 seconds for suggestions
   const startTime = Date.now();
-  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
+  // Give more time per move for accurate deep search
+  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 8));
 
-  // Pre-sort moves to evaluate promising ones first
+  // Pre-sort moves to evaluate promising ones first (captures and checks)
   const sortedMoves = [...moves].sort((a, b) => {
     let scoreA = 0, scoreB = 0;
-
-    // Prioritize non-capture developing moves in opening
-    if (inOpening) {
-      // Cannon to center is excellent
-      if (a.piece === 'c' && a.to[0] === 'e') scoreA += 50;
-      if (b.piece === 'c' && b.to[0] === 'e') scoreB += 50;
-
-      // Horse development is good
-      if (a.piece === 'h' && !a.captured) scoreA += 30;
-      if (b.piece === 'h' && !b.captured) scoreB += 30;
-
-      // Discourage early captures (often bad trades)
-      if (a.captured) scoreA -= 20;
-      if (b.captured) scoreB -= 20;
-    } else {
-      // In middlegame/endgame, captures are important
-      if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-      if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
-    }
-
+    // Captures are important to evaluate first
+    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
+    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
     return scoreB - scoreA;
   });
 
@@ -512,27 +499,9 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     const result = minimax(newGame, searchDepth - 1, -Infinity, Infinity, maximizing, moveStartTime, timePerMove);
 
     // Adjust score based on whose turn it was
+    // If Red is moving, higher score = better for Red
+    // If Black is moving, we negate so higher score = better for Black
     let score = game.turn === 'r' ? result.score : -result.score;
-
-    // Opening-specific adjustments
-    if (inOpening) {
-      // Penalize early captures that aren't clearly winning
-      if (move.captured) {
-        const capturedValue = PIECE_VALUES[move.captured];
-        const pieceValue = PIECE_VALUES[move.piece];
-        // If trading down or equal, penalize in opening
-        if (pieceValue >= capturedValue) {
-          score -= 30;
-        }
-      }
-
-      // Bonus for developing moves
-      if (move.piece === 'c' && move.to[0] === 'e') {
-        score += 40; // Central cannon
-      } else if (move.piece === 'h' && !move.captured) {
-        score += 20; // Horse development
-      }
-    }
 
     evaluatedMoves.push({
       move,
