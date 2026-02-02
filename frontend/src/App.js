@@ -11,24 +11,64 @@ import OpeningExplorer from "./OpeningExplorer";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
+// Valid routes
+const ROUTES = {
+  '/': 'game',
+  '/chess': 'game',
+  '/xiangqi': 'xiangqi',
+  '/puzzles': 'puzzles',
+  '/openings': 'openings',
+  '/multiplayer': 'multiplayer',
+  '/leaderboard': 'leaderboard',
+};
+
+// Get page from URL hash
+const getPageFromHash = () => {
+  const hash = window.location.hash.slice(1) || '/'; // Remove '#'
+  return ROUTES[hash] || 'game';
+};
+
+// Set URL hash from page
+const setHashFromPage = (page) => {
+  const route = Object.keys(ROUTES).find(key => ROUTES[key] === page) || '/';
+  window.location.hash = route;
+};
+
 class AppContent extends Component {
   state = {
-    currentPage: "game", // 'game', 'xiangqi', 'puzzles', 'openings', 'multiplayer', 'leaderboard', or 'login'
+    currentPage: getPageFromHash(),
     user: null,
     showLogin: false,
   };
 
   componentDidMount() {
+    // Listen for auth changes
     this.unsubscribe = onAuthChange((user) => {
       this.setState({ user, showLogin: false });
     });
+
+    // Listen for URL hash changes (browser back/forward)
+    window.addEventListener('hashchange', this.handleHashChange);
   }
 
   componentWillUnmount() {
     if (this.unsubscribe) {
       this.unsubscribe();
     }
+    window.removeEventListener('hashchange', this.handleHashChange);
   }
+
+  handleHashChange = () => {
+    const page = getPageFromHash();
+    if (page !== this.state.currentPage) {
+      this.setState({ currentPage: page });
+    }
+  };
+
+  navigateTo = (page) => {
+    setHashFromPage(page);
+    this.setState({ currentPage: page });
+  };
 
   handleLogout = async () => {
     try {
@@ -50,37 +90,37 @@ class AppContent extends Component {
           <nav className="App-nav">
             <button
               className={`nav-btn ${currentPage === "game" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "game" })}
+              onClick={() => this.navigateTo("game")}
             >
               Chess
             </button>
             <button
               className={`nav-btn xiangqi-nav ${currentPage === "xiangqi" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "xiangqi" })}
+              onClick={() => this.navigateTo("xiangqi")}
             >
               象棋
             </button>
             <button
               className={`nav-btn ${currentPage === "puzzles" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "puzzles" })}
+              onClick={() => this.navigateTo("puzzles")}
             >
               🧩 Puzzles
             </button>
             <button
               className={`nav-btn ${currentPage === "openings" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "openings" })}
+              onClick={() => this.navigateTo("openings")}
             >
               📖 Openings
             </button>
             <button
               className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "multiplayer" })}
+              onClick={() => this.navigateTo("multiplayer")}
             >
               Online
             </button>
             <button
               className={`nav-btn ${currentPage === "leaderboard" ? "active" : ""}`}
-              onClick={() => this.setState({ currentPage: "leaderboard" })}
+              onClick={() => this.navigateTo("leaderboard")}
             >
               Leaderboard
             </button>
@@ -134,13 +174,13 @@ class AppContent extends Component {
 
         {currentPage === "multiplayer" && (
           <div className="App-content multiplayer-page">
-            <Multiplayer onBack={() => this.setState({ currentPage: "game" })} />
+            <Multiplayer onBack={() => this.navigateTo("game")} />
           </div>
         )}
 
         {currentPage === "leaderboard" && (
           <div className="App-content leaderboard-page">
-            <Leaderboard onBack={() => this.setState({ currentPage: "game" })} />
+            <Leaderboard onBack={() => this.navigateTo("game")} />
           </div>
         )}
 

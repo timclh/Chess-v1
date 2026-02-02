@@ -182,15 +182,89 @@ class XiangqiGame extends Component {
 
   componentDidMount() {
     this.game = new Xiangqi();
-    this.setState({
-      fen: this.game.toFEN(),
-    });
-    this.updateGameStatus();
+
+    // Try to load saved game state
+    const savedState = this.loadGameState();
+    if (savedState && savedState.fen) {
+      this.game.loadFEN(savedState.fen);
+      this.game.turn = savedState.turn || 'r';
+      this.setState({
+        fen: this.game.toFEN(),
+        gameMode: savedState.gameMode || 'ai',
+        playerColor: savedState.playerColor || 'r',
+        aiDifficulty: savedState.aiDifficulty || 2,
+        history: savedState.history || [],
+        showCoachInAI: savedState.showCoachInAI || false,
+      }, () => {
+        this.updateGameStatus();
+        // If it's AI's turn after loading, make AI move
+        if ((this.state.gameMode === 'ai' || this.state.gameMode === 'coach')
+            && this.game.turn !== this.state.playerColor
+            && !this.state.gameOver) {
+          setTimeout(() => this.makeAIMove(), 500);
+        }
+      });
+    } else {
+      this.setState({
+        fen: this.game.toFEN(),
+      });
+      this.updateGameStatus();
+    }
   }
 
   componentWillUnmount() {
+    // Save state before unmount
+    this.saveGameState();
     this.game = null;
   }
+
+  // Save game state to localStorage
+  saveGameState = () => {
+    if (!this.game) return;
+
+    const state = {
+      fen: this.game.toFEN(),
+      turn: this.game.turn,
+      gameMode: this.state.gameMode,
+      playerColor: this.state.playerColor,
+      aiDifficulty: this.state.aiDifficulty,
+      history: this.state.history,
+      showCoachInAI: this.state.showCoachInAI,
+      savedAt: Date.now(),
+    };
+
+    try {
+      localStorage.setItem('xiangqi_game_state', JSON.stringify(state));
+    } catch (e) {
+      console.error('Failed to save game state:', e);
+    }
+  };
+
+  // Load game state from localStorage
+  loadGameState = () => {
+    try {
+      const saved = localStorage.getItem('xiangqi_game_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        // Only load if saved within last 24 hours
+        if (state.savedAt && Date.now() - state.savedAt < 24 * 60 * 60 * 1000) {
+          return state;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load game state:', e);
+    }
+    return null;
+  };
+
+  // Clear saved game state
+  clearSavedState = () => {
+    try {
+      localStorage.removeItem('xiangqi_game_state');
+    } catch (e) {
+      console.error('Failed to clear saved state:', e);
+    }
+  };
 
   updateGameStatus = () => {
     if (!this.game) return;
@@ -263,6 +337,9 @@ class XiangqiGame extends Component {
             toRow: toPos.row,
             toCol: toPos.col,
           } : null,
+        }, () => {
+          // Save game state after AI move
+          this.saveGameState();
         });
         this.updateGameStatus();
 
@@ -352,6 +429,9 @@ class XiangqiGame extends Component {
         toRow: toPos.row,
         toCol: toPos.col,
       } : null,
+    }, () => {
+      // Save game state after player move
+      this.saveGameState();
     });
     this.updateGameStatus();
 
@@ -373,6 +453,9 @@ class XiangqiGame extends Component {
     if (!this.game) return;
     this.game.reset();
     clearCache();
+
+    // Clear saved state when starting new game
+    this.clearSavedState();
 
     this.setState({
       fen: this.game.toFEN(),
@@ -413,6 +496,9 @@ class XiangqiGame extends Component {
       validMoves: [],
       lastMove: null,
       gameOver: false,
+    }, () => {
+      // Save game state after undo
+      this.saveGameState();
     });
     this.updateGameStatus();
 
