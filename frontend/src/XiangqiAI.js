@@ -408,9 +408,9 @@ function findBestMove(game, difficulty = 2) {
     }
   }
 
-  // Increased depths for stronger play
-  const depths = { 1: 2, 2: 4, 3: 5, 4: 7 };
-  const timeLimits = { 1: 1000, 2: 3000, 3: 6000, 4: 15000 };
+  // AI opponent depths - lower for easier opponents
+  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
+  const timeLimits = { 1: 500, 2: 1000, 3: 2000, 4: 4000 };
 
   const depth = depths[difficulty] || 3;
   const timeLimit = timeLimits[difficulty] || 2000;
