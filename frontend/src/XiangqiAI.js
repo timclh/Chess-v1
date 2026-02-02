@@ -16,6 +16,34 @@ const PIECE_VALUES = {
   s: 100,   // Soldier - 兵/卒 (increases after crossing river)
 };
 
+// Opening book - key is FEN, value is array of good moves with scores
+// Higher score = better move
+const OPENING_BOOK = {
+  // Initial position - Red's first move
+  'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR': [
+    { from: 'b2', to: 'e2', score: 100, name: '当头炮', nameEn: 'Central Cannon' },
+    { from: 'h2', to: 'e2', score: 100, name: '当头炮', nameEn: 'Central Cannon' },
+    { from: 'b2', to: 'd2', score: 90, name: '仕角炮', nameEn: 'Palace Corner Cannon' },
+    { from: 'h2', to: 'f2', score: 90, name: '仕角炮', nameEn: 'Palace Corner Cannon' },
+    { from: 'b0', to: 'c2', score: 85, name: '出马', nameEn: 'Develop Horse' },
+    { from: 'h0', to: 'g2', score: 85, name: '出马', nameEn: 'Develop Horse' },
+    { from: 'b2', to: 'b4', score: 80, name: '巡河炮', nameEn: 'Patrolling Cannon' },
+    { from: 'h2', to: 'h4', score: 80, name: '巡河炮', nameEn: 'Patrolling Cannon' },
+  ],
+  // After Red Central Cannon - Black's response
+  'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/4C3C/9/RHEAKAEHR': [
+    { from: 'h9', to: 'g7', score: 100, name: '屏风马', nameEn: 'Screen Horse' },
+    { from: 'b9', to: 'c7', score: 100, name: '屏风马', nameEn: 'Screen Horse' },
+    { from: 'b7', to: 'e7', score: 90, name: '顺炮', nameEn: 'Same Direction Cannon' },
+    { from: 'h7', to: 'e7', score: 85, name: '列炮', nameEn: 'Opposite Cannon' },
+  ],
+  // Red with central cannon, black screen horse
+  'rheakaehr/9/1c4Nc1/s1s1s1s1s/9/9/S1S1S1S1S/4C3C/9/RHEAKAEHR': [
+    { from: 'h9', to: 'g7', score: 95, name: '双马', nameEn: 'Double Horse' },
+    { from: 'b7', to: 'd7', score: 90, name: '过宫炮', nameEn: 'Transverse Cannon' },
+  ],
+};
+
 // Position tables for piece-square bonuses (from red's perspective, row 0-9, col 0-8)
 // Values encourage good positioning
 
@@ -131,10 +159,98 @@ const POSITION_TABLES = {
 const transpositionTable = new Map();
 const MAX_CACHE_SIZE = 100000;
 
+// Check if we're in opening phase (most pieces still present)
+function isOpeningPhase(game) {
+  let pieceCount = 0;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (game.board[row][col]) pieceCount++;
+    }
+  }
+  return pieceCount >= 28; // 32 initial pieces, opening if >= 28
+}
+
+// Get opening book move if available
+function getOpeningBookMove(game) {
+  const fen = game.toFEN();
+  const bookMoves = OPENING_BOOK[fen];
+  if (!bookMoves || bookMoves.length === 0) return null;
+
+  // Validate that the book move is actually legal
+  const legalMoves = game.moves({ verbose: true });
+  const validBookMoves = bookMoves.filter(bm =>
+    legalMoves.some(lm => lm.from === bm.from && lm.to === bm.to)
+  );
+
+  if (validBookMoves.length === 0) return null;
+
+  // Add some randomness among top book moves
+  const topMoves = validBookMoves.filter(m => m.score >= validBookMoves[0].score - 10);
+  return topMoves[Math.floor(Math.random() * topMoves.length)];
+}
+
+// Opening-specific evaluation bonuses
+function evaluateOpening(game) {
+  let bonus = 0;
+  const board = game.board;
+
+  // Bonus for developed pieces (horses and cannons moved from starting)
+  // Red horses at b0 and h0, black horses at b9 and h9
+  // Red cannons at b2 and h2, black cannons at b7 and h7
+
+  // Red piece development
+  if (!board[9][1] || board[9][1].type !== 'h') bonus += 15; // Left horse developed
+  if (!board[9][7] || board[9][7].type !== 'h') bonus += 15; // Right horse developed
+  if (!board[7][1] || board[7][1].type !== 'c') bonus += 10; // Left cannon developed
+  if (!board[7][7] || board[7][7].type !== 'c') bonus += 10; // Right cannon developed
+
+  // Central cannon bonus (cannon on e file)
+  for (let row = 5; row < 10; row++) {
+    const piece = board[row][4]; // e file
+    if (piece && piece.type === 'c' && piece.color === 'r') {
+      bonus += 25; // Central cannon is very strong in opening
+    }
+  }
+
+  // Black piece development (negative because we evaluate from red's perspective)
+  if (!board[0][1] || board[0][1].type !== 'h') bonus -= 15;
+  if (!board[0][7] || board[0][7].type !== 'h') bonus -= 15;
+  if (!board[2][1] || board[2][1].type !== 'c') bonus -= 10;
+  if (!board[2][7] || board[2][7].type !== 'c') bonus -= 10;
+
+  // Black central cannon
+  for (let row = 0; row < 5; row++) {
+    const piece = board[row][4];
+    if (piece && piece.type === 'c' && piece.color === 'b') {
+      bonus -= 25;
+    }
+  }
+
+  // Penalize early chariot moves that don't control important files
+  // Early chariot out can be bad without proper development
+
+  // Bonus for connected rooks on back rank
+  let redRooksConnected = true;
+  let blackRooksConnected = true;
+
+  // Check if red back rank has no pieces between rooks
+  for (let col = 1; col < 8; col++) {
+    if (board[9][col] && board[9][col].type !== 'r') {
+      if (board[9][col].type === 'k' || board[9][col].type === 'a' || board[9][col].type === 'e') continue;
+      redRooksConnected = false;
+      break;
+    }
+  }
+  if (redRooksConnected) bonus += 10;
+
+  return bonus;
+}
+
 // Evaluate a position from red's perspective
 function evaluate(game) {
   let score = 0;
   const board = game.board;
+  const inOpening = isOpeningPhase(game);
 
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
@@ -155,6 +271,11 @@ function evaluate(game) {
         score -= pieceValue + positionBonus;
       }
     }
+  }
+
+  // Add opening-specific evaluation
+  if (inOpening) {
+    score += evaluateOpening(game);
   }
 
   // Bonus for check
@@ -275,6 +396,18 @@ function cloneGame(game) {
 
 // Find best move
 function findBestMove(game, difficulty = 2) {
+  // Check opening book first for higher difficulties
+  if (difficulty >= 2 && isOpeningPhase(game)) {
+    const bookMove = getOpeningBookMove(game);
+    if (bookMove) {
+      const legalMoves = game.moves({ verbose: true });
+      const matchedMove = legalMoves.find(m => m.from === bookMove.from && m.to === bookMove.to);
+      if (matchedMove) {
+        return matchedMove;
+      }
+    }
+  }
+
   // Increased depths for stronger play
   const depths = { 1: 2, 2: 3, 3: 5, 4: 6 };
   const timeLimits = { 1: 1000, 2: 2000, 3: 5000, 4: 12000 };
@@ -302,6 +435,35 @@ function findBestMove(game, difficulty = 2) {
 function getTopMoves(game, n = 3, difficulty = 4) {
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
+  const inOpening = isOpeningPhase(game);
+
+  // Check opening book first
+  if (inOpening) {
+    const fen = game.toFEN();
+    const bookMoves = OPENING_BOOK[fen];
+
+    if (bookMoves && bookMoves.length > 0) {
+      // Use book moves for opening suggestions
+      const validBookMoves = bookMoves.filter(bm =>
+        moves.some(m => m.from === bm.from && m.to === bm.to)
+      );
+
+      if (validBookMoves.length >= n) {
+        // Return top book moves
+        return validBookMoves.slice(0, n).map((bm, index) => {
+          const matchedMove = moves.find(m => m.from === bm.from && m.to === bm.to);
+          return {
+            rank: index + 1,
+            move: matchedMove,
+            san: matchedMove.san,
+            score: bm.score * 10,
+            winProbability: 0.5 + (bm.score / 400),
+            explanation: `${bm.name} / ${bm.nameEn}`,
+          };
+        });
+      }
+    }
+  }
 
   // Use deeper search for better suggestions
   const depths = { 1: 2, 2: 3, 3: 4, 4: 5 };
@@ -310,7 +472,33 @@ function getTopMoves(game, n = 3, difficulty = 4) {
   const startTime = Date.now();
   const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
 
-  for (const move of moves) {
+  // Pre-sort moves to evaluate promising ones first
+  const sortedMoves = [...moves].sort((a, b) => {
+    let scoreA = 0, scoreB = 0;
+
+    // Prioritize non-capture developing moves in opening
+    if (inOpening) {
+      // Cannon to center is excellent
+      if (a.piece === 'c' && a.to[0] === 'e') scoreA += 50;
+      if (b.piece === 'c' && b.to[0] === 'e') scoreB += 50;
+
+      // Horse development is good
+      if (a.piece === 'h' && !a.captured) scoreA += 30;
+      if (b.piece === 'h' && !b.captured) scoreB += 30;
+
+      // Discourage early captures (often bad trades)
+      if (a.captured) scoreA -= 20;
+      if (b.captured) scoreB -= 20;
+    } else {
+      // In middlegame/endgame, captures are important
+      if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
+      if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
+    }
+
+    return scoreB - scoreA;
+  });
+
+  for (const move of sortedMoves) {
     // Time check
     if (Date.now() - startTime > timeLimit) break;
 
@@ -323,7 +511,27 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     const result = minimax(newGame, searchDepth - 1, -Infinity, Infinity, maximizing, moveStartTime, timePerMove);
 
     // Adjust score based on whose turn it was
-    const score = game.turn === 'r' ? result.score : -result.score;
+    let score = game.turn === 'r' ? result.score : -result.score;
+
+    // Opening-specific adjustments
+    if (inOpening) {
+      // Penalize early captures that aren't clearly winning
+      if (move.captured) {
+        const capturedValue = PIECE_VALUES[move.captured];
+        const pieceValue = PIECE_VALUES[move.piece];
+        // If trading down or equal, penalize in opening
+        if (pieceValue >= capturedValue) {
+          score -= 30;
+        }
+      }
+
+      // Bonus for developing moves
+      if (move.piece === 'c' && move.to[0] === 'e') {
+        score += 40; // Central cannon
+      } else if (move.piece === 'h' && !move.captured) {
+        score += 20; // Horse development
+      }
+    }
 
     evaluatedMoves.push({
       move,
@@ -343,24 +551,47 @@ function getTopMoves(game, n = 3, difficulty = 4) {
       move: item.move,
       san: item.san,
       score: item.score,
-      winProbability: winProb,
-      explanation: getMoveExplanation(item.move, item.score),
+      winProbability: Math.min(0.95, Math.max(0.05, winProb)), // Clamp to reasonable range
+      explanation: getMoveExplanation(item.move, item.score, inOpening),
     };
   });
 }
 
 // Get explanation for a move
-function getMoveExplanation(move, score) {
+function getMoveExplanation(move, score, inOpening = false) {
   const pieceNameCn = PIECE_NAMES[move.piece][move.color];
   let explanation = '';
 
   if (move.captured) {
     const capturedName = PIECE_NAMES[move.captured][move.color === 'r' ? 'b' : 'r'];
     explanation = `${pieceNameCn}吃${capturedName} / Capture ${capturedName}`;
+  } else if (inOpening) {
+    // Opening-specific explanations
+    if (move.piece === 'c') {
+      if (move.to[0] === 'e') {
+        explanation = '当头炮 / Central Cannon';
+      } else if (move.to[0] === 'd' || move.to[0] === 'f') {
+        explanation = '仕角炮 / Palace Corner Cannon';
+      } else {
+        explanation = '炮出击 / Develop Cannon';
+      }
+    } else if (move.piece === 'h') {
+      explanation = '出马 / Develop Horse';
+    } else if (move.piece === 'r') {
+      explanation = '出车 / Develop Chariot';
+    } else if (move.piece === 's') {
+      explanation = '挺兵 / Advance Soldier';
+    } else if (move.piece === 'e') {
+      explanation = '飞象 / Develop Elephant';
+    } else if (move.piece === 'a') {
+      explanation = '上仕 / Move Advisor';
+    } else {
+      explanation = '开局着法 / Opening move';
+    }
   } else if (score > 200) {
-    explanation = `强势着法 / Strong move`;
+    explanation = '强势着法 / Strong move';
   } else if (score > 50) {
-    explanation = `稳健着法 / Solid move`;
+    explanation = '稳健着法 / Solid move';
   } else {
     explanation = `${pieceNameCn}移动 / ${pieceNameCn} move`;
   }
