@@ -275,8 +275,9 @@ function cloneGame(game) {
 
 // Find best move
 function findBestMove(game, difficulty = 2) {
-  const depths = { 1: 2, 2: 3, 3: 4, 4: 5 };
-  const timeLimits = { 1: 1000, 2: 2000, 3: 4000, 4: 8000 };
+  // Increased depths for stronger play
+  const depths = { 1: 2, 2: 3, 3: 5, 4: 6 };
+  const timeLimits = { 1: 1000, 2: 2000, 3: 5000, 4: 12000 };
 
   const depth = depths[difficulty] || 3;
   const timeLimit = timeLimits[difficulty] || 2000;
@@ -285,8 +286,8 @@ function findBestMove(game, difficulty = 2) {
   const maximizing = game.turn === 'r';
   const result = minimax(game, depth, -Infinity, Infinity, maximizing, startTime, timeLimit);
 
-  // Add some randomness at lower difficulties
-  if (difficulty <= 2 && Math.random() < 0.15) {
+  // Add some randomness only at lowest difficulties
+  if (difficulty <= 1 && Math.random() < 0.2) {
     const moves = game.moves({ verbose: true });
     if (moves.length > 1) {
       const randomMove = moves[Math.floor(Math.random() * moves.length)];
@@ -297,25 +298,41 @@ function findBestMove(game, difficulty = 2) {
   return result.move || game.moves({ verbose: true })[0];
 }
 
-// Get top N moves for coach mode
-function getTopMoves(game, n = 3, difficulty = 2) {
+// Get top N moves for coach mode - uses deep search for accurate evaluation
+function getTopMoves(game, n = 3, difficulty = 4) {
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
 
+  // Use deeper search for better suggestions
+  const depths = { 1: 2, 2: 3, 3: 4, 4: 5 };
+  const searchDepth = depths[difficulty] || 4;
+  const timeLimit = 10000; // 10 seconds for suggestions
+  const startTime = Date.now();
+  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
+
   for (const move of moves) {
+    // Time check
+    if (Date.now() - startTime > timeLimit) break;
+
     const newGame = cloneGame(game);
     newGame.move(move);
-    const score = evaluate(newGame);
-    const adjustedScore = game.turn === 'r' ? score : -score;
+
+    // Use minimax to evaluate this move properly
+    const moveStartTime = Date.now();
+    const maximizing = newGame.turn === 'r';
+    const result = minimax(newGame, searchDepth - 1, -Infinity, Infinity, maximizing, moveStartTime, timePerMove);
+
+    // Adjust score based on whose turn it was
+    const score = game.turn === 'r' ? result.score : -result.score;
 
     evaluatedMoves.push({
       move,
-      score: adjustedScore,
+      score: score,
       san: move.san,
     });
   }
 
-  // Sort by score
+  // Sort by score (best moves first)
   evaluatedMoves.sort((a, b) => b.score - a.score);
 
   // Take top N
@@ -327,19 +344,23 @@ function getTopMoves(game, n = 3, difficulty = 2) {
       san: item.san,
       score: item.score,
       winProbability: winProb,
-      explanation: getMoveExplanation(item.move),
+      explanation: getMoveExplanation(item.move, item.score),
     };
   });
 }
 
 // Get explanation for a move
-function getMoveExplanation(move) {
+function getMoveExplanation(move, score) {
   const pieceNameCn = PIECE_NAMES[move.piece][move.color];
   let explanation = '';
 
   if (move.captured) {
     const capturedName = PIECE_NAMES[move.captured][move.color === 'r' ? 'b' : 'r'];
     explanation = `${pieceNameCn}吃${capturedName} / Capture ${capturedName}`;
+  } else if (score > 200) {
+    explanation = `强势着法 / Strong move`;
+  } else if (score > 50) {
+    explanation = `稳健着法 / Solid move`;
   } else {
     explanation = `${pieceNameCn}移动 / ${pieceNameCn} move`;
   }
