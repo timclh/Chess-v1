@@ -56,7 +56,7 @@ class XiangqiBoard extends Component {
 
   // Handle square click
   handleClick = (row, col) => {
-    const { onMove, board, turn, playerColor, disabled, validMoves = [] } = this.props;
+    const { onMove, board, turn, playerColor, disabled, validMoves = [], isTutorial } = this.props;
     const { selectedSquare } = this.state;
 
     if (disabled) return;
@@ -64,8 +64,8 @@ class XiangqiBoard extends Component {
     // Use playerColor if provided, otherwise fall back to turn (for tutorial mode)
     const canSelectColor = playerColor || turn;
 
-    // Check if it's player's turn (in AI mode, player can only move on their turn)
-    const isPlayerTurn = turn === canSelectColor;
+    // In tutorial mode, always allow moves; otherwise check if it's player's turn
+    const isPlayerTurn = isTutorial || turn === canSelectColor;
 
     const piece = board[row][col];
 
@@ -117,12 +117,13 @@ class XiangqiBoard extends Component {
 
   // Handle mouse down for dragging
   handleMouseDown = (e, row, col) => {
-    const { board, turn, playerColor, disabled } = this.props;
+    const { board, turn, playerColor, disabled, isTutorial } = this.props;
     if (disabled) return;
 
     // Use playerColor if provided, otherwise fall back to turn
     const canSelectColor = playerColor || turn;
-    const isPlayerTurn = turn === canSelectColor;
+    // In tutorial mode, always allow moves; otherwise check if it's player's turn
+    const isPlayerTurn = isTutorial || turn === canSelectColor;
 
     const piece = board[row][col];
     if (piece && piece.color === canSelectColor && isPlayerTurn) {
