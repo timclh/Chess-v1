@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
-import { saveGameResult } from "./GameHistory";
 
 // Use environment variable or fallback to localhost
 const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:3030";
@@ -31,10 +30,6 @@ class Multiplayer extends Component {
     drawOffered: false,
     drawReceived: false,
     copySuccess: false,
-    
-    // Game tracking
-    gameStartTime: null,
-    gameSaved: false,
   };
 
   ws = null;
@@ -140,8 +135,6 @@ class Multiplayer extends Component {
         this.setState({
           gameStatus: `Game started! ${message.whitePlayer} (White) vs ${message.blackPlayer} (Black)`,
           gameOver: false,
-          gameStartTime: Date.now(),
-          gameSaved: false,
         });
         this.addSystemMessage(message.message);
         break;
@@ -171,8 +164,6 @@ class Multiplayer extends Component {
           gameStatus: message.message,
         });
         this.addSystemMessage(message.message);
-        // Save game result for multiplayer game
-        this.saveMultiplayerGame(message.message);
         break;
 
       case 'draw_offered':
@@ -192,19 +183,17 @@ class Multiplayer extends Component {
 
       case 'rematch_start':
         this.game.reset();
-        this.setState((prevState) => {
-          // Update player color using functional update to get correct previous state
-          const newColor = prevState.playerColor === 'w' ? 'b' : 'w';
-          return {
-            fen: "start",
-            history: [],
-            gameOver: false,
-            gameStatus: `Rematch! ${message.whitePlayer} (White) vs ${message.blackPlayer} (Black)`,
-            drawOffered: false,
-            drawReceived: false,
-            playerColor: newColor,
-          };
+        this.setState({
+          fen: "start",
+          history: [],
+          gameOver: false,
+          gameStatus: `Rematch! ${message.whitePlayer} (White) vs ${message.blackPlayer} (Black)`,
+          drawOffered: false,
+          drawReceived: false,
         });
+        // Update player color after swap
+        const newColor = this.state.playerColor === 'w' ? 'b' : 'w';
+        this.setState({ playerColor: newColor });
         this.addSystemMessage("Rematch started! Colors swapped.");
         break;
 
@@ -310,8 +299,6 @@ class Multiplayer extends Component {
 
     if (gameOver) {
       this.setState({ gameOver: true, gameStatus: result });
-      // Save game result when player makes the winning/drawing move
-      this.saveMultiplayerGame(result);
     }
 
     this.updateGameStatus();
@@ -368,8 +355,6 @@ class Multiplayer extends Component {
 
         if (gameOver) {
           this.setState({ gameOver: true, gameStatus: result });
-          // Save game result when player makes the winning/drawing move
-          this.saveMultiplayerGame(result);
         }
 
         this.updateGameStatus();
@@ -421,45 +406,6 @@ class Multiplayer extends Component {
     }
 
     this.setState({ gameStatus: status });
-  };
-
-  // Save multiplayer game result to leaderboard
-  saveMultiplayerGame = async (resultMessage) => {
-    if (this.state.gameSaved || !this.state.playerName) return;
-
-    const { playerColor, playerName, gameStartTime, history } = this.state;
-    
-    // Determine game result from message
-    let result = 'draw';
-    if (resultMessage.toLowerCase().includes('win')) {
-      // Check if the winner color matches player's color
-      const winnerIsWhite = resultMessage.toLowerCase().includes('white wins');
-      const winnerIsBlack = resultMessage.toLowerCase().includes('black wins');
-      if ((winnerIsWhite && playerColor === 'w') || (winnerIsBlack && playerColor === 'b')) {
-        result = 'win';
-      } else if (winnerIsWhite || winnerIsBlack) {
-        result = 'loss';
-      }
-    } else if (resultMessage.toLowerCase().includes('resign')) {
-      // If opponent resigned, we won; if we resigned, we lost
-      result = resultMessage.toLowerCase().includes('opponent') ? 'win' : 'loss';
-    }
-
-    const duration = gameStartTime
-      ? Math.round((Date.now() - gameStartTime) / 1000)
-      : 0;
-
-    await saveGameResult({
-      playerName: playerName,
-      playerColor: playerColor,
-      opponent: 'human',
-      difficulty: null,
-      result: result,
-      moves: history.length,
-      duration: duration,
-    });
-
-    this.setState({ gameSaved: true });
   };
 
   sendChat = () => {

@@ -14,7 +14,6 @@ import {
   explainAIMove,
   quickEvaluate,
   clearCache,
-  resetPositionHistory,
 } from './XiangqiAI';
 
 // Tutorial lessons for Chinese Chess
@@ -280,10 +279,7 @@ class XiangqiGame extends Component {
         const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
       } else if (this.game.in_stalemate()) {
-        // In Xiangqi, stalemate means the player who cannot move LOSES (not a draw!)
-        const winner = this.game.turn === 'r' ? '黑方' : '红方';
-        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
-        status = `困毙！${winner}获胜！/ Stalemate! ${winnerEn} wins!`;
+        status = '和棋（无子可动）/ Stalemate';
       } else {
         status = '游戏结束 / Game Over';
       }
@@ -351,8 +347,7 @@ class XiangqiGame extends Component {
         if (this.state.gameMode === 'coach') {
           this.updateAnalysis();
         } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
-          // Update analysis after AI move so player can see hints for their next turn
-          setTimeout(() => this.updateAnalysisForAI(), 50);
+          this.updateAnalysisForAI();
         }
       } else {
         this.setState({ aiThinking: false });
@@ -448,15 +443,16 @@ class XiangqiGame extends Component {
       setTimeout(() => this.updateAnalysis(), 100);
     }
 
-    // Don't update analysis before AI move - it will be updated after AI responds
-    // This prevents blocking the UI while waiting for AI
+    // Update analysis for AI mode with coach hints
+    if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
+      setTimeout(() => this.updateAnalysisForAI(), 100);
+    }
   };
 
   resetGame = () => {
     if (!this.game) return;
     this.game.reset();
     clearCache();
-    resetPositionHistory(); // Clear repetition tracking for new game
 
     // Clear saved state when starting new game
     this.clearSavedState();
@@ -619,15 +615,12 @@ class XiangqiGame extends Component {
     });
   };
 
-  // Update analysis for AI mode (on demand) - uses lighter analysis to avoid blocking
+  // Update analysis for AI mode (on demand)
   updateAnalysisForAI = () => {
-    if (!this.game || this.state.gameOver) return;
-    // Skip if it's not player's turn (AI is about to move)
-    if (this.game.turn !== this.state.playerColor) return;
+    if (!this.game) return;
 
     const analysis = analyzePosition(this.game);
-    // Use difficulty 1 for faster analysis in AI mode (depth 2 instead of 5-7)
-    const suggestedMoves = getTopMoves(this.game, 3, 1);
+    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
@@ -774,7 +767,6 @@ class XiangqiGame extends Component {
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
                 disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
-                isTutorial={gameMode === 'tutorial'}
               />
             )}
           </div>
