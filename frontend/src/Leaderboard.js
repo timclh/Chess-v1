@@ -180,7 +180,7 @@ class Leaderboard extends Component {
                           <span className="draws">{player.humanStats?.draws || 0}</span>
                         </td>
                         <td className="win-rate">{player.winRate}%</td>
-                        <td className="streak">{player.bestWinStreak}🔥</td>
+                        <td className="streak">{player.bestWinStreak > 0 ? `${player.bestWinStreak}🔥` : '-'}</td>
                       </tr>
                     ))}
                   </tbody>
