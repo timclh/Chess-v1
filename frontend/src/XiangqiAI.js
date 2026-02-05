@@ -465,10 +465,11 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     }
   }
 
-  // Use deeper search for better suggestions
-  const depths = { 1: 2, 2: 4, 3: 5, 4: 7 };
-  const searchDepth = depths[difficulty] || 5;
-  const timeLimit = 15000; // 15 seconds for suggestions
+  // Use appropriate search depth based on difficulty - lower = faster
+  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
+  const timeLimits = { 1: 500, 2: 2000, 3: 5000, 4: 10000 };
+  const searchDepth = depths[difficulty] || 3;
+  const timeLimit = timeLimits[difficulty] || 5000;
   const startTime = Date.now();
   const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
 
