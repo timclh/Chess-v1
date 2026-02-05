@@ -225,10 +225,13 @@ const PUZZLES = [
   },
 ];
 
-// Get today's date string for daily tracking
+// Get today's date string for daily tracking (ISO format for consistent parsing)
 const getTodayKey = () => {
   const today = new Date();
-  return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Get daily puzzles (3 puzzles rotating by date)
