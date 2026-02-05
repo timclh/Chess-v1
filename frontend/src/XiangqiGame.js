@@ -280,7 +280,10 @@ class XiangqiGame extends Component {
         const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
       } else if (this.game.in_stalemate()) {
-        status = '和棋（无子可动）/ Stalemate';
+        // In Xiangqi, stalemate means the player who cannot move LOSES (not a draw!)
+        const winner = this.game.turn === 'r' ? '黑方' : '红方';
+        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+        status = `困毙！${winner}获胜！/ Stalemate! ${winnerEn} wins!`;
       } else {
         status = '游戏结束 / Game Over';
       }

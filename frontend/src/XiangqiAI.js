@@ -302,8 +302,13 @@ function evaluate(game) {
     score += game.turn === 'r' ? -50 : 50;
   }
 
-  // Bonus for checkmate
+  // Bonus for checkmate - the side to move is checkmated
   if (game.in_checkmate()) {
+    score += game.turn === 'r' ? -100000 : 100000;
+  }
+
+  // Bonus for stalemate - in Xiangqi, stalemate means the side to move LOSES
+  if (game.in_stalemate()) {
     score += game.turn === 'r' ? -100000 : 100000;
   }
 
