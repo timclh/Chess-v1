@@ -347,7 +347,8 @@ class XiangqiGame extends Component {
         if (this.state.gameMode === 'coach') {
           this.updateAnalysis();
         } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
-          this.updateAnalysisForAI();
+          // Update analysis after AI move so player can see hints for their next turn
+          setTimeout(() => this.updateAnalysisForAI(), 50);
         }
       } else {
         this.setState({ aiThinking: false });
@@ -443,10 +444,8 @@ class XiangqiGame extends Component {
       setTimeout(() => this.updateAnalysis(), 100);
     }
 
-    // Update analysis for AI mode with coach hints
-    if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
-      setTimeout(() => this.updateAnalysisForAI(), 100);
-    }
+    // Don't update analysis before AI move - it will be updated after AI responds
+    // This prevents blocking the UI while waiting for AI
   };
 
   resetGame = () => {
@@ -615,12 +614,15 @@ class XiangqiGame extends Component {
     });
   };
 
-  // Update analysis for AI mode (on demand)
+  // Update analysis for AI mode (on demand) - uses lighter analysis to avoid blocking
   updateAnalysisForAI = () => {
-    if (!this.game) return;
+    if (!this.game || this.state.gameOver) return;
+    // Skip if it's not player's turn (AI is about to move)
+    if (this.game.turn !== this.state.playerColor) return;
 
     const analysis = analyzePosition(this.game);
-    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
+    // Use difficulty 1 for faster analysis in AI mode (depth 2 instead of 5-7)
+    const suggestedMoves = getTopMoves(this.game, 3, 1);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
