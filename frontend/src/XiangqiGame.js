@@ -774,6 +774,7 @@ class XiangqiGame extends Component {
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
                 disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
+                isTutorial={gameMode === 'tutorial'}
               />
             )}
           </div>
