@@ -159,6 +159,25 @@ const POSITION_TABLES = {
 const transpositionTable = new Map();
 const MAX_CACHE_SIZE = 100000;
 
+// Position history for repetition detection (stores FEN counts)
+let positionHistory = new Map();
+
+// Reset position history (call when starting new game)
+function resetPositionHistory() {
+  positionHistory = new Map();
+}
+
+// Record a position in history
+function recordPosition(fen) {
+  const count = positionHistory.get(fen) || 0;
+  positionHistory.set(fen, count + 1);
+}
+
+// Get repetition count for a position
+function getRepetitionCount(fen) {
+  return positionHistory.get(fen) || 0;
+}
+
 // Check if we're in opening phase (most pieces still present)
 function isOpeningPhase(game) {
   let pieceCount = 0;
@@ -288,6 +307,16 @@ function evaluate(game) {
     score += game.turn === 'r' ? -100000 : 100000;
   }
 
+  // Penalty for repetition - discourage repeating positions
+  const fen = game.toFEN();
+  const repetitions = getRepetitionCount(fen);
+  if (repetitions > 0) {
+    // Heavy penalty for repetition - stronger penalty each time
+    const repetitionPenalty = repetitions * 200;
+    // Apply penalty against the side that just moved (previous turn)
+    score += game.turn === 'r' ? repetitionPenalty : -repetitionPenalty;
+  }
+
   return score;
 }
 
@@ -396,6 +425,10 @@ function cloneGame(game) {
 
 // Find best move
 function findBestMove(game, difficulty = 2) {
+  // Record current position for repetition tracking
+  const currentFen = game.toFEN();
+  recordPosition(currentFen);
+
   // Check opening book first for higher difficulties
   if (difficulty >= 2 && isOpeningPhase(game)) {
     const bookMove = getOpeningBookMove(game);
@@ -419,6 +452,51 @@ function findBestMove(game, difficulty = 2) {
   const maximizing = game.turn === 'r';
   const result = minimax(game, depth, -Infinity, Infinity, maximizing, startTime, timeLimit);
 
+  let bestMove = result.move || game.moves({ verbose: true })[0];
+
+  // Anti-repetition: if the best move leads to a repeated position, try to find an alternative
+  if (bestMove) {
+    const testGame = cloneGame(game);
+    testGame.move(bestMove);
+    const resultingFen = testGame.toFEN();
+    const repetitions = getRepetitionCount(resultingFen);
+    
+    if (repetitions >= 1) {
+      // This move would repeat a position - look for alternatives
+      const allMoves = game.moves({ verbose: true });
+      let bestNonRepeatingMove = null;
+      let bestNonRepeatingScore = -Infinity;
+      
+      for (const move of allMoves) {
+        const altGame = cloneGame(game);
+        altGame.move(move);
+        const altFen = altGame.toFEN();
+        
+        // Skip moves that repeat positions
+        if (getRepetitionCount(altFen) >= 1) continue;
+        
+        // Evaluate this non-repeating move
+        const altMaximizing = altGame.turn === 'r';
+        const altResult = minimax(altGame, Math.max(depth - 1, 1), -Infinity, Infinity, altMaximizing, Date.now(), timeLimit / 2);
+        
+        // For the moving side, pick the best scoring non-repeating move
+        const moveScore = maximizing ? altResult.score : -altResult.score;
+        if (moveScore > bestNonRepeatingScore) {
+          bestNonRepeatingScore = moveScore;
+          bestNonRepeatingMove = move;
+        }
+      }
+      
+      // Use non-repeating move if it's not significantly worse (within 300 centipawns)
+      if (bestNonRepeatingMove) {
+        const originalScore = maximizing ? result.score : -result.score;
+        if (bestNonRepeatingScore >= originalScore - 300) {
+          bestMove = bestNonRepeatingMove;
+        }
+      }
+    }
+  }
+
   // Add some randomness only at lowest difficulties
   if (difficulty <= 1 && Math.random() < 0.2) {
     const moves = game.moves({ verbose: true });
@@ -428,7 +506,7 @@ function findBestMove(game, difficulty = 2) {
     }
   }
 
-  return result.move || game.moves({ verbose: true })[0];
+  return bestMove;
 }
 
 // Get top N moves for coach mode - uses deep search for accurate evaluation
@@ -776,9 +854,10 @@ function explainAIMove(game, move) {
   return `AI移动${pieceNameCn}改善局面。\nAI moved ${pieceNameCn} to improve position.`;
 }
 
-// Clear cache
+// Clear cache and position history
 function clearCache() {
   transpositionTable.clear();
+  resetPositionHistory();
 }
 
 export {
@@ -790,5 +869,6 @@ export {
   quickEvaluate,
   evaluate,
   clearCache,
+  resetPositionHistory,
   PIECE_VALUES,
 };
