@@ -252,6 +252,13 @@ function evaluate(game) {
   const board = game.board;
   const inOpening = isOpeningPhase(game);
 
+  // Piece counts for endgame detection
+  let redMaterial = 0;
+  let blackMaterial = 0;
+  let redChariots = 0, blackChariots = 0;
+  let redCannons = 0, blackCannons = 0;
+  let redHorses = 0, blackHorses = 0;
+
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
       const piece = board[row][col];
@@ -265,10 +272,18 @@ function evaluate(game) {
         // Red pieces - use table directly
         positionBonus = positionTable[row][col];
         score += pieceValue + positionBonus;
+        redMaterial += pieceValue;
+        if (piece.type === 'r') redChariots++;
+        if (piece.type === 'c') redCannons++;
+        if (piece.type === 'h') redHorses++;
       } else {
         // Black pieces - mirror the table
         positionBonus = positionTable[9 - row][8 - col];
         score -= pieceValue + positionBonus;
+        blackMaterial += pieceValue;
+        if (piece.type === 'r') blackChariots++;
+        if (piece.type === 'c') blackCannons++;
+        if (piece.type === 'h') blackHorses++;
       }
     }
   }
@@ -276,6 +291,23 @@ function evaluate(game) {
   // Add opening-specific evaluation
   if (inOpening) {
     score += evaluateOpening(game);
+  }
+
+  // King safety evaluation
+  score += evaluateKingSafety(board, 'r') - evaluateKingSafety(board, 'b');
+
+  // Chariot on open file bonus
+  score += evaluateChariotActivity(board, 'r') - evaluateChariotActivity(board, 'b');
+
+  // Mobility bonus (rough estimate)
+  const redMoves = game.turn === 'r' ? game.moves().length : 0;
+  score += redMoves * 2;
+
+  // Endgame adjustments
+  const totalMaterial = redMaterial + blackMaterial;
+  if (totalMaterial < 4000) {
+    // In endgame, connected passed soldiers are very valuable
+    score += evaluateEndgame(board, 'r') - evaluateEndgame(board, 'b');
   }
 
   // Bonus for check
@@ -291,6 +323,116 @@ function evaluate(game) {
   return score;
 }
 
+// Evaluate king safety
+function evaluateKingSafety(board, color) {
+  let safety = 0;
+  
+  // Find king position
+  let kingRow = -1, kingCol = -1;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 3; col <= 5; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'k' && piece.color === color) {
+        kingRow = row;
+        kingCol = col;
+        break;
+      }
+    }
+    if (kingRow >= 0) break;
+  }
+  
+  if (kingRow < 0) return -1000; // King not found (should not happen)
+
+  // Bonus for having advisors
+  const palaceRows = color === 'r' ? [7, 8, 9] : [0, 1, 2];
+  let advisorCount = 0;
+  let elephantCount = 0;
+  
+  for (const row of palaceRows) {
+    for (let col = 3; col <= 5; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === color) {
+        if (piece.type === 'a') advisorCount++;
+        if (piece.type === 'e') elephantCount++;
+      }
+    }
+  }
+  
+  safety += advisorCount * 30;
+  safety += elephantCount * 20;
+
+  // Penalty if king is exposed on file (flying general threat)
+  const enemyKingRow = color === 'r' ? [0, 1, 2] : [7, 8, 9];
+  let blockerCount = 0;
+  const minRow = Math.min(kingRow, ...enemyKingRow);
+  const maxRow = Math.max(kingRow, ...enemyKingRow);
+  
+  for (let row = minRow + 1; row < maxRow; row++) {
+    if (board[row][kingCol]) blockerCount++;
+  }
+  
+  if (blockerCount === 0) {
+    safety -= 50; // Vulnerable to flying general attacks
+  }
+
+  return safety;
+}
+
+// Evaluate chariot activity
+function evaluateChariotActivity(board, color) {
+  let activity = 0;
+  
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 9; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'r' && piece.color === color) {
+        // Bonus for being on open file
+        let openFile = true;
+        for (let r = 0; r < 10; r++) {
+          if (r !== row && board[r][col] && board[r][col].type === 's') {
+            openFile = false;
+            break;
+          }
+        }
+        if (openFile) activity += 20;
+        
+        // Bonus for penetrating enemy territory
+        if (color === 'r' && row <= 4) activity += 15;
+        if (color === 'b' && row >= 5) activity += 15;
+        
+        // Bonus for being on 7th/3rd rank (near enemy palace)
+        if (color === 'r' && row <= 2) activity += 25;
+        if (color === 'b' && row >= 7) activity += 25;
+      }
+    }
+  }
+  
+  return activity;
+}
+
+// Evaluate endgame factors
+function evaluateEndgame(board, color) {
+  let bonus = 0;
+  
+  // Find king and promote passed soldiers
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 9; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 's' && piece.color === color) {
+        // Soldier in enemy territory
+        if (color === 'r' && row <= 4) {
+          bonus += (5 - row) * 10; // More advanced = more valuable
+        }
+        if (color === 'b' && row >= 5) {
+          bonus += (row - 4) * 10;
+        }
+      }
+    }
+  }
+  
+  return bonus;
+}
+
 // Quick evaluation for sorting moves
 function quickEvaluate(game) {
   const score = evaluate(game);
@@ -301,8 +443,70 @@ function quickEvaluate(game) {
   };
 }
 
-// Minimax with alpha-beta pruning
-function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
+// Quiescence search - continue searching captures to avoid horizon effect
+function quiescence(game, alpha, beta, maximizing, startTime, timeLimit, qDepth = 0) {
+  // Limit quiescence depth
+  if (qDepth > 6 || Date.now() - startTime > timeLimit) {
+    return evaluate(game);
+  }
+
+  const standPat = evaluate(game);
+  
+  if (maximizing) {
+    if (standPat >= beta) return beta;
+    if (standPat > alpha) alpha = standPat;
+  } else {
+    if (standPat <= alpha) return alpha;
+    if (standPat < beta) beta = standPat;
+  }
+
+  // Only search captures and checks
+  const allMoves = game.moves({ verbose: true });
+  const tacticalMoves = allMoves.filter(m => m.captured);
+  
+  // Sort by MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+  tacticalMoves.sort((a, b) => {
+    const scoreA = PIECE_VALUES[a.captured] * 10 - PIECE_VALUES[a.piece];
+    const scoreB = PIECE_VALUES[b.captured] * 10 - PIECE_VALUES[b.piece];
+    return scoreB - scoreA;
+  });
+
+  for (const move of tacticalMoves) {
+    const newGame = cloneGame(game);
+    newGame.move(move);
+    
+    const score = quiescence(newGame, alpha, beta, !maximizing, startTime, timeLimit, qDepth + 1);
+    
+    if (maximizing) {
+      if (score > alpha) alpha = score;
+      if (alpha >= beta) break;
+    } else {
+      if (score < beta) beta = score;
+      if (beta <= alpha) break;
+    }
+  }
+  
+  return maximizing ? alpha : beta;
+}
+
+// Killer moves for better move ordering (moves that caused cutoffs)
+const killerMoves = new Array(20).fill(null).map(() => [null, null]);
+
+// History heuristic for move ordering
+const historyTable = {};
+
+function updateHistory(move, depth) {
+  const key = `${move.from}-${move.to}`;
+  historyTable[key] = (historyTable[key] || 0) + depth * depth;
+}
+
+function getHistoryScore(move) {
+  const key = `${move.from}-${move.to}`;
+  return historyTable[key] || 0;
+}
+
+// Minimax with alpha-beta pruning and advanced features
+function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit, ply = 0) {
   // Check time limit
   if (Date.now() - startTime > timeLimit) {
     return { score: evaluate(game), timeout: true };
@@ -315,18 +519,47 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
     return cached;
   }
 
-  if (depth === 0 || game.game_over()) {
-    const score = evaluate(game);
+  if (game.game_over()) {
+    if (game.in_checkmate()) {
+      // Return mate score adjusted by ply (prefer faster mates)
+      return { score: maximizing ? -100000 + ply : 100000 - ply };
+    }
+    return { score: 0 }; // Stalemate
+  }
+
+  if (depth === 0) {
+    // Use quiescence search instead of static eval
+    const score = quiescence(game, alpha, beta, maximizing, startTime, timeLimit);
     return { score };
   }
 
   const moves = game.moves({ verbose: true });
 
-  // Move ordering: captures first, then checks
+  // Advanced move ordering for better pruning
+  // 1. Captures sorted by MVV-LVA
+  // 2. Killer moves
+  // 3. History heuristic
+  // 4. Other moves
   moves.sort((a, b) => {
     let scoreA = 0, scoreB = 0;
-    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
+    
+    // Captures: MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 100 - PIECE_VALUES[a.piece];
+    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 100 - PIECE_VALUES[b.piece];
+    
+    // Killer moves bonus
+    const killerSlot = killerMoves[ply];
+    if (killerSlot) {
+      if (killerSlot[0] && killerSlot[0].from === a.from && killerSlot[0].to === a.to) scoreA += 5000;
+      if (killerSlot[1] && killerSlot[1].from === a.from && killerSlot[1].to === a.to) scoreA += 4000;
+      if (killerSlot[0] && killerSlot[0].from === b.from && killerSlot[0].to === b.to) scoreB += 5000;
+      if (killerSlot[1] && killerSlot[1].from === b.from && killerSlot[1].to === b.to) scoreB += 4000;
+    }
+    
+    // History heuristic
+    scoreA += getHistoryScore(a);
+    scoreB += getHistoryScore(b);
+    
     return scoreB - scoreA;
   });
 
@@ -339,7 +572,7 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       const newGame = cloneGame(game);
       newGame.move(move);
 
-      const result = minimax(newGame, depth - 1, alpha, beta, false, startTime, timeLimit);
+      const result = minimax(newGame, depth - 1, alpha, beta, false, startTime, timeLimit, ply + 1);
 
       if (result.timeout) return result;
 
@@ -349,7 +582,18 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       }
 
       alpha = Math.max(alpha, result.score);
-      if (beta <= alpha) break;
+      if (beta <= alpha) {
+        // Beta cutoff - update killer moves and history
+        if (!move.captured) {
+          // Shift killer moves
+          if (killerMoves[ply]) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+          }
+          updateHistory(move, depth);
+        }
+        break;
+      }
     }
 
     const cacheEntry = { score: maxEval, depth, move: bestMove };
@@ -365,7 +609,7 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       const newGame = cloneGame(game);
       newGame.move(move);
 
-      const result = minimax(newGame, depth - 1, alpha, beta, true, startTime, timeLimit);
+      const result = minimax(newGame, depth - 1, alpha, beta, true, startTime, timeLimit, ply + 1);
 
       if (result.timeout) return result;
 
@@ -375,7 +619,17 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       }
 
       beta = Math.min(beta, result.score);
-      if (beta <= alpha) break;
+      if (beta <= alpha) {
+        // Alpha cutoff - update killer moves and history
+        if (!move.captured) {
+          if (killerMoves[ply]) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+          }
+          updateHistory(move, depth);
+        }
+        break;
+      }
     }
 
     const cacheEntry = { score: minEval, depth, move: bestMove };
@@ -427,27 +681,57 @@ function findBestMove(game, difficulty = 2) {
     }
   }
 
-  // AI opponent depths - lower for easier opponents
-  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
-  const timeLimits = { 1: 500, 2: 1000, 3: 2000, 4: 4000 };
+  // AI opponent depths - SIGNIFICANTLY INCREASED for stronger play
+  // Level 1: Very easy (makes mistakes)
+  // Level 2: Easy (shallow search)
+  // Level 3: Medium (decent search)
+  // Level 4: Hard (deep search, strong player)
+  const depths = { 1: 2, 2: 4, 3: 5, 4: 6 };
+  const timeLimits = { 1: 500, 2: 2000, 3: 4000, 4: 8000 };
 
-  const depth = depths[difficulty] || 3;
-  const timeLimit = timeLimits[difficulty] || 2000;
+  const depth = depths[difficulty] || 4;
+  const timeLimit = timeLimits[difficulty] || 3000;
   const startTime = Date.now();
 
+  // Use iterative deepening for better time management
+  let bestMove = null;
+  let bestScore = -Infinity;
+  
   const maximizing = game.turn === 'r';
-  const result = minimax(game, depth, -Infinity, Infinity, maximizing, startTime, timeLimit);
+  
+  for (let d = 2; d <= depth; d++) {
+    const result = minimax(game, d, -Infinity, Infinity, maximizing, startTime, timeLimit);
+    
+    if (result.timeout) break;
+    
+    if (result.move) {
+      bestMove = result.move;
+      bestScore = result.score;
+    }
+    
+    // If we found checkmate, no need to search deeper
+    if (Math.abs(result.score) > 50000) break;
+  }
 
-  // Add some randomness only at lowest difficulties
-  if (difficulty <= 1 && Math.random() < 0.2) {
+  // Add some randomness only at lowest difficulty
+  if (difficulty <= 1 && Math.random() < 0.3) {
     const moves = game.moves({ verbose: true });
     if (moves.length > 1) {
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      // Pick a random move from top half
+      const sorted = [...moves].sort((a, b) => {
+        const scoreA = a.captured ? PIECE_VALUES[a.captured] : 0;
+        const scoreB = b.captured ? PIECE_VALUES[b.captured] : 0;
+        return scoreB - scoreA;
+      });
+      const topHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
+      const randomMove = topHalf[Math.floor(Math.random() * topHalf.length)];
       return randomMove;
     }
   }
 
-  let bestMove = result.move || game.moves({ verbose: true })[0];
+  if (!bestMove) {
+    bestMove = game.moves({ verbose: true })[0];
+  }
 
   // Anti-repetition: if the best move leads to a repeated position, try alternatives
   if (bestMove) {
