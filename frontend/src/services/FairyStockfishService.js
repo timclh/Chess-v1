@@ -130,7 +130,10 @@ class FairyStockfishService {
 
       // Set up message listener BEFORE waiting for ready
       if (this.engine.addMessageListener) {
-        this.engine.addMessageListener((line) => this._onMessage(line));
+        this.engine.addMessageListener((line) => {
+          console.log('[FairyStockfish] <<', line);
+          this._onMessage(line);
+        });
         console.log('[FairyStockfish] Message listener attached');
       } else {
         throw new Error('Engine missing addMessageListener API');
@@ -146,8 +149,14 @@ class FairyStockfishService {
         console.log('[FairyStockfish] engine.ready resolved');
       }
 
+      // Small delay to ensure threads are fully initialized
+      await new Promise(r => setTimeout(r, 500));
+
       // Initialize UCI and set xiangqi variant
-      await this._sendAndWait('uci', 'uciok');
+      console.log('[FairyStockfish] Sending "uci" command...');
+      console.log('[FairyStockfish] postMessage type:', typeof this.engine.postMessage);
+      console.log('[FairyStockfish] postCustomMessage type:', typeof this.engine.postCustomMessage);
+      await this._sendAndWait('uci', 'uciok', 15000);
       this._send('setoption name UCI_Variant value xiangqi');
       this._send('setoption name Threads value 1');
       // Use multiple PV lines for coach analysis
@@ -197,7 +206,10 @@ class FairyStockfishService {
    */
   _send(cmd) {
     if (this.engine && this.engine.postMessage) {
+      console.log('[FairyStockfish] >>', cmd);
       this.engine.postMessage(cmd);
+    } else {
+      console.error('[FairyStockfish] Cannot send — no postMessage:', cmd);
     }
   }
 
