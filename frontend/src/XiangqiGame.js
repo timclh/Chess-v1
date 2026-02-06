@@ -158,7 +158,7 @@ class XiangqiGame extends Component {
     gameMode: 'ai', // 'ai', 'coach', 'tutorial'
     playerColor: 'r', // 'r' for red, 'b' for black
     aiThinking: false,
-    aiDifficulty: 1,
+    aiDifficulty: 2,
     // Coach mode state
     analysis: null,
     suggestedMoves: [],
