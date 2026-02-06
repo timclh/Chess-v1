@@ -104,20 +104,29 @@ class FairyStockfishService {
       // Load the engine script dynamically
       const engineModule = await this._loadEngineScript();
 
-      // Create engine instance — DON'T pre-fetch WASM, let the engine
-      // handle it via locateFile so it loads WASM internally with threading.
+      // The Emscripten factory mutates the config object, attaching
+      // addMessageListener, postMessage, ready, etc. directly to it.
+      // We use the config object as our engine interface.
       console.log('[FairyStockfish] Creating engine instance...');
-      const instance = engineModule({
+      const engineConfig = {
         locateFile: (path) => {
           if (path.endsWith('.wasm')) return '/fairy-stockfish.wasm';
           if (path.endsWith('.worker.js')) return '/fairy-stockfish.worker.js';
           return '/' + path;
         },
-      });
+      };
 
-      // The factory returns an object with a .ready promise that resolves
-      // when WASM + pthreads are fully initialized.
-      this.engine = instance;
+      // Call the factory — it mutates engineConfig in-place
+      engineModule(engineConfig);
+
+      // engineConfig now has .addMessageListener, .postMessage, .ready, etc.
+      this.engine = engineConfig;
+
+      console.log('[FairyStockfish] Engine APIs available:', {
+        addMessageListener: typeof this.engine.addMessageListener,
+        postMessage: typeof this.engine.postMessage,
+        ready: typeof this.engine.ready,
+      });
 
       // Set up message listener BEFORE waiting for ready
       if (this.engine.addMessageListener) {
