@@ -536,23 +536,17 @@ function getTopMoves(game, n = 3, difficulty = 4, moveHistory = []) {
       }
     }
 
-    // Anti-repetition: penalize moves that reverse the last move (e.g., 車a8→a9 after 車a9→a8)
+    // Anti-repetition: light penalties to prefer new moves when alternatives are similar
+    // These are small enough to never override a genuinely better move
     if (lastPlayerMove && move.from === lastPlayerMove.to && move.to === lastPlayerMove.from) {
-      score -= 300; // Heavy penalty for direct reversal
+      score -= 20; // Small nudge away from direct reversal
     }
 
-    // Penalize moves we've already played multiple times (shuffling)
+    // Light penalty for moves we've already played (shuffling)
     const moveKey = `${move.from}-${move.to}`;
     const freq = moveFrequency[moveKey] || 0;
     if (freq > 0) {
-      score -= freq * 150; // Increasing penalty for repeated moves
-    }
-
-    // Also penalize moving the same piece back to a square it recently left
-    const reverseKey = `${move.to}-${move.from}`;
-    const reverseFreq = moveFrequency[reverseKey] || 0;
-    if (reverseFreq > 0) {
-      score -= reverseFreq * 100; // Penalty for undoing previous moves
+      score -= freq * 10; // Tiny increasing penalty
     }
 
     evaluatedMoves.push({
