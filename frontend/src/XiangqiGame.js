@@ -13,6 +13,7 @@ import {
   getStrategicAdvice,
   explainAIMove,
   clearCache,
+  resetPositionHistory,
 } from './XiangqiAI';
 
 // Tutorial lessons for Chinese Chess
@@ -489,6 +490,7 @@ class XiangqiGame extends Component {
     if (!this.game) return;
     this.game.reset();
     clearCache();
+    resetPositionHistory();
 
     // Clear saved state when starting new game
     this.clearSavedState();

@@ -394,8 +394,27 @@ function cloneGame(game) {
   return newGame;
 }
 
+// Position history for anti-repetition
+const positionHistory = new Map();
+
+function recordPosition(fen) {
+  const count = positionHistory.get(fen) || 0;
+  positionHistory.set(fen, count + 1);
+}
+
+function getRepetitionCount(fen) {
+  return positionHistory.get(fen) || 0;
+}
+
+function resetPositionHistory() {
+  positionHistory.clear();
+}
+
 // Find best move
 function findBestMove(game, difficulty = 2) {
+  // Record current position
+  recordPosition(game.toFEN());
+
   // Check opening book first for higher difficulties
   if (difficulty >= 2 && isOpeningPhase(game)) {
     const bookMove = getOpeningBookMove(game);
@@ -428,7 +447,48 @@ function findBestMove(game, difficulty = 2) {
     }
   }
 
-  return result.move || game.moves({ verbose: true })[0];
+  let bestMove = result.move || game.moves({ verbose: true })[0];
+
+  // Anti-repetition: if the best move leads to a repeated position, try alternatives
+  if (bestMove) {
+    const testGame = cloneGame(game);
+    testGame.move(bestMove);
+    const resultFen = testGame.toFEN();
+    const repCount = getRepetitionCount(resultFen);
+
+    if (repCount >= 1) {
+      // Best move repeats — find the best non-repeating alternative
+      const moves = game.moves({ verbose: true });
+      let bestAlt = null;
+      let bestAltScore = -Infinity;
+
+      for (const m of moves) {
+        const tg = cloneGame(game);
+        tg.move(m);
+        const mFen = tg.toFEN();
+        if (getRepetitionCount(mFen) === 0) {
+          // Evaluate this non-repeating move
+          const mx = tg.turn === 'r';
+          const mr = minimax(tg, Math.max(1, depth - 1), -Infinity, Infinity, mx, Date.now(), 500);
+          const score = game.turn === 'r' ? mr.score : -mr.score;
+          if (score > bestAltScore) {
+            bestAltScore = score;
+            bestAlt = m;
+          }
+        }
+      }
+
+      // Use alternative if it's not drastically worse (within 200 centipawns)
+      if (bestAlt) {
+        const bestScore = game.turn === 'r' ? result.score : -result.score;
+        if (bestAltScore > bestScore - 200) {
+          bestMove = bestAlt;
+        }
+      }
+    }
+  }
+
+  return bestMove;
 }
 
 // Get top N moves for coach mode - uses deep search for accurate evaluation
@@ -794,6 +854,7 @@ function explainAIMove(game, move) {
 // Clear cache
 function clearCache() {
   transpositionTable.clear();
+  resetPositionHistory();
 }
 
 export {
@@ -805,5 +866,6 @@ export {
   quickEvaluate,
   evaluate,
   clearCache,
+  resetPositionHistory,
   PIECE_VALUES,
 };
