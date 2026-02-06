@@ -615,9 +615,8 @@ class XiangqiGame extends Component {
       this.startTutorial(0);
       return;
     }
-    // Coach mode uses highest AI difficulty by default for best guidance
-    const newDifficulty = mode === 'coach' ? 4 : this.state.aiDifficulty;
-    this.setState({ gameMode: mode, aiDifficulty: newDifficulty }, () => {
+    // Keep the user's selected difficulty — coach suggestions always use max depth independently
+    this.setState({ gameMode: mode }, () => {
       this.resetGame();
     });
   };
