@@ -115,10 +115,10 @@ const XIANGQI_LESSONS = [
     titleEn: 'Check and Responding to Check',
     description: '当对方的将/帅被攻击时，称为"将军"。被将军时必须立即应对，否则就输了。',
     descriptionEn: 'When the General is under attack, it is called "check". You must respond to check immediately or lose the game.',
-    fen: '3k5/9/9/9/9/9/9/4r4/9/4K4',
+    fen: '5k3/9/9/9/9/9/9/3r5/9/3K5',
     objective: '红方被将军了！移动帅躲避',
     objectiveEn: 'Red is in check! Move the general to safety',
-    correctMoves: ['e0-d0', 'e0-f0'],
+    correctMoves: ['d0-e0'],
     hint: '帅必须移动到不被攻击的位置',
     hintEn: 'The general must move to a safe square',
   },
@@ -589,21 +589,39 @@ class XiangqiGame extends Component {
     const lesson = XIANGQI_LESSONS[lessonIndex];
     if (!lesson || !this.game) return;
 
-    this.game.loadFEN(lesson.fen);
-    this.game.turn = 'r'; // Red always starts in tutorials
+    try {
+      this.game.loadFEN(lesson.fen);
+      this.game.turn = 'r'; // Red always starts in tutorials
 
-    this.setState({
-      gameMode: 'tutorial',
-      currentLesson: lessonIndex,
-      fen: this.game.toFEN(),
-      history: [],
-      gameOver: false,
-      lessonComplete: false,
-      showTutorialHint: false,
-      validMoves: [],
-      lastMove: null,
-      gameStatus: lesson.objective,
-    });
+      this.setState({
+        gameMode: 'tutorial',
+        currentLesson: lessonIndex,
+        fen: this.game.toFEN(),
+        history: [],
+        gameOver: false,
+        lessonComplete: false,
+        showTutorialHint: false,
+        validMoves: [],
+        lastMove: null,
+        gameStatus: lesson.objective,
+      });
+    } catch (err) {
+      console.error('startTutorial error:', err, 'lesson:', lessonIndex);
+      // Recover by resetting to a known good state
+      this.game.reset();
+      this.setState({
+        gameMode: 'tutorial',
+        currentLesson: 0,
+        fen: this.game.toFEN(),
+        history: [],
+        gameOver: false,
+        lessonComplete: false,
+        showTutorialHint: false,
+        validMoves: [],
+        lastMove: null,
+        gameStatus: '加载出错，已重置 / Error, reset',
+      });
+    }
   };
 
   nextLesson = () => {
@@ -639,7 +657,12 @@ class XiangqiGame extends Component {
         gameStatus: '正确！/ Correct!',
       });
     } else {
-      this.game.undo();
+      const undone = this.game.undo();
+      if (!undone) {
+        // undo failed — reload the lesson FEN to recover
+        this.game.loadFEN(lesson.fen);
+        this.game.turn = 'r';
+      }
       this.setState({
         fen: this.game.toFEN(),
         gameStatus: '再试一次 / Try again',

@@ -51,6 +51,8 @@ class Xiangqi {
 
   loadFEN(fen) {
     this.board = this.createEmptyBoard();
+    this.history = [];
+    this.moveHistory = [];
     const rows = fen.split('/');
 
     for (let row = 0; row < 10 && row < rows.length; row++) {

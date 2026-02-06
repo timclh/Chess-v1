@@ -196,7 +196,28 @@ class AppContent extends Component {
 }
 
 class App extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App error boundary caught:', error, errorInfo);
+  }
+
   render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: 'center' }}>
+          <h2>Something went wrong</h2>
+          <p>{this.state.error?.message}</p>
+          <button onClick={() => { this.setState({ hasError: false }); window.location.hash = '/'; window.location.reload(); }}>
+            Reload
+          </button>
+        </div>
+      );
+    }
     return (
       <AuthProvider>
         <AppContent />
