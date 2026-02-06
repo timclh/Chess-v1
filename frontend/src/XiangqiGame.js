@@ -391,22 +391,58 @@ class XiangqiGame extends Component {
     if (!this.game) return;
 
     try {
-      // Run engine analysis and position eval in parallel
-      const [engineMoves, engineAnalysis] = await Promise.all([
-        getTopMovesEngine(this.game, 3),
-        analyzePositionEngine(this.game),
-      ]);
+      // Run engine analysis - get moves first (this also gives us the score)
+      // DON'T run in parallel - they share singleton state and would race!
+      const engineMoves = await getTopMovesEngine(this.game, 3);
 
       if (!this.game) return; // Component may have unmounted
 
-      // Use engine analysis if available, else keep built-in
-      if (engineAnalysis) {
-        console.log('[XiangqiGame] Engine analysis result:', engineAnalysis);
-        this.setState({ analysis: engineAnalysis });
-      }
-
       if (engineMoves && engineMoves.length > 0) {
-        this.setState({ suggestedMoves: engineMoves, coachAnalyzing: false });
+        // Extract analysis from the top move's score
+        // The engine score is from side-to-move's perspective
+        // Convert to Red's perspective for display
+        const topMove = engineMoves[0];
+        const turn = this.game.turn;
+        const rawScore = topMove.score || 0;
+        // If it's Red's turn, positive score = good for Red
+        // If it's Black's turn, positive score = good for Black, so negate for Red's perspective
+        const scoreFromRed = turn === 'r' ? rawScore : -rawScore;
+        const winProb = 1 / (1 + Math.exp(-scoreFromRed / 200));
+
+        // Build evaluation text based on score from Red's perspective
+        let evaluation = '';
+        const absScore = Math.abs(scoreFromRed);
+        if (absScore < 30) {
+          evaluation = '局面均势 / Equal position';
+        } else if (absScore < 100) {
+          evaluation = scoreFromRed > 0 ? '红方略优 / Red edge' : '黑方略优 / Black edge';
+        } else if (absScore < 300) {
+          evaluation = scoreFromRed > 0 ? '红方稍优 / Red slightly better' : '黑方稍优 / Black slightly better';
+        } else if (absScore < 700) {
+          evaluation = scoreFromRed > 0 ? '红方优势 / Red advantage' : '黑方优势 / Black advantage';
+        } else if (absScore < 2000) {
+          evaluation = scoreFromRed > 0 ? '红方大优 / Red winning' : '黑方大优 / Black winning';
+        } else {
+          evaluation = scoreFromRed > 0 ? '红方必胜 / Red decisive' : '黑方必胜 / Black decisive';
+        }
+
+        const engineAnalysis = {
+          score: scoreFromRed,
+          evaluation,
+          winProbability: {
+            red: winProb,
+            black: 1 - winProb,
+          },
+          depth: topMove.engineDepth || 20,
+          enginePowered: true,
+        };
+
+        console.log('[XiangqiGame] Engine analysis (turn:', turn, 'raw:', rawScore, 'fromRed:', scoreFromRed, '):', engineAnalysis);
+        this.setState({ 
+          analysis: engineAnalysis,
+          suggestedMoves: engineMoves, 
+          coachAnalyzing: false 
+        });
       } else {
         // Engine returned no moves — fall back to built-in
         const history = this.game.history_moves();
