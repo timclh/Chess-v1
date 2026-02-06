@@ -101,47 +101,40 @@ class FairyStockfishService {
     this.initializing = true;
 
     try {
-      // Fetch the WASM binary
-      const wasmResponse = await fetch('/fairy-stockfish.wasm');
-      if (!wasmResponse.ok) {
-        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
-      }
-      const wasmBinary = await wasmResponse.arrayBuffer();
-
       // Load the engine script dynamically
       const engineModule = await this._loadEngineScript();
 
-      // Create engine instance with WASM binary
-      this.engine = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Engine init timeout')), 30000);
-
-        const instance = engineModule({
-          wasmBinary,
-          locateFile: (path) => {
-            if (path.endsWith('.wasm')) return '/fairy-stockfish.wasm';
-            if (path.endsWith('.worker.js')) return '/fairy-stockfish.worker.js';
-            return path;
-          },
-        });
-
-        // The engine factory returns a promise-like object
-        if (instance && typeof instance.then === 'function') {
-          instance.then(eng => {
-            clearTimeout(timeout);
-            resolve(eng);
-          }).catch(err => {
-            clearTimeout(timeout);
-            reject(err);
-          });
-        } else {
-          clearTimeout(timeout);
-          resolve(instance);
-        }
+      // Create engine instance — DON'T pre-fetch WASM, let the engine
+      // handle it via locateFile so it loads WASM internally with threading.
+      console.log('[FairyStockfish] Creating engine instance...');
+      const instance = engineModule({
+        locateFile: (path) => {
+          if (path.endsWith('.wasm')) return '/fairy-stockfish.wasm';
+          if (path.endsWith('.worker.js')) return '/fairy-stockfish.worker.js';
+          return '/' + path;
+        },
       });
 
-      // Set up message listener
+      // The factory returns an object with a .ready promise that resolves
+      // when WASM + pthreads are fully initialized.
+      this.engine = instance;
+
+      // Set up message listener BEFORE waiting for ready
       if (this.engine.addMessageListener) {
         this.engine.addMessageListener((line) => this._onMessage(line));
+        console.log('[FairyStockfish] Message listener attached');
+      } else {
+        throw new Error('Engine missing addMessageListener API');
+      }
+
+      // Wait for the engine's internal ready promise (WASM + threads loaded)
+      if (this.engine.ready) {
+        console.log('[FairyStockfish] Waiting for engine.ready...');
+        await Promise.race([
+          this.engine.ready,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('engine.ready timeout')), 30000))
+        ]);
+        console.log('[FairyStockfish] engine.ready resolved');
       }
 
       // Initialize UCI and set xiangqi variant
