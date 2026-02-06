@@ -4017,6 +4017,34 @@ body {
   50% { opacity: 1; }
 }
 
+/* Engine badge in panel title */
+.engine-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #1a1a2e;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+}
+
+.engine-badge.loading {
+  background: #444;
+  color: #aaa;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Engine depth display */
+.engine-depth {
+  font-size: 11px;
+  color: #888;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
 /* Win probability bar for Xiangqi */
 .prob-red {
   background: linear-gradient(90deg, #c41e3a, #ff6b6b);

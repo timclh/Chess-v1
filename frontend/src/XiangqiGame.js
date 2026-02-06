@@ -15,6 +15,14 @@ import {
   clearCache,
   resetPositionHistory,
 } from './XiangqiAI';
+import {
+  initCoachEngine,
+  isEngineReady,
+  getTopMovesEngine,
+  analyzePositionEngine,
+  stopAnalysis,
+  destroyEngine,
+} from './services/XiangqiCoachService';
 
 // Tutorial lessons for Chinese Chess
 const XIANGQI_LESSONS = [
@@ -169,6 +177,9 @@ class XiangqiGame extends Component {
     coachAnalyzing: false, // Coach is computing suggestions
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
+    // Fairy-Stockfish engine state
+    engineReady: false,
+    engineLoading: false,
     // Tutorial state
     currentLesson: 0,
     lessonComplete: false,
@@ -184,6 +195,9 @@ class XiangqiGame extends Component {
 
   componentDidMount() {
     this.game = new Xiangqi();
+
+    // Start loading Fairy-Stockfish engine in background
+    this._initEngine();
 
     // Try to load saved game state
     const savedState = this.loadGameState();
@@ -218,8 +232,27 @@ class XiangqiGame extends Component {
   componentWillUnmount() {
     // Save state before unmount
     this.saveGameState();
+    stopAnalysis();
+    destroyEngine();
     this.game = null;
   }
+
+  // Initialize Fairy-Stockfish WASM engine (non-blocking)
+  _initEngine = async () => {
+    this.setState({ engineLoading: true });
+    try {
+      const ok = await initCoachEngine();
+      this.setState({ engineReady: ok, engineLoading: false });
+      if (ok) {
+        console.log('[XiangqiGame] Fairy-Stockfish engine ready ✓');
+      } else {
+        console.warn('[XiangqiGame] Engine init failed, using built-in AI');
+      }
+    } catch (err) {
+      console.warn('[XiangqiGame] Engine init error, using built-in AI:', err);
+      this.setState({ engineReady: false, engineLoading: false });
+    }
+  };
 
   // Save game state to localStorage
   saveGameState = () => {
@@ -300,18 +333,59 @@ class XiangqiGame extends Component {
   updateAnalysis = () => {
     if (!this.game || this.state.gameMode !== 'coach') return;
 
-    // Update position evaluation immediately (fast)
+    // Show fast built-in analysis immediately
     const analysis = analyzePosition(this.game);
     const strategicAdvice = getStrategicAdvice(this.game);
     this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    // Run deep move search in next tick to avoid blocking UI
-    setTimeout(() => {
+    // Use Fairy-Stockfish engine if available, else fall back to built-in AI
+    if (this.state.engineReady && isEngineReady()) {
+      this._updateAnalysisWithEngine('coach');
+    } else {
+      // Fallback: built-in AI (synchronous, in next tick)
+      setTimeout(() => {
+        if (!this.game) return;
+        const history = this.game.history_moves();
+        const suggestedMoves = getTopMoves(this.game, 3, history);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }, 0);
+    }
+  };
+
+  // Async engine-powered analysis (non-blocking via WASM worker)
+  _updateAnalysisWithEngine = async (mode) => {
+    if (!this.game) return;
+
+    try {
+      // Run engine analysis and position eval in parallel
+      const [engineMoves, engineAnalysis] = await Promise.all([
+        getTopMovesEngine(this.game, 3),
+        analyzePositionEngine(this.game),
+      ]);
+
+      if (!this.game) return; // Component may have unmounted
+
+      // Use engine analysis if available, else keep built-in
+      if (engineAnalysis) {
+        this.setState({ analysis: engineAnalysis });
+      }
+
+      if (engineMoves && engineMoves.length > 0) {
+        this.setState({ suggestedMoves: engineMoves, coachAnalyzing: false });
+      } else {
+        // Engine returned no moves — fall back to built-in
+        const history = this.game.history_moves();
+        const suggestedMoves = getTopMoves(this.game, 3, history);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }
+    } catch (err) {
+      console.error('[XiangqiGame] Engine analysis error:', err);
+      // Fallback to built-in AI
       if (!this.game) return;
       const history = this.game.history_moves();
       const suggestedMoves = getTopMoves(this.game, 3, history);
       this.setState({ suggestedMoves, coachAnalyzing: false });
-    }, 0);
+    }
   };
 
   // Check for threats after AI moves (for coach mode)
@@ -742,11 +816,16 @@ class XiangqiGame extends Component {
     const strategicAdvice = getStrategicAdvice(this.game);
     this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    setTimeout(() => {
-      if (!this.game) return;
-      const suggestedMoves = getTopMoves(this.game, 3);
-      this.setState({ suggestedMoves, coachAnalyzing: false });
-    }, 0);
+    // Use Fairy-Stockfish engine if available
+    if (this.state.engineReady && isEngineReady()) {
+      this._updateAnalysisWithEngine('ai');
+    } else {
+      setTimeout(() => {
+        if (!this.game) return;
+        const suggestedMoves = getTopMoves(this.game, 3);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }, 0);
+    }
   };
 
   render() {
@@ -920,12 +999,25 @@ class XiangqiGame extends Component {
         {/* Right Panel - Analysis (Coach Mode or AI with hints) */}
         {(gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI)) && (
           <div className="analysis-panel-right xiangqi-analysis">
-            <div className="panel-title">{gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}</div>
+            <div className="panel-title">
+              {gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}
+              {this.state.engineReady && (
+                <span className="engine-badge" title="Fairy-Stockfish WASM engine active">⚡ GM</span>
+              )}
+              {this.state.engineLoading && (
+                <span className="engine-badge loading" title="Loading engine...">⏳</span>
+              )}
+            </div>
 
             {/* Win Probability */}
             {analysis && (
               <div className="analysis-section">
-                <div className="section-label">胜率 / Win Probability</div>
+                <div className="section-label">
+                  胜率 / Win Probability
+                  {analysis.enginePowered && analysis.depth && (
+                    <span className="engine-depth"> (depth {analysis.depth})</span>
+                  )}
+                </div>
                 <div className="win-probability">
                   <div className="prob-bar">
                     <div
@@ -977,7 +1069,11 @@ class XiangqiGame extends Component {
             {this.state.coachAnalyzing && !aiThinking && (
               <div className="analysis-section">
                 <div className="section-label">推荐走法 / Suggested Moves</div>
-                <div className="coach-analyzing">🔍 教练分析中... / Coach analyzing...</div>
+                <div className="coach-analyzing">
+                  {this.state.engineReady
+                    ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
+                    : '🔍 教练分析中... / Coach analyzing...'}
+                </div>
               </div>
             )}
             {suggestedMoves.length > 0 && !aiThinking && !this.state.coachAnalyzing && this.game && this.game.turn === playerColor && (
