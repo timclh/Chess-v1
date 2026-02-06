@@ -101,7 +101,7 @@ class FairyStockfishService {
     this.initializing = true;
 
     try {
-      // Download WASM binary first (like the official demo does)
+      // Download WASM binary
       console.log('[FairyStockfish] Downloading WASM binary...');
       const wasmResponse = await fetch('/fairy-stockfish.wasm');
       if (!wasmResponse.ok) {
@@ -110,16 +110,37 @@ class FairyStockfishService {
       const wasmBinary = await wasmResponse.arrayBuffer();
       console.log('[FairyStockfish] WASM downloaded:', wasmBinary.byteLength, 'bytes');
 
+      // Download worker script and convert to Blob URL
+      // This bypasses COEP issues since blob URLs don't need cross-origin headers
+      console.log('[FairyStockfish] Downloading worker script...');
+      const workerResponse = await fetch('/stockfish.worker.js');
+      if (!workerResponse.ok) {
+        throw new Error(`Failed to fetch worker: ${workerResponse.status}`);
+      }
+      const workerCode = await workerResponse.text();
+      const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+      const workerBlobUrl = URL.createObjectURL(workerBlob);
+      console.log('[FairyStockfish] Worker blob URL created');
+
       // Load the engine script dynamically
       const Stockfish = await this._loadEngineScript();
 
       // The factory returns a Promise that resolves to the engine instance
-      // Match the official demo: just pass wasmBinary, don't add extra options
-      // that might interfere with the engine's internal path resolution
       console.log('[FairyStockfish] Creating engine instance...');
       try {
         this.engine = await Promise.race([
-          Stockfish({ wasmBinary }),
+          Stockfish({
+            wasmBinary,
+            // Use blob URL for worker to avoid COEP issues
+            locateFile: (path) => {
+              if (path.endsWith('.worker.js')) {
+                console.log('[FairyStockfish] locateFile worker ->', workerBlobUrl);
+                return workerBlobUrl;
+              }
+              console.log('[FairyStockfish] locateFile:', path);
+              return '/' + path;
+            },
+          }),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Stockfish factory timeout (30s)')), 30000)
           )
