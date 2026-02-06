@@ -240,6 +240,19 @@ class XiangqiGame extends Component {
   // Initialize Fairy-Stockfish WASM engine (non-blocking)
   _initEngine = async () => {
     this.setState({ engineLoading: true });
+
+    // SharedArrayBuffer requires crossOriginIsolated.
+    // If COI service worker just registered, wait for it to activate.
+    if (!window.crossOriginIsolated) {
+      console.log('[XiangqiGame] Waiting for cross-origin isolation...');
+      const isolated = await this._waitForCrossOriginIsolation(5000);
+      if (!isolated) {
+        console.warn('[XiangqiGame] Not cross-origin isolated — SharedArrayBuffer unavailable. Using built-in AI.');
+        this.setState({ engineReady: false, engineLoading: false });
+        return;
+      }
+    }
+
     try {
       const ok = await initCoachEngine();
       this.setState({ engineReady: ok, engineLoading: false });
@@ -252,6 +265,27 @@ class XiangqiGame extends Component {
       console.warn('[XiangqiGame] Engine init error, using built-in AI:', err);
       this.setState({ engineReady: false, engineLoading: false });
     }
+  };
+
+  // Wait for crossOriginIsolated to become true (COI SW activation)
+  _waitForCrossOriginIsolation = (timeoutMs) => {
+    return new Promise((resolve) => {
+      if (window.crossOriginIsolated) {
+        resolve(true);
+        return;
+      }
+      const start = Date.now();
+      const check = () => {
+        if (window.crossOriginIsolated) {
+          resolve(true);
+        } else if (Date.now() - start > timeoutMs) {
+          resolve(false);
+        } else {
+          setTimeout(check, 200);
+        }
+      };
+      check();
+    });
   };
 
   // Save game state to localStorage
