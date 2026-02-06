@@ -101,31 +101,27 @@ class FairyStockfishService {
     this.initializing = true;
 
     try {
+      // Download WASM binary first (like the official demo does)
+      console.log('[FairyStockfish] Downloading WASM binary...');
+      const wasmResponse = await fetch('/fairy-stockfish.wasm');
+      if (!wasmResponse.ok) {
+        throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
+      }
+      const wasmBinary = await wasmResponse.arrayBuffer();
+      console.log('[FairyStockfish] WASM downloaded:', wasmBinary.byteLength, 'bytes');
+
       // Load the engine script dynamically
-      const engineModule = await this._loadEngineScript();
+      const Stockfish = await this._loadEngineScript();
 
-      // The Emscripten factory mutates the config object, attaching
-      // addMessageListener, postMessage, ready, etc. directly to it.
-      // We use the config object as our engine interface.
+      // The factory returns a Promise that resolves to the engine instance
+      // Pass wasmBinary to avoid the engine fetching it again
       console.log('[FairyStockfish] Creating engine instance...');
-      const engineConfig = {
-        locateFile: (path) => {
-          if (path.endsWith('.wasm')) return '/fairy-stockfish.wasm';
-          if (path.endsWith('.worker.js')) return '/fairy-stockfish.worker.js';
-          return '/' + path;
-        },
-      };
-
-      // Call the factory — it mutates engineConfig in-place
-      engineModule(engineConfig);
-
-      // engineConfig now has .addMessageListener, .postMessage, .ready, etc.
-      this.engine = engineConfig;
+      this.engine = await Stockfish({ wasmBinary });
 
       console.log('[FairyStockfish] Engine APIs available:', {
         addMessageListener: typeof this.engine.addMessageListener,
         postMessage: typeof this.engine.postMessage,
-        ready: typeof this.engine.ready,
+        terminate: typeof this.engine.terminate,
       });
 
       // Set up message listener BEFORE waiting for ready
