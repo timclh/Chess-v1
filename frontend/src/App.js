@@ -8,6 +8,8 @@ import Login from "./Login";
 import Multiplayer from "./Multiplayer";
 import Puzzles from "./Puzzles";
 import OpeningExplorer from "./OpeningExplorer";
+import AICoach from "./AICoach";
+import VideoLearning from "./VideoLearning";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
@@ -20,6 +22,8 @@ const ROUTES = {
   '/openings': 'openings',
   '/multiplayer': 'multiplayer',
   '/leaderboard': 'leaderboard',
+  '/coach': 'coach',
+  '/learn': 'learn',
 };
 
 // Get page from URL hash
@@ -113,6 +117,18 @@ class AppContent extends Component {
               📖 Openings
             </button>
             <button
+              className={`nav-btn ${currentPage === "learn" ? "active" : ""}`}
+              onClick={() => this.navigateTo("learn")}
+            >
+              📺 Learn
+            </button>
+            <button
+              className={`nav-btn ${currentPage === "coach" ? "active" : ""}`}
+              onClick={() => this.navigateTo("coach")}
+            >
+              🤖 Coach
+            </button>
+            <button
               className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
               onClick={() => this.navigateTo("multiplayer")}
             >
@@ -181,6 +197,18 @@ class AppContent extends Component {
         {currentPage === "leaderboard" && (
           <div className="App-content leaderboard-page">
             <Leaderboard onBack={() => this.navigateTo("game")} />
+          </div>
+        )}
+
+        {currentPage === "coach" && (
+          <div className="App-content coach-page">
+            <AICoach />
+          </div>
+        )}
+
+        {currentPage === "learn" && (
+          <div className="App-content learn-page">
+            <VideoLearning />
           </div>
         )}
 
