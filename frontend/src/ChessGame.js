@@ -421,7 +421,6 @@ class ChessGame extends Component {
           }
 
           this.recordEvaluation();
-          this.updateGameStatus();
 
           const newState = {
             fen: this.game.fen(),
@@ -430,15 +429,16 @@ class ChessGame extends Component {
             lastAIExplanation: "",
           };
 
-          if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
-            setTimeout(() => {
-              this.makeAIMove();
-            }, 300);
-          }
-
-          if (this.state.gameMode === "coach") {
-            setTimeout(() => this.updateAnalysis(), 100);
-          }
+          // Defer updateGameStatus and AI move to after setState completes
+          setTimeout(() => {
+            this.updateGameStatus();
+            if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
+              setTimeout(() => this.makeAIMove(), 300);
+            }
+            if (this.state.gameMode === "coach") {
+              setTimeout(() => this.updateAnalysis(), 100);
+            }
+          }, 0);
 
           return newState;
         }
