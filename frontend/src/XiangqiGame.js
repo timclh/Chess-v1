@@ -615,8 +615,9 @@ class XiangqiGame extends Component {
       this.startTutorial(0);
       return;
     }
-    // Keep the user's selected difficulty — coach suggestions always use max depth independently
-    this.setState({ gameMode: mode }, () => {
+    // Coach mode defaults to level 2 (初级) for a good learning experience
+    const newDifficulty = mode === 'coach' ? 2 : this.state.aiDifficulty;
+    this.setState({ gameMode: mode, aiDifficulty: newDifficulty }, () => {
       this.resetGame();
     });
   };
