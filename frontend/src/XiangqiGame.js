@@ -12,7 +12,6 @@ import {
   analyzePosition,
   getStrategicAdvice,
   explainAIMove,
-  quickEvaluate,
   clearCache,
 } from './XiangqiAI';
 
@@ -166,7 +165,6 @@ class XiangqiGame extends Component {
     strategicAdvice: [],
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
-    playerMoveQuality: null, // Feedback on player's last move
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
     // Tutorial state
@@ -307,51 +305,6 @@ class XiangqiGame extends Component {
     this.setState({ analysis, suggestedMoves, strategicAdvice });
   };
 
-  // Evaluate the quality of the player's move (for coach mode)
-  evaluatePlayerMove = (moveObj) => {
-    if (!this.game || this.state.gameMode !== 'coach') return;
-
-    // Undo the player's move to evaluate all alternatives quickly
-    this.game.undo();
-
-    // Evaluate all legal moves using fast quickEvaluate (no deep search)
-    const allMoves = this.game.moves({ verbose: true });
-    let bestScore = -Infinity;
-    let bestAltMove = null;
-    const isRed = this.game.turn === 'r';
-
-    for (const m of allMoves) {
-      this.game.move(m);
-      const raw = quickEvaluate(this.game);
-      const score = isRed ? raw : -raw; // normalize so higher = better for current player
-      if (score > bestScore) {
-        bestScore = score;
-        bestAltMove = m;
-      }
-      this.game.undo();
-    }
-
-    // Evaluate the player's actual move
-    this.game.move(moveObj);
-    const playerRaw = quickEvaluate(this.game);
-    const playerScore = isRed ? playerRaw : -playerRaw;
-    // Redo is already done (we just called game.move)
-
-    const scoreDiff = bestScore - playerScore;
-    let quality;
-    if (scoreDiff < 30) {
-      quality = { icon: '✅', cn: '好棋！这是最佳或接近最佳的走法', en: 'Excellent! This is the best or near-best move', level: 'excellent' };
-    } else if (scoreDiff < 100) {
-      quality = { icon: '👍', cn: '不错的走法', en: 'Good move', level: 'good' };
-    } else if (scoreDiff < 250) {
-      quality = { icon: '🤔', cn: '还可以，但有更好的选择', en: 'Okay, but there was a better option', level: 'mediocre' };
-    } else {
-      const bestSan = bestAltMove ? bestAltMove.san || `${bestAltMove.from}-${bestAltMove.to}` : '?';
-      quality = { icon: '⚠️', cn: `失误！更好的走法是 ${bestSan}`, en: `Mistake! Better move was ${bestSan}`, level: 'mistake' };
-    }
-    this.setState({ playerMoveQuality: quality });
-  };
-
   // Check for threats after AI moves (for coach mode)
   checkThreats = () => {
     if (!this.game || this.state.gameMode !== 'coach') return;
@@ -388,7 +341,7 @@ class XiangqiGame extends Component {
     if (!this.game || this.state.gameOver) return;
     if (this.game.turn === this.state.playerColor) return;
 
-    this.setState({ aiThinking: true, playerMoveQuality: null });
+    this.setState({ aiThinking: true });
 
     setTimeout(() => {
       const bestMove = findBestMove(this.game, this.state.aiDifficulty);
@@ -517,11 +470,6 @@ class XiangqiGame extends Component {
     });
     this.updateGameStatus();
 
-    if (this.state.gameMode === 'coach') {
-      // Evaluate player's move quality (fast, uses quickEvaluate)
-      this.evaluatePlayerMove(moveObj);
-    }
-
     if (this.state.gameMode === 'ai' || this.state.gameMode === 'coach') {
       setTimeout(() => this.makeAIMove(), 300);
     }
@@ -552,7 +500,6 @@ class XiangqiGame extends Component {
       lastAIExplanation: '',
       analysis: null,
       suggestedMoves: [],
-      playerMoveQuality: null,
       threatWarning: null,
     });
     this.updateGameStatus();
@@ -718,7 +665,7 @@ class XiangqiGame extends Component {
       fen, gameStatus, gameOver, history,
       gameMode, playerColor, aiThinking, aiDifficulty,
       analysis, suggestedMoves, strategicAdvice, showHints, lastAIExplanation,
-      playerMoveQuality, threatWarning,
+      threatWarning,
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       validMoves, lastMove,
     } = this.state;
@@ -924,20 +871,6 @@ class XiangqiGame extends Component {
                     <p className="threat-en">{t.en}</p>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* Player Move Feedback */}
-            {playerMoveQuality && !aiThinking && (
-              <div className={`analysis-section move-quality move-quality-${playerMoveQuality.level}`}>
-                <div className="section-label">走法评价 / Move Rating</div>
-                <div className="quality-feedback">
-                  <span className="quality-icon">{playerMoveQuality.icon}</span>
-                  <div>
-                    <p>{playerMoveQuality.cn}</p>
-                    <p className="quality-en">{playerMoveQuality.en}</p>
-                  </div>
-                </div>
               </div>
             )}
 

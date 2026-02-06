@@ -465,10 +465,10 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     }
   }
 
-  // Use deeper search for better suggestions
-  const depths = { 1: 2, 2: 4, 3: 5, 4: 7 };
-  const searchDepth = depths[difficulty] || 5;
-  const timeLimit = 15000; // 15 seconds for suggestions
+  // Use search for suggestions - balanced depth/time for responsiveness
+  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
+  const searchDepth = depths[difficulty] || 3;
+  const timeLimit = 3000; // 3 seconds for suggestions
   const startTime = Date.now();
   const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
 
@@ -510,7 +510,8 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     const maximizing = newGame.turn === 'r';
     const result = minimax(newGame, searchDepth - 1, -Infinity, Infinity, maximizing, moveStartTime, timePerMove);
 
-    // Adjust score based on whose turn it was
+    // result.score is always from Red's perspective (positive = good for Red)
+    // Normalize so higher = better for the current player
     let score = game.turn === 'r' ? result.score : -result.score;
 
     // Opening-specific adjustments
