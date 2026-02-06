@@ -521,10 +521,23 @@ class XiangqiGame extends Component {
   undoMove = () => {
     if (!this.game || this.state.history.length === 0 || this.state.aiThinking) return;
 
-    // Undo two moves in AI mode (player's and AI's)
-    if ((this.state.gameMode === 'ai' || this.state.gameMode === 'coach') && this.state.history.length >= 2) {
-      this.game.undo();
-      this.game.undo();
+    const isAIMode = this.state.gameMode === 'ai' || this.state.gameMode === 'coach';
+
+    // In AI mode, undo two moves (player's and AI's) so it's the player's turn again.
+    // But if the game just ended on the player's winning move (AI never replied),
+    // only undo one move — the player's winning move.
+    if (isAIMode && this.state.history.length >= 2) {
+      // Check if the last move was by the player (game ended before AI could reply)
+      const lastMoveColor = this.game.moveHistory[this.game.moveHistory.length - 1]?.color;
+      const isPlayerLastMove = lastMoveColor === this.state.playerColor;
+
+      if (this.state.gameOver && isPlayerLastMove) {
+        // Game ended on player's move (e.g. checkmate) — only undo one move
+        this.game.undo();
+      } else {
+        this.game.undo();
+        this.game.undo();
+      }
     } else {
       this.game.undo();
     }
@@ -538,6 +551,11 @@ class XiangqiGame extends Component {
     }, () => {
       // Save game state after undo
       this.saveGameState();
+
+      // After undo, if it's the AI's turn, trigger AI move
+      if (isAIMode && this.game.turn !== this.state.playerColor) {
+        setTimeout(() => this.makeAIMove(), 300);
+      }
     });
     this.updateGameStatus();
 
