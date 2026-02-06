@@ -114,21 +114,20 @@ class FairyStockfishService {
       const Stockfish = await this._loadEngineScript();
 
       // The factory returns a Promise that resolves to the engine instance
-      // Pass wasmBinary and locateFile to ensure worker/wasm files are found
+      // Match the official demo: just pass wasmBinary, don't add extra options
+      // that might interfere with the engine's internal path resolution
       console.log('[FairyStockfish] Creating engine instance...');
-      const scriptUrl = new URL('/fairy-stockfish.js', window.location.origin).href;
-      console.log('[FairyStockfish] Script URL for workers:', scriptUrl);
-      this.engine = await Stockfish({
-        wasmBinary,
-        // Tell the worker where to load the main script from
-        mainScriptUrlOrBlob: scriptUrl,
-        // Tell the engine where to find related files
-        locateFile: (path) => {
-          // The engine looks for stockfish.worker.js and stockfish.wasm
-          console.log('[FairyStockfish] locateFile:', path);
-          return '/' + path;
-        },
-      });
+      try {
+        this.engine = await Promise.race([
+          Stockfish({ wasmBinary }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Stockfish factory timeout (30s)')), 30000)
+          )
+        ]);
+      } catch (factoryError) {
+        console.error('[FairyStockfish] Factory failed:', factoryError);
+        throw factoryError;
+      }
 
       console.log('[FairyStockfish] Engine APIs available:', {
         addMessageListener: typeof this.engine.addMessageListener,

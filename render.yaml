@@ -40,6 +40,16 @@ services:
       - path: /*
         name: Cross-Origin-Embedder-Policy
         value: credentialless
+      # Explicit headers for worker files (in case wildcard doesn't apply)
+      - path: /*.worker.js
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
+      - path: /*.worker.js
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
+      - path: /*.wasm
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
     routes:
       - type: rewrite
         source: /*
