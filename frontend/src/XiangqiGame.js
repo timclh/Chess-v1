@@ -376,11 +376,12 @@ class XiangqiGame extends Component {
         });
         this.updateGameStatus();
 
-        // Update analysis based on mode
+        // Update analysis based on mode (use setTimeout to avoid blocking UI)
         if (this.state.gameMode === 'coach') {
-          this.updateAnalysis();
-          // Check for threats to warn the player
-          setTimeout(() => this.checkThreats(), 50);
+          setTimeout(() => {
+            this.updateAnalysis();
+            this.checkThreats();
+          }, 50);
         } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
           this.updateAnalysisForAI();
         }

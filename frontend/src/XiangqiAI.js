@@ -465,40 +465,28 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     }
   }
 
-  // Use search for suggestions - deeper search catches tactics like piece captures
+  // Use search for suggestions - focus time on most promising moves
   const depths = { 1: 3, 2: 4, 3: 5, 4: 6 };
   const searchDepth = depths[difficulty] || 4;
-  const timeLimit = 5000; // 5 seconds for suggestions
+  const timeLimit = 8000; // 8 seconds for suggestions
   const startTime = Date.now();
-  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
 
-  // Pre-sort moves to evaluate promising ones first
-  const sortedMoves = [...moves].sort((a, b) => {
-    let scoreA = 0, scoreB = 0;
-
-    // Prioritize non-capture developing moves in opening
-    if (inOpening) {
-      // Cannon to center is excellent
-      if (a.piece === 'c' && a.to[0] === 'e') scoreA += 50;
-      if (b.piece === 'c' && b.to[0] === 'e') scoreB += 50;
-
-      // Horse development is good
-      if (a.piece === 'h' && !a.captured) scoreA += 30;
-      if (b.piece === 'h' && !b.captured) scoreB += 30;
-
-      // Discourage early captures (often bad trades)
-      if (a.captured) scoreA -= 20;
-      if (b.captured) scoreB -= 20;
-    } else {
-      // In middlegame/endgame, captures are important
-      if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-      if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
-    }
-
-    return scoreB - scoreA;
+  // Pre-sort moves by quick evaluation to find promising candidates
+  const quickScored = moves.map(move => {
+    const newGame = cloneGame(game);
+    newGame.move(move);
+    const raw = evaluate(newGame);
+    const score = game.turn === 'r' ? raw : -raw;
+    return { move, score };
   });
+  quickScored.sort((a, b) => b.score - a.score);
 
-  for (const move of sortedMoves) {
+  // Only deeply evaluate top candidates (saves time for deeper search)
+  const topCandidates = quickScored.slice(0, 8);
+  const timePerMove = Math.floor((timeLimit - (Date.now() - startTime)) / topCandidates.length);
+
+  for (const candidate of topCandidates) {
+    const move = candidate.move;
     // Time check
     if (Date.now() - startTime > timeLimit) break;
 
