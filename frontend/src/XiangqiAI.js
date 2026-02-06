@@ -775,8 +775,8 @@ function findBestMove(game, difficulty = 2) {
   return bestMove;
 }
 
-// Get top N moves for coach mode - uses deep search for accurate evaluation
-function getTopMoves(game, n = 3, difficulty = 4, moveHistory = []) {
+// Get top N moves for coach mode - always uses maximum strength search
+function getTopMoves(game, n = 3, moveHistory = []) {
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
   const inOpening = isOpeningPhase(game);
@@ -823,10 +823,10 @@ function getTopMoves(game, n = 3, difficulty = 4, moveHistory = []) {
     }
   }
 
-  // Use search for suggestions - focus time on most promising moves
-  const depths = { 1: 3, 2: 4, 3: 5, 4: 6 };
-  const searchDepth = depths[difficulty] || 4;
-  const timeLimit = 8000; // 8 seconds for suggestions
+  // Coach always uses maximum strength search for best-quality suggestions
+  const COACH_DEPTH = 8;
+  const searchDepth = COACH_DEPTH;
+  const timeLimit = 15000; // 15 seconds for deep coach analysis
   const startTime = Date.now();
 
   // Pre-sort moves by quick evaluation to find promising candidates
@@ -839,8 +839,8 @@ function getTopMoves(game, n = 3, difficulty = 4, moveHistory = []) {
   });
   quickScored.sort((a, b) => b.score - a.score);
 
-  // Only deeply evaluate top candidates (saves time for deeper search)
-  const topCandidates = quickScored.slice(0, 8);
+  // Evaluate more candidates for coach accuracy
+  const topCandidates = quickScored.slice(0, 12);
   const timePerMove = Math.floor((timeLimit - (Date.now() - startTime)) / topCandidates.length);
 
   for (const candidate of topCandidates) {

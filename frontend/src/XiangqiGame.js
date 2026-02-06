@@ -303,7 +303,7 @@ class XiangqiGame extends Component {
     // Always use highest depth for coach suggestions so advice is top quality
     // Pass move history so suggestions avoid repeating moves
     const history = this.game.history_moves();
-    const suggestedMoves = getTopMoves(this.game, 3, 4, history);
+    const suggestedMoves = getTopMoves(this.game, 3, history);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
@@ -728,7 +728,7 @@ class XiangqiGame extends Component {
     if (!this.game) return;
 
     const analysis = analyzePosition(this.game);
-    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
+    const suggestedMoves = getTopMoves(this.game, 3);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
