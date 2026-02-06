@@ -629,7 +629,14 @@ class XiangqiGame extends Component {
   };
 
   setDifficulty = (level) => {
-    this.setState({ aiDifficulty: level });
+    this.setState({ aiDifficulty: level }, () => {
+      // Save immediately so difficulty persists
+      this.saveGameState();
+      // Re-run coach analysis with new difficulty
+      if (this.state.gameMode === 'coach') {
+        this.updateAnalysis();
+      }
+    });
   };
 
   toggleHints = () => {
