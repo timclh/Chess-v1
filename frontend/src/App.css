@@ -313,6 +313,66 @@ body {
   border: 1px solid #fcd34d;
 }
 
+/* Coach mode - Move quality feedback */
+.move-quality {
+  border-radius: 10px;
+  padding: 10px;
+}
+.quality-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.quality-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.quality-feedback p {
+  margin: 0 0 2px 0;
+  font-size: 13px;
+}
+.quality-en {
+  color: #94a3b8;
+  font-size: 12px !important;
+}
+.move-quality-excellent {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  border: 1px solid #6ee7b7;
+}
+.move-quality-excellent .quality-feedback p { color: #065f46; }
+.move-quality-good {
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  border: 1px solid #7dd3fc;
+}
+.move-quality-good .quality-feedback p { color: #0c4a6e; }
+.move-quality-mediocre {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #fcd34d;
+}
+.move-quality-mediocre .quality-feedback p { color: #78350f; }
+.move-quality-mistake {
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border: 1px solid #f87171;
+}
+.move-quality-mistake .quality-feedback p { color: #991b1b; }
+
+/* Coach mode - Threat warnings */
+.threat-section {
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid #fb923c;
+}
+.threat-item p {
+  margin: 0 0 2px 0;
+  font-size: 13px;
+  color: #9a3412;
+}
+.threat-item .threat-en {
+  color: #c2410c;
+  font-size: 12px;
+}
+
 .suggested-moves-list {
   display: flex;
   flex-direction: column;
