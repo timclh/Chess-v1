@@ -4003,6 +4003,20 @@ body {
   color: #daa520;
 }
 
+/* Coach analyzing indicator */
+.coach-analyzing {
+  text-align: center;
+  padding: 16px;
+  color: #ffd700;
+  font-size: 14px;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
 /* Win probability bar for Xiangqi */
 .prob-red {
   background: linear-gradient(90deg, #c41e3a, #ff6b6b);

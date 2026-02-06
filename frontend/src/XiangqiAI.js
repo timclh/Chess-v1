@@ -823,10 +823,11 @@ function getTopMoves(game, n = 3, moveHistory = []) {
     }
   }
 
-  // Coach always uses maximum strength search for best-quality suggestions
-  const COACH_DEPTH = 8;
+  // Coach uses strong search - depth 6 with ample time for quality suggestions
+  // (Higher depths block the UI thread since JS is single-threaded)
+  const COACH_DEPTH = 6;
   const searchDepth = COACH_DEPTH;
-  const timeLimit = 15000; // 15 seconds for deep coach analysis
+  const timeLimit = 5000; // 5 seconds max per analysis
   const startTime = Date.now();
 
   // Pre-sort moves by quick evaluation to find promising candidates

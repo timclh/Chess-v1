@@ -166,6 +166,7 @@ class XiangqiGame extends Component {
     strategicAdvice: [],
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
+    coachAnalyzing: false, // Coach is computing suggestions
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
     // Tutorial state
@@ -299,14 +300,18 @@ class XiangqiGame extends Component {
   updateAnalysis = () => {
     if (!this.game || this.state.gameMode !== 'coach') return;
 
+    // Update position evaluation immediately (fast)
     const analysis = analyzePosition(this.game);
-    // Always use highest depth for coach suggestions so advice is top quality
-    // Pass move history so suggestions avoid repeating moves
-    const history = this.game.history_moves();
-    const suggestedMoves = getTopMoves(this.game, 3, history);
     const strategicAdvice = getStrategicAdvice(this.game);
+    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    this.setState({ analysis, suggestedMoves, strategicAdvice });
+    // Run deep move search in next tick to avoid blocking UI
+    setTimeout(() => {
+      if (!this.game) return;
+      const history = this.game.history_moves();
+      const suggestedMoves = getTopMoves(this.game, 3, history);
+      this.setState({ suggestedMoves, coachAnalyzing: false });
+    }, 0);
   };
 
   // Check for threats after AI moves (for coach mode)
@@ -479,7 +484,13 @@ class XiangqiGame extends Component {
       setTimeout(() => this.makeAIMove(), 300);
     }
 
-    // Coach analysis updates after AI move (inside makeAIMove), not here
+    // Update coach analysis after player move (position eval + strategic advice)
+    if (this.state.gameMode === 'coach') {
+      // Clear stale suggestions immediately, show fresh analysis after AI responds
+      const analysis = analyzePosition(this.game);
+      const strategicAdvice = getStrategicAdvice(this.game);
+      this.setState({ analysis, strategicAdvice, suggestedMoves: [], coachAnalyzing: true });
+    }
 
     // Update analysis for AI mode with coach hints
     if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
@@ -728,10 +739,14 @@ class XiangqiGame extends Component {
     if (!this.game) return;
 
     const analysis = analyzePosition(this.game);
-    const suggestedMoves = getTopMoves(this.game, 3);
     const strategicAdvice = getStrategicAdvice(this.game);
+    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    this.setState({ analysis, suggestedMoves, strategicAdvice });
+    setTimeout(() => {
+      if (!this.game) return;
+      const suggestedMoves = getTopMoves(this.game, 3);
+      this.setState({ suggestedMoves, coachAnalyzing: false });
+    }, 0);
   };
 
   render() {
@@ -959,7 +974,13 @@ class XiangqiGame extends Component {
             )}
 
             {/* Suggested Moves */}
-            {suggestedMoves.length > 0 && !aiThinking && this.game && this.game.turn === playerColor && (
+            {this.state.coachAnalyzing && !aiThinking && (
+              <div className="analysis-section">
+                <div className="section-label">推荐走法 / Suggested Moves</div>
+                <div className="coach-analyzing">🔍 教练分析中... / Coach analyzing...</div>
+              </div>
+            )}
+            {suggestedMoves.length > 0 && !aiThinking && !this.state.coachAnalyzing && this.game && this.game.turn === playerColor && (
               <div className="analysis-section">
                 <div className="section-label">推荐走法 / Suggested Moves</div>
                 <div className="suggested-moves-list">
