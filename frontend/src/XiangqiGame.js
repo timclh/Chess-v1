@@ -311,15 +311,33 @@ class XiangqiGame extends Component {
   evaluatePlayerMove = (moveObj) => {
     if (!this.game || this.state.gameMode !== 'coach') return;
 
-    // We need to evaluate BEFORE the move was made, so undo temporarily
+    // Undo the player's move to evaluate all alternatives quickly
     this.game.undo();
-    const bestMove = findBestMove(this.game, Math.max(this.state.aiDifficulty, 3));
-    const bestScore = bestMove ? this.evaluateMoveScore(bestMove) : 0;
-    const playerScore = this.evaluateMoveScore(moveObj);
-    // Redo the player's move
-    this.game.move(moveObj);
 
-    const scoreDiff = Math.abs(bestScore - playerScore);
+    // Evaluate all legal moves using fast quickEvaluate (no deep search)
+    const allMoves = this.game.moves({ verbose: true });
+    let bestScore = -Infinity;
+    let bestAltMove = null;
+    const isRed = this.game.turn === 'r';
+
+    for (const m of allMoves) {
+      this.game.move(m);
+      const raw = quickEvaluate(this.game);
+      const score = isRed ? raw : -raw; // normalize so higher = better for current player
+      if (score > bestScore) {
+        bestScore = score;
+        bestAltMove = m;
+      }
+      this.game.undo();
+    }
+
+    // Evaluate the player's actual move
+    this.game.move(moveObj);
+    const playerRaw = quickEvaluate(this.game);
+    const playerScore = isRed ? playerRaw : -playerRaw;
+    // Redo is already done (we just called game.move)
+
+    const scoreDiff = bestScore - playerScore;
     let quality;
     if (scoreDiff < 30) {
       quality = { icon: '✅', cn: '好棋！这是最佳或接近最佳的走法', en: 'Excellent! This is the best or near-best move', level: 'excellent' };
@@ -328,18 +346,10 @@ class XiangqiGame extends Component {
     } else if (scoreDiff < 250) {
       quality = { icon: '🤔', cn: '还可以，但有更好的选择', en: 'Okay, but there was a better option', level: 'mediocre' };
     } else {
-      const bestSan = bestMove ? bestMove.san || `${bestMove.from}-${bestMove.to}` : '?';
+      const bestSan = bestAltMove ? bestAltMove.san || `${bestAltMove.from}-${bestAltMove.to}` : '?';
       quality = { icon: '⚠️', cn: `失误！更好的走法是 ${bestSan}`, en: `Mistake! Better move was ${bestSan}`, level: 'mistake' };
     }
     this.setState({ playerMoveQuality: quality });
-  };
-
-  evaluateMoveScore = (moveObj) => {
-    const game = this.game;
-    game.move(moveObj);
-    const score = quickEvaluate(game);
-    game.undo();
-    return score;
   };
 
   // Check for threats after AI moves (for coach mode)
@@ -508,7 +518,7 @@ class XiangqiGame extends Component {
     this.updateGameStatus();
 
     if (this.state.gameMode === 'coach') {
-      // Evaluate player's move quality before AI responds
+      // Evaluate player's move quality (fast, uses quickEvaluate)
       this.evaluatePlayerMove(moveObj);
     }
 
@@ -516,9 +526,7 @@ class XiangqiGame extends Component {
       setTimeout(() => this.makeAIMove(), 300);
     }
 
-    if (this.state.gameMode === 'coach') {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+    // Coach analysis updates after AI move (inside makeAIMove), not here
 
     // Update analysis for AI mode with coach hints
     if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
