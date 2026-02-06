@@ -321,7 +321,7 @@ class ChessGame extends Component {
   };
 
   makeAIMove = () => {
-    if (!this.game || this.state.gameOver) return;
+    if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn() === this.state.playerColor) return;
 
     this.setState({ aiThinking: true });
@@ -582,24 +582,28 @@ class ChessGame extends Component {
 
     const isAIMode = this.state.gameMode === "ai" || this.state.gameMode === "coach";
 
-    // In AI mode, undo two moves (player's and AI's) so it's the player's turn again.
-    // But if the game just ended on the player's winning move (AI never replied),
-    // only undo one move.
-    if (isAIMode && this.state.history.length >= 2) {
+    // In AI mode, we want to land on the player's turn after undo.
+    // Check the last move color to decide how many moves to undo.
+    if (isAIMode) {
       const lastHistory = this.state.history[this.state.history.length - 1];
       const lastMoveColor = lastHistory?.color;
-      const isPlayerLastMove = lastMoveColor === this.state.playerColor;
 
-      if (this.state.gameOver && isPlayerLastMove) {
-        // Game ended on player's move (e.g. checkmate) — only undo one move
+      if (lastMoveColor === this.state.playerColor) {
+        // Last move was by the player (e.g. game ended on player's winning move) — undo 1
+        this.game.undo();
+      } else if (this.state.history.length >= 2) {
+        // Last move was by AI — undo AI's move and the player's move before it
+        this.game.undo();
         this.game.undo();
       } else {
-        this.game.undo();
         this.game.undo();
       }
     } else {
       this.game.undo();
     }
+
+    // Determine new game status directly from the engine (avoid race conditions)
+    const isGameOver = this.game.game_over();
 
     this.setState({
       fen: this.game.fen(),
@@ -607,21 +611,21 @@ class ChessGame extends Component {
       squareStyles: {},
       pieceSquare: "",
       lastAIExplanation: "",
-      // Reset game over state when undoing - allow continued play
-      gameOver: false,
+      gameOver: isGameOver,
       pendingResult: null,
       showResultDialog: false,
     }, () => {
+      this.updateGameStatus();
+
       // After undo, if it's the AI's turn, trigger AI move
-      if (isAIMode && this.game.turn() !== this.state.playerColor) {
+      if (isAIMode && !isGameOver && this.game.turn() !== this.state.playerColor) {
         setTimeout(() => this.makeAIMove(), 300);
       }
-    });
-    this.updateGameStatus();
 
-    if (this.state.gameMode === "coach") {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+      if (this.state.gameMode === "coach" && !isGameOver) {
+        setTimeout(() => this.updateAnalysis(), 100);
+      }
+    });
   };
 
   // Record evaluation after a move

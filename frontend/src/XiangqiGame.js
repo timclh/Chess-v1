@@ -341,7 +341,7 @@ class XiangqiGame extends Component {
   };
 
   makeAIMove = () => {
-    if (!this.game || this.state.gameOver) return;
+    if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn === this.state.playerColor) return;
 
     this.setState({ aiThinking: true });
@@ -523,23 +523,43 @@ class XiangqiGame extends Component {
 
     const isAIMode = this.state.gameMode === 'ai' || this.state.gameMode === 'coach';
 
-    // In AI mode, undo two moves (player's and AI's) so it's the player's turn again.
-    // But if the game just ended on the player's winning move (AI never replied),
-    // only undo one move — the player's winning move.
-    if (isAIMode && this.state.history.length >= 2) {
-      // Check if the last move was by the player (game ended before AI could reply)
+    // In AI mode, we want to land on the player's turn after undo.
+    // Check the last move color to decide how many moves to undo.
+    if (isAIMode) {
       const lastMoveColor = this.game.moveHistory[this.game.moveHistory.length - 1]?.color;
-      const isPlayerLastMove = lastMoveColor === this.state.playerColor;
 
-      if (this.state.gameOver && isPlayerLastMove) {
-        // Game ended on player's move (e.g. checkmate) — only undo one move
+      if (lastMoveColor === this.state.playerColor) {
+        // Last move was by the player (e.g. game ended on player's winning move,
+        // or player just moved and AI hasn't replied yet) — undo 1 move
+        this.game.undo();
+      } else if (this.state.history.length >= 2) {
+        // Last move was by AI — undo AI's move and the player's move before it
+        this.game.undo();
         this.game.undo();
       } else {
-        this.game.undo();
         this.game.undo();
       }
     } else {
       this.game.undo();
+    }
+
+    // Determine new game status directly from the engine (avoid race conditions)
+    const isGameOver = this.game.game_over();
+    let newStatus = '';
+    const turn = this.game.turn === 'r' ? '红方' : '黑方';
+    const turnEn = this.game.turn === 'r' ? 'Red' : 'Black';
+    if (isGameOver) {
+      if (this.game.in_checkmate()) {
+        const winner = this.game.turn === 'r' ? '黑方' : '红方';
+        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+        newStatus = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
+      } else {
+        newStatus = '游戏结束 / Game Over';
+      }
+    } else if (this.game.in_check()) {
+      newStatus = `${turn}被将军！/ ${turnEn} is in check!`;
+    } else {
+      newStatus = `${turn}走棋 / ${turnEn} to move`;
     }
 
     this.setState({
@@ -547,21 +567,21 @@ class XiangqiGame extends Component {
       history: this.game.history_moves(),
       validMoves: [],
       lastMove: null,
-      gameOver: false,
+      gameOver: isGameOver,
+      gameStatus: newStatus,
     }, () => {
       // Save game state after undo
       this.saveGameState();
 
       // After undo, if it's the AI's turn, trigger AI move
-      if (isAIMode && this.game.turn !== this.state.playerColor) {
+      if (isAIMode && !isGameOver && this.game.turn !== this.state.playerColor) {
         setTimeout(() => this.makeAIMove(), 300);
       }
-    });
-    this.updateGameStatus();
 
-    if (this.state.gameMode === 'coach') {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+      if (this.state.gameMode === 'coach' && !isGameOver) {
+        setTimeout(() => this.updateAnalysis(), 100);
+      }
+    });
   };
 
   // Tutorial methods
