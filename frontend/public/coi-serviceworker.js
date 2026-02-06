@@ -27,6 +27,7 @@ if (typeof window === 'undefined') {
         }
 
         const newHeaders = new Headers(response.headers);
+        newHeaders.set('Cross-Origin-Opener-Policy', 'same-origin');
         newHeaders.set('Cross-Origin-Embedder-Policy', 'credentialless');
         newHeaders.set('Cross-Origin-Resource-Policy', 'cross-origin');
 
@@ -45,7 +46,8 @@ if (typeof window === 'undefined') {
   (function () {
     // Already cross-origin isolated (server headers working) → no SW needed
     if (window.crossOriginIsolated) {
-      console.log('[COI] Already cross-origin isolated via server headers ✓');
+      console.log('[COI] Already cross-origin isolated ✓');
+      sessionStorage.removeItem('coi-reload');
       return;
     }
 
@@ -54,9 +56,16 @@ if (typeof window === 'undefined') {
       return;
     }
 
-    // If already controlled by a service worker, reload once to pick up headers
+    // If already controlled by a service worker, but not isolated, reload once
     if (navigator.serviceWorker.controller) {
-      console.log('[COI] SW active but not isolated — may need hard refresh');
+      // Use sessionStorage to prevent infinite reload loops
+      if (!sessionStorage.getItem('coi-reload')) {
+        sessionStorage.setItem('coi-reload', '1');
+        console.log('[COI] SW active but not isolated — reloading...');
+        window.location.reload();
+      } else {
+        console.log('[COI] SW active, already reloaded — server COOP/COEP may be missing');
+      }
       return;
     }
 
