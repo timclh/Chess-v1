@@ -186,7 +186,8 @@ class XiangqiGame extends Component {
 
     // Try to load saved game state
     const savedState = this.loadGameState();
-    if (savedState && savedState.fen) {
+    // Don't restore tutorial mode from saved state - it has specific FENs
+    if (savedState && savedState.fen && savedState.gameMode !== 'tutorial') {
       this.game.loadFEN(savedState.fen);
       this.game.turn = savedState.turn || 'r';
       this.setState({

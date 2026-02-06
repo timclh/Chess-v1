@@ -349,6 +349,10 @@ class XiangqiBoard extends Component {
                 return null;
               }
 
+              // Guard against invalid piece data
+              const pieceChar = PIECE_CHARS[piece.type]?.[piece.color];
+              if (!pieceChar) return null;
+
               const displayRow = flipped ? 9 - rowIdx : rowIdx;
               const displayCol = flipped ? 8 - colIdx : colIdx;
 
@@ -367,14 +371,14 @@ class XiangqiBoard extends Component {
                   onClick={() => this.handleClick(rowIdx, colIdx)}
                   onMouseDown={(e) => this.handleMouseDown(e, rowIdx, colIdx)}
                 >
-                  {PIECE_CHARS[piece.type][piece.color]}
+                  {pieceChar}
                 </div>
               );
             })
           )}
 
           {/* Dragging piece */}
-          {dragging && dragPosition && (
+          {dragging && dragPosition && PIECE_CHARS[dragging.piece?.type]?.[dragging.piece?.color] && (
             <div
               className={`xiangqi-piece ${dragging.piece.color === 'r' ? 'red' : 'black'} dragging`}
               style={{
