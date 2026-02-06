@@ -432,10 +432,24 @@ function findBestMove(game, difficulty = 2) {
 }
 
 // Get top N moves for coach mode - uses deep search for accurate evaluation
-function getTopMoves(game, n = 3, difficulty = 4) {
+function getTopMoves(game, n = 3, difficulty = 4, moveHistory = []) {
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
   const inOpening = isOpeningPhase(game);
+
+  // Build recent move map for anti-repetition
+  // Check last 10 moves by the current player for reversals
+  const recentPlayerMoves = moveHistory.filter(m => m.color === game.turn).slice(-5);
+
+  // Detect reversal: if the last player move was A→B, penalize B→A
+  const lastPlayerMove = recentPlayerMoves.length > 0 ? recentPlayerMoves[recentPlayerMoves.length - 1] : null;
+
+  // Count how many times each from→to pair has been played by this player
+  const moveFrequency = {};
+  for (const m of moveHistory.filter(m => m.color === game.turn)) {
+    const key = `${m.from}-${m.to}`;
+    moveFrequency[key] = (moveFrequency[key] || 0) + 1;
+  }
 
   // Check opening book first
   if (inOpening) {
@@ -520,6 +534,25 @@ function getTopMoves(game, n = 3, difficulty = 4) {
       } else if (move.piece === 'h' && !move.captured) {
         score += 20; // Horse development
       }
+    }
+
+    // Anti-repetition: penalize moves that reverse the last move (e.g., 車a8→a9 after 車a9→a8)
+    if (lastPlayerMove && move.from === lastPlayerMove.to && move.to === lastPlayerMove.from) {
+      score -= 300; // Heavy penalty for direct reversal
+    }
+
+    // Penalize moves we've already played multiple times (shuffling)
+    const moveKey = `${move.from}-${move.to}`;
+    const freq = moveFrequency[moveKey] || 0;
+    if (freq > 0) {
+      score -= freq * 150; // Increasing penalty for repeated moves
+    }
+
+    // Also penalize moving the same piece back to a square it recently left
+    const reverseKey = `${move.to}-${move.from}`;
+    const reverseFreq = moveFrequency[reverseKey] || 0;
+    if (reverseFreq > 0) {
+      score -= reverseFreq * 100; // Penalty for undoing previous moves
     }
 
     evaluatedMoves.push({

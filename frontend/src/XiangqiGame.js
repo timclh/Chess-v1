@@ -299,7 +299,9 @@ class XiangqiGame extends Component {
 
     const analysis = analyzePosition(this.game);
     // Always use highest depth for coach suggestions so advice is top quality
-    const suggestedMoves = getTopMoves(this.game, 3, 4);
+    // Pass move history so suggestions avoid repeating moves
+    const history = this.game.history_moves();
+    const suggestedMoves = getTopMoves(this.game, 3, 4, history);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
