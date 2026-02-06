@@ -311,7 +311,27 @@ class XiangqiGame extends Component {
     this.setState({ aiThinking: true });
 
     setTimeout(() => {
-      const bestMove = findBestMove(this.game, this.state.aiDifficulty);
+      // In Coach mode, reduce AI strength so the player can practice
+      // Coach AI plays 1 level below the selected difficulty (minimum 1)
+      // and occasionally makes suboptimal moves to give learning opportunities
+      let effectiveDifficulty = this.state.aiDifficulty;
+      if (this.state.gameMode === 'coach') {
+        effectiveDifficulty = Math.max(1, this.state.aiDifficulty - 1);
+      }
+
+      let bestMove;
+      if (this.state.gameMode === 'coach' && Math.random() < 0.3) {
+        // 30% of the time in coach mode, pick a random decent move instead of the best
+        const moves = this.game.moves({ verbose: true });
+        if (moves.length > 1) {
+          // Pick a random move (not necessarily the worst, just not the best)
+          bestMove = moves[Math.floor(Math.random() * moves.length)];
+        } else {
+          bestMove = findBestMove(this.game, effectiveDifficulty);
+        }
+      } else {
+        bestMove = findBestMove(this.game, effectiveDifficulty);
+      }
 
       if (bestMove && this.game) {
         // Get explanation for coach mode
