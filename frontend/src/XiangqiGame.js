@@ -298,8 +298,8 @@ class XiangqiGame extends Component {
     if (!this.game || this.state.gameMode !== 'coach') return;
 
     const analysis = analyzePosition(this.game);
-    // Always use high depth for coach suggestions so advice is top quality
-    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
+    // Always use highest depth for coach suggestions so advice is top quality
+    const suggestedMoves = getTopMoves(this.game, 3, 4);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
