@@ -151,9 +151,13 @@ export async function analyzePositionEngine(game) {
 
     if (!result) return null;
 
+    console.log('[XiangqiCoach] Engine result:', result);
+
     // result.score is from side-to-move's perspective
     // Convert to always from Red's perspective
     const scoreFromRed = turn === 'r' ? (result.score || 0) : -(result.score || 0);
+
+    console.log('[XiangqiCoach] Turn:', turn, 'Raw score:', result.score, 'Score from Red:', scoreFromRed);
 
     // Convert to win probability
     const winProb = 1 / (1 + Math.exp(-scoreFromRed / 200));

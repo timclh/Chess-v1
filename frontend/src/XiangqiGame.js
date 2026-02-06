@@ -401,6 +401,7 @@ class XiangqiGame extends Component {
 
       // Use engine analysis if available, else keep built-in
       if (engineAnalysis) {
+        console.log('[XiangqiGame] Engine analysis result:', engineAnalysis);
         this.setState({ analysis: engineAnalysis });
       }
 
