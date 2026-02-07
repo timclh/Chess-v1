@@ -383,6 +383,9 @@ class FairyStockfishService {
 
     // Set position
     const fairyFen = toFairySF_FEN(ourFen, turn);
+    console.log('[FairyStockfish] Position - Our FEN:', ourFen);
+    console.log('[FairyStockfish] Position - Fairy FEN:', fairyFen);
+    console.log('[FairyStockfish] Analyzing for turn:', turn, '(', turn === 'r' ? 'Red/White' : 'Black', ')');
     this._send(`position fen ${fairyFen}`);
 
     // Start search

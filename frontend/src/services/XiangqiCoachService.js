@@ -69,13 +69,19 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = []) {
   if (legalMoves.length === 0) return [];
 
   try {
+    // Use maximum strength: depth 24, 5 seconds, only 1 line for best move
+    // MultiPV=1 gives the strongest analysis (no resources split between lines)
+    const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
     const result = await fairyStockfishService.analyze(fen, turn, {
-      depth: 20,
-      timeMs: 3000,
-      numLines: Math.min(n, legalMoves.length),
+      depth: 24,
+      timeMs: 5000,
+      numLines: numLines,
     });
 
+    console.log('[XiangqiCoach] Engine result for turn', turn, ':', result);
+
     if (!result || !result.lines || result.lines.length === 0) {
+      console.warn('[XiangqiCoach] No engine lines returned');
       return [];
     }
 
