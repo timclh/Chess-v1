@@ -39,22 +39,30 @@ export function fromFairySF_FEN(fairyFen) {
 }
 
 /**
- * Convert a UCI move (e.g. "b0c2") to our move format { from, to }.
- * Fairy-Stockfish xiangqi uses coordinate notation:
- *   file a-i (cols 0-8), rank 0-9 (row 9 is rank 0 for red).
- * Our board has row 0 at top (black side = rank 9),
- *   row 9 at bottom (red side = rank 0).
- *
- * So Fairy-SF move "a0b2" means file=a rank=0 → file=b rank=2
- *   which in our coords: col=0, row=9-0=9 → col=1, row=9-2=7
- *   i.e. { from: 'a0', to: 'b2' }   (our notation is the same as UCI here)
+ * Convert a UCI move from Fairy-Stockfish to our move format { from, to }.
+ * 
+ * CRITICAL: Fairy-Stockfish uses 1-based ranks (1-10), but our system uses 0-based ranks (0-9).
+ * Engine move "g1e3" means: from g-file rank-1 to e-file rank-3
+ * Our notation:            from g0 to e2 (subtract 1 from each rank)
+ * 
+ * Examples:
+ *   Engine "h1g3" → our "h0g2" (horse from h0 to g2)
+ *   Engine "b1c3" → our "b0c2" (horse from b0 to c2)  
+ *   Engine "g1e3" → our "g0e2" (elephant from g0 to e2)
  */
 export function parseUCIMove(uciMove) {
   if (!uciMove || uciMove.length < 4) return null;
-  const fromFile = uciMove[0];
-  const fromRank = uciMove[1];
-  const toFile = uciMove[2];
-  const toRank = uciMove[3];
+  
+  // Handle ranks which can be 1-10 (engine uses 1-based ranks)
+  // Move format: [file][rank][file][rank] where rank can be 1 or 2 digits
+  const match = uciMove.match(/^([a-i])(\d+)([a-i])(\d+)$/);
+  if (!match) return null;
+  
+  const fromFile = match[1];
+  const fromRank = parseInt(match[2]) - 1; // Convert 1-10 to 0-9
+  const toFile = match[3];
+  const toRank = parseInt(match[4]) - 1; // Convert 1-10 to 0-9
+  
   return {
     from: `${fromFile}${fromRank}`,
     to: `${toFile}${toRank}`,
@@ -62,10 +70,21 @@ export function parseUCIMove(uciMove) {
 }
 
 /**
- * Convert our move { from: 'a0', to: 'b2' } to UCI string "a0b2".
+ * Convert our move { from: 'a0', to: 'b2' } to UCI string for Fairy-Stockfish.
+ * We need to add 1 to ranks since engine uses 1-based ranks (1-10).
  */
 export function toUCIMove(move) {
-  return `${move.from}${move.to}`;
+  // Parse our ranks (0-9) and convert to engine ranks (1-10)
+  const fromMatch = move.from.match(/^([a-i])(\d)$/);
+  const toMatch = move.to.match(/^([a-i])(\d)$/);
+  if (!fromMatch || !toMatch) return `${move.from}${move.to}`;
+  
+  const fromFile = fromMatch[1];
+  const fromRank = parseInt(fromMatch[2]) + 1;
+  const toFile = toMatch[1];
+  const toRank = parseInt(toMatch[2]) + 1;
+  
+  return `${fromFile}${fromRank}${toFile}${toRank}`;
 }
 
 // ─── Engine Service ─────────────────────────────────────────────────────────
