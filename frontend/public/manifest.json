@@ -1,6 +1,6 @@
 {
-  "short_name": "Chess Arena",
-  "name": "Chess Arena - AI Xiangqi Coach",
+  "short_name": "棋 Arena",
+  "name": "棋 Arena - Chess & Xiangqi",
   "icons": [
     {
       "src": "favicon.ico",
@@ -11,8 +11,8 @@
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#d4a574",
-  "background_color": "#f5e6c8",
+  "theme_color": "#1a1a2e",
+  "background_color": "#1a1a2e",
   "categories": ["games", "education"],
-  "description": "Play Xiangqi (Chinese Chess) with GM-level AI coach. Powered by Fairy-Stockfish engine."
+  "description": "Master both International Chess and Chinese Chess (Xiangqi) with GM-level AI coaching, puzzles, and tutorials."
 }

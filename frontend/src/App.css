@@ -4204,3 +4204,381 @@ body {
     padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 }
+
+/* ============================================
+   HomePage - Unified Landing Page
+   ============================================ */
+
+.home-content {
+  display: block !important;
+  padding: 0 !important;
+}
+
+.home-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px 20px 60px;
+}
+
+/* Hero Section */
+.home-hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.home-tagline {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0 0 12px;
+  letter-spacing: 1px;
+}
+
+.home-description {
+  font-size: 1.05em;
+  color: #94a3b8;
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Game Selection Cards */
+.home-cards {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-bottom: 48px;
+}
+
+.game-card {
+  flex: 1;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 20px 20px 0 0;
+  transition: height 0.3s ease;
+}
+
+.chess-card::before {
+  background: linear-gradient(90deg, #e94560, #f39422);
+}
+
+.xiangqi-card::before {
+  background: linear-gradient(90deg, #ff6b35, #ffd700);
+}
+
+.game-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.game-card:hover::before {
+  height: 6px;
+}
+
+.chess-card:hover {
+  background: rgba(233, 69, 96, 0.08);
+}
+
+.xiangqi-card:hover {
+  background: rgba(255, 107, 53, 0.08);
+}
+
+/* Card Icon */
+.card-icon {
+  margin-bottom: 20px;
+}
+
+.chess-piece-display {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  font-size: 3.5em;
+  line-height: 1;
+}
+
+.piece-symbol {
+  color: #1a1a2e;
+  text-shadow: 0 0 10px rgba(233, 69, 96, 0.3);
+}
+
+.piece-symbol.piece-white {
+  color: #e2e8f0;
+  text-shadow: 0 0 10px rgba(226, 232, 240, 0.3);
+}
+
+.xiangqi-piece-display {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.piece-char {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6em;
+  font-weight: 700;
+  border: 3px solid;
+}
+
+.piece-char.red-piece {
+  color: #e94560;
+  border-color: #e94560;
+  background: rgba(233, 69, 96, 0.1);
+}
+
+.piece-char.black-piece {
+  color: #ffd700;
+  border-color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+/* Card Content */
+.card-title {
+  font-size: 1.8em;
+  font-weight: 800;
+  color: #f1f5f9;
+  margin: 0 0 4px;
+}
+
+.card-subtitle {
+  font-size: 0.95em;
+  color: #64748b;
+  margin: 0 0 16px;
+  font-weight: 500;
+}
+
+.card-desc {
+  font-size: 0.95em;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+/* Feature Tags */
+.card-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.feature-tag {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-size: 0.8em;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Play Button */
+.card-play-btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1em;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.5px;
+}
+
+.chess-play-btn {
+  background: linear-gradient(135deg, #e94560, #f39422);
+}
+
+.chess-play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+}
+
+.xiangqi-play-btn {
+  background: linear-gradient(135deg, #ff6b35, #ffd700);
+  color: #1a1a2e;
+}
+
+.xiangqi-play-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+}
+
+/* Quick Access Section */
+.home-quick-access {
+  margin-bottom: 48px;
+}
+
+.quick-title {
+  text-align: center;
+  font-size: 1.2em;
+  color: #94a3b8;
+  margin: 0 0 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.quick-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.quick-link-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 90px;
+  color: inherit;
+}
+
+.quick-link-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px);
+}
+
+.quick-icon {
+  font-size: 1.5em;
+}
+
+.quick-label {
+  font-size: 0.8em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* Stats Section */
+.home-stats {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  padding: 30px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-number {
+  font-size: 2em;
+  font-weight: 800;
+  background: linear-gradient(90deg, #e94560, #f39422);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-label {
+  font-size: 0.8em;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Responsive - Mobile */
+@media (max-width: 700px) {
+  .home-cards {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .game-card {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .home-tagline {
+    font-size: 1.4em;
+  }
+
+  .home-description {
+    font-size: 0.95em;
+  }
+
+  .home-stats {
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stat-number {
+    font-size: 1.6em;
+  }
+
+  .quick-links {
+    gap: 10px;
+  }
+
+  .quick-link-btn {
+    padding: 12px 14px;
+    min-width: 75px;
+  }
+}
+
+@media (max-width: 400px) {
+  .home-page {
+    padding: 20px 12px 40px;
+  }
+
+  .game-card {
+    padding: 24px 18px;
+  }
+
+  .chess-piece-display {
+    font-size: 2.8em;
+  }
+
+  .piece-char {
+    width: 48px;
+    height: 48px;
+    font-size: 1.3em;
+  }
+
+  .card-title {
+    font-size: 1.5em;
+  }
+
+  .home-stats {
+    gap: 16px;
+  }
+
+  .stat-item {
+    min-width: 70px;
+  }
+}

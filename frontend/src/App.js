@@ -3,6 +3,7 @@ import "./App.css";
 import Chat from "./Chat";
 import ChessGame from "./ChessGame";
 import XiangqiGame from "./XiangqiGame";
+import HomePage from "./HomePage";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
 import Multiplayer from "./Multiplayer";
@@ -15,7 +16,7 @@ import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 // Valid routes
 const ROUTES = {
-  '/': 'game',
+  '/': 'home',
   '/chess': 'game',
   '/xiangqi': 'xiangqi',
   '/puzzles': 'puzzles',
@@ -89,14 +90,20 @@ class AppContent extends Component {
     return (
       <div className="App">
         <header className="App-header">
-          <h1 className="App-title">Chess Arena</h1>
-          <p className="App-subtitle">Play chess and chat with friends</p>
+          <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
+          <p className="App-subtitle">Chess & Xiangqi — Two Games, One Arena</p>
           <nav className="App-nav">
+            <button
+              className={`nav-btn ${currentPage === "home" ? "active" : ""}`}
+              onClick={() => this.navigateTo("home")}
+            >
+              🏠 Home
+            </button>
             <button
               className={`nav-btn ${currentPage === "game" ? "active" : ""}`}
               onClick={() => this.navigateTo("game")}
             >
-              Chess
+              ♟ Chess
             </button>
             <button
               className={`nav-btn xiangqi-nav ${currentPage === "xiangqi" ? "active" : ""}`}
@@ -158,6 +165,12 @@ class AppContent extends Component {
             )}
           </nav>
         </header>
+
+        {currentPage === "home" && (
+          <div className="App-content home-content">
+            <HomePage onNavigate={this.navigateTo} />
+          </div>
+        )}
 
         {currentPage === "game" && (
           <div className="App-content">
