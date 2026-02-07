@@ -505,15 +505,14 @@ class XiangqiGame extends Component {
       try {
         // Skill level mapping (0-20 scale):
         // - Coach mode: skill 20 (100%) - GM level, full strength
-        // - AI opponent: skill 5 (25%) - challenging but beatable
-        // Difficulty also affects skill level for AI mode
+        // - AI opponent: lower skill for beatable gameplay
         const skillByDifficulty = {
-          1: 3,   // Beginner: skill 3 (~15%)
-          2: 5,   // Easy: skill 5 (25%)
-          3: 10,  // Medium: skill 10 (50%)
-          4: 15,  // Hard: skill 15 (75%)
+          1: 1,   // Beginner: skill 1 (5%)
+          2: 3,   // Easy: skill 3 (15%)
+          3: 5,   // Medium: skill 5 (25%)
+          4: 7,   // Hard: skill 7 (35%)
         };
-        const skillLevel = skillByDifficulty[this.state.aiDifficulty] || 5;
+        const skillLevel = skillByDifficulty[this.state.aiDifficulty] || 3;
         
         console.log('[XiangqiGame] AI using Fairy-Stockfish, skill level:', skillLevel);
         
