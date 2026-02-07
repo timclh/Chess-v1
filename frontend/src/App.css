@@ -8,6 +8,8 @@ body {
     Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .App {
@@ -4126,11 +4128,79 @@ body {
 }
 
 @media (max-width: 500px) {
-  .xiangqi-board-wrapper {
+  .xiangqi-game-layout {
     padding: 8px;
+    gap: 10px;
+  }
+
+  .xiangqi-board-wrapper {
+    padding: 6px;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .xiangqi-board-container {
+    max-width: 100%;
   }
 
   .xiangqi-piece {
     font-size: 22px;
+  }
+
+  .xiangqi-settings,
+  .xiangqi-analysis,
+  .xiangqi-tutorial {
+    max-width: 100%;
+  }
+
+  .App-header {
+    padding: 10px;
+  }
+
+  .App-title {
+    font-size: 1.5em;
+  }
+
+  .App-subtitle {
+    font-size: 0.8em;
+  }
+
+  .App-nav {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .nav-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .App-content {
+    padding: 8px;
+    gap: 10px;
+  }
+
+  .game-status {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  .move-history {
+    max-width: 100%;
+  }
+
+  .settings-section {
+    padding: 8px;
+  }
+}
+
+/* iOS safe area support */
+@supports (padding: env(safe-area-inset-top)) {
+  .App-header {
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+
+  .xiangqi-game-layout {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 }

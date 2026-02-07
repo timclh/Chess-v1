@@ -189,12 +189,23 @@ class XiangqiGame extends Component {
     validMoves: [],
     // Last move for highlighting
     lastMove: null,
+    // Responsive board width
+    boardWidth: Math.min(450, window.innerWidth - 40),
   };
 
   game = null;
 
   componentDidMount() {
     this.game = new Xiangqi();
+
+    // Listen for window resize to adjust board size
+    this._handleResize = () => {
+      const newWidth = Math.min(450, window.innerWidth - 40);
+      if (newWidth !== this.state.boardWidth) {
+        this.setState({ boardWidth: newWidth });
+      }
+    };
+    window.addEventListener('resize', this._handleResize);
 
     // Start loading Fairy-Stockfish engine in background
     this._initEngine();
@@ -230,6 +241,10 @@ class XiangqiGame extends Component {
   }
 
   componentWillUnmount() {
+    // Remove resize listener
+    if (this._handleResize) {
+      window.removeEventListener('resize', this._handleResize);
+    }
     // Save state before unmount
     this.saveGameState();
     stopAnalysis();
@@ -1063,7 +1078,7 @@ class XiangqiGame extends Component {
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
-                width={450}
+                width={this.state.boardWidth}
                 orientation={boardOrientation}
                 turn={this.game.turn}
                 playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
