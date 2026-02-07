@@ -344,14 +344,15 @@ class XiangqiGame extends Component {
     const turnEn = this.game.turn === 'r' ? 'Red' : 'Black';
 
     if (this.game.game_over()) {
+      // In Xiangqi, having no legal moves is a LOSS (not a draw like in Western chess)
+      // Whether in check (checkmate/将死) or not (困毙/trapped), the side to move loses
+      const winner = this.game.turn === 'r' ? '黑方' : '红方';
+      const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
       if (this.game.in_checkmate()) {
-        const winner = this.game.turn === 'r' ? '黑方' : '红方';
-        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
-      } else if (this.game.in_stalemate()) {
-        status = '和棋（无子可动）/ Stalemate';
       } else {
-        status = '游戏结束 / Game Over';
+        // No legal moves but not in check = 困毙 (kùn bì) = trapped, still a loss
+        status = `困毙！${winner}获胜！/ No moves! ${winnerEn} wins!`;
       }
       this.setState({ gameOver: true, gameStatus: status });
     } else {

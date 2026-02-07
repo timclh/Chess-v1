@@ -639,13 +639,31 @@ class Xiangqi {
     return this.moves().length === 0;
   }
 
+  /**
+   * In Xiangqi, there is no stalemate/draw for having no moves.
+   * If a player has no legal moves, they LOSE (called "困毙" kùn bì).
+   * This is different from Western chess where no moves = draw.
+   */
   in_stalemate() {
+    // In Xiangqi, having no legal moves is a LOSS, not a draw.
+    // We keep this method for API compatibility but it now means
+    // "no moves and not in check" which is still a loss.
     if (this.in_check()) return false;
     return this.moves().length === 0;
   }
 
+  /**
+   * Check if the current player has lost by having no legal moves.
+   * In Xiangqi, no legal moves = loss (whether in check or not).
+   */
+  no_moves_loss() {
+    return this.moves().length === 0;
+  }
+
   game_over() {
-    return this.in_checkmate() || this.in_stalemate();
+    // In Xiangqi, game ends when current player has no legal moves
+    // This includes both checkmate AND "stalemate" (which is also a loss)
+    return this.moves().length === 0;
   }
 
   // Get all legal moves for current player
