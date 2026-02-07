@@ -81,6 +81,9 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = []) {
 
     const suggestions = [];
 
+    console.log('[XiangqiCoach] Processing engine lines:', result.lines.length);
+    console.log('[XiangqiCoach] Legal moves:', legalMoves.map(m => `${m.from}-${m.to}`).join(', '));
+
     for (let i = 0; i < Math.min(n, result.lines.length); i++) {
       const line = result.lines[i];
       if (!line || !line.pv || line.pv.length === 0) continue;
@@ -88,12 +91,16 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = []) {
       const uciMove = line.pv[0];
       const parsedMove = parseUCIMove(uciMove);
 
+      console.log('[XiangqiCoach] Engine move', i+1, ':', uciMove, '-> parsed:', parsedMove);
+
       if (!parsedMove) continue;
 
       // Match to a legal move in our engine
       const matchedMove = legalMoves.find(
         m => m.from === parsedMove.from && m.to === parsedMove.to
       );
+
+      console.log('[XiangqiCoach] Matched to:', matchedMove ? `${matchedMove.from}-${matchedMove.to}` : 'NO MATCH');
 
       if (!matchedMove) continue;
 

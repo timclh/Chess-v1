@@ -491,58 +491,87 @@ class XiangqiGame extends Component {
     this.setState({ threatWarning: threats.length > 0 ? threats : null });
   };
 
-  makeAIMove = () => {
+  makeAIMove = async () => {
     if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn === this.state.playerColor) return;
 
     this.setState({ aiThinking: true });
 
-    setTimeout(() => {
-      const bestMove = findBestMove(this.game, this.state.aiDifficulty);
+    let bestMove = null;
+    let explanation = '';
 
-      if (bestMove && this.game) {
-        // Get explanation for coach mode
-        let explanation = '';
-        if (this.state.gameMode === 'coach') {
-          explanation = explainAIMove(this.game, bestMove);
+    // Try to use Fairy-Stockfish engine for stronger AI
+    if (this.state.engineReady && isEngineReady()) {
+      try {
+        // Get engine's best move - use higher depth for higher difficulty
+        const depthByDifficulty = {
+          beginner: 8,
+          easy: 12,
+          medium: 16,
+          hard: 20,
+          master: 24,
+        };
+        const depth = depthByDifficulty[this.state.aiDifficulty] || 16;
+        
+        console.log('[XiangqiGame] AI using Fairy-Stockfish engine, depth:', depth);
+        
+        const engineMoves = await getTopMovesEngine(this.game, 1);
+        
+        if (engineMoves && engineMoves.length > 0) {
+          bestMove = engineMoves[0].move;
+          explanation = engineMoves[0].explanation || '';
+          console.log('[XiangqiGame] Engine AI move:', bestMove, 'score:', engineMoves[0].score);
         }
-
-        // Parse move positions for highlighting
-        const fromPos = this.parsePosition(bestMove.from);
-        const toPos = this.parsePosition(bestMove.to);
-
-        this.game.move(bestMove);
-        this.setState({
-          fen: this.game.toFEN(),
-          history: this.game.history_moves(),
-          aiThinking: false,
-          lastAIExplanation: explanation,
-          validMoves: [],
-          lastMove: fromPos && toPos ? {
-            fromRow: fromPos.row,
-            fromCol: fromPos.col,
-            toRow: toPos.row,
-            toCol: toPos.col,
-          } : null,
-        }, () => {
-          // Save game state after AI move
-          this.saveGameState();
-        });
-        this.updateGameStatus();
-
-        // Update analysis based on mode (use setTimeout to avoid blocking UI)
-        if (this.state.gameMode === 'coach') {
-          setTimeout(() => {
-            this.updateAnalysis();
-            this.checkThreats();
-          }, 50);
-        } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
-          this.updateAnalysisForAI();
-        }
-      } else {
-        this.setState({ aiThinking: false });
+      } catch (err) {
+        console.warn('[XiangqiGame] Engine AI failed, falling back to built-in:', err);
       }
-    }, 100);
+    }
+
+    // Fallback to built-in AI if engine didn't return a move
+    if (!bestMove) {
+      console.log('[XiangqiGame] AI using built-in AI');
+      bestMove = findBestMove(this.game, this.state.aiDifficulty);
+      if (this.state.gameMode === 'coach') {
+        explanation = explainAIMove(this.game, bestMove);
+      }
+    }
+
+    if (bestMove && this.game) {
+      // Parse move positions for highlighting
+      const fromPos = this.parsePosition(bestMove.from);
+      const toPos = this.parsePosition(bestMove.to);
+
+      this.game.move(bestMove);
+      this.setState({
+        fen: this.game.toFEN(),
+        history: this.game.history_moves(),
+        aiThinking: false,
+        lastAIExplanation: explanation,
+        validMoves: [],
+        lastMove: fromPos && toPos ? {
+          fromRow: fromPos.row,
+          fromCol: fromPos.col,
+          toRow: toPos.row,
+          toCol: toPos.col,
+        } : null,
+      }, () => {
+        // Save game state after AI move
+        this.saveGameState();
+      });
+      this.updateGameStatus();
+
+      // Update analysis based on mode (use setTimeout to avoid blocking UI)
+      if (this.state.gameMode === 'coach') {
+        setTimeout(() => {
+          this.updateAnalysis();
+          this.checkThreats();
+        }, 50);
+      } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
+        this.updateAnalysisForAI();
+      }
+    } else {
+      this.setState({ aiThinking: false });
+    }
   };
 
   parsePosition = (pos) => {
