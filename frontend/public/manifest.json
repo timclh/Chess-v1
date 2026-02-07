@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Chess Arena",
+  "name": "Chess Arena - AI Xiangqi Coach",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,6 +10,9 @@
   ],
   "start_url": "./index.html",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#d4a574",
+  "background_color": "#f5e6c8",
+  "categories": ["games", "education"],
+  "description": "Play Xiangqi (Chinese Chess) with GM-level AI coach. Powered by Fairy-Stockfish engine."
 }

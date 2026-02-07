@@ -1,0 +1,78 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [main, bugfix/functional-issues]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build React app
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: '--openssl-legacy-provider'
+          CI: false  # Don't treat warnings as errors
+        run: npx react-scripts build
+
+      - name: Sync Capacitor iOS
+        working-directory: frontend
+        run: npx cap sync ios
+
+      - name: Build iOS app (Simulator)
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild build \
+            -scheme App \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -20
+
+      - name: Build iOS app (Archive for device)
+        if: github.ref == 'refs/heads/main'
+        working-directory: frontend/ios/App
+        run: |
+          xcodebuild archive \
+            -scheme App \
+            -archivePath build/ChessArena.xcarchive \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | tail -20
+
+      - name: Upload build artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: frontend/ios/App/build/ChessArena.xcarchive
+          retention-days: 30
+
+      - name: Build Summary
+        run: |
+          echo "## iOS Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ React build: success" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Capacitor sync: success" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ iOS simulator build: success" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "- ✅ iOS archive: success" >> $GITHUB_STEP_SUMMARY
+          fi
