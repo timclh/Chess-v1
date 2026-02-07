@@ -55,12 +55,17 @@ export function isEngineReady() {
  * @param {Xiangqi} game - The game instance
  * @param {number} n - Number of moves to return
  * @param {Array} moveHistory - (unused for engine, kept for API compat)
+ * @param {object} options - { skillLevel: 0-20 (default 20 = GM strength) }
  * @returns {Promise<Array>} Suggested moves
  */
-export async function getTopMovesEngine(game, n = 3, moveHistory = []) {
+export async function getTopMovesEngine(game, n = 3, moveHistory = [], options = {}) {
   if (!engineReady) {
     return []; // Caller should fall back to built-in AI
   }
+
+  const {
+    skillLevel = 20, // Default to max strength for coach mode
+  } = options;
 
   const fen = game.toFEN();
   const turn = game.turn;
@@ -69,13 +74,21 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = []) {
   if (legalMoves.length === 0) return [];
 
   try {
-    // Use maximum strength: depth 24, 5 seconds, only 1 line for best move
-    // MultiPV=1 gives the strongest analysis (no resources split between lines)
+    // Adjust depth/time based on skill level
+    // Higher skill = deeper search, more time
+    // Coach (skill 20): depth 24, 5s - GM level
+    // AI opponent (skill 5): depth 14, 2s - weaker but still uses engine
+    const depth = skillLevel >= 15 ? 24 : (12 + Math.floor(skillLevel / 2));
+    const timeMs = skillLevel >= 15 ? 5000 : (1500 + skillLevel * 100);
+    
     const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
+    console.log(`[XiangqiCoach] Analyzing with skill=${skillLevel}, depth=${depth}, time=${timeMs}ms`);
+    
     const result = await fairyStockfishService.analyze(fen, turn, {
-      depth: 24,
-      timeMs: 5000,
+      depth: depth,
+      timeMs: timeMs,
       numLines: numLines,
+      skillLevel: skillLevel,
     });
 
     console.log('[XiangqiCoach] Engine result for turn', turn, ':', result);

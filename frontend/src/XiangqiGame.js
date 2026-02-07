@@ -500,22 +500,24 @@ class XiangqiGame extends Component {
     let bestMove = null;
     let explanation = '';
 
-    // Try to use Fairy-Stockfish engine for stronger AI
+    // Try to use Fairy-Stockfish engine for AI opponent
     if (this.state.engineReady && isEngineReady()) {
       try {
-        // Get engine's best move - use higher depth for higher difficulty
-        const depthByDifficulty = {
-          beginner: 8,
-          easy: 12,
-          medium: 16,
-          hard: 20,
-          master: 24,
+        // Skill level mapping (0-20 scale):
+        // - Coach mode: skill 20 (100%) - GM level, full strength
+        // - AI opponent: skill 5 (25%) - challenging but beatable
+        // Difficulty also affects skill level for AI mode
+        const skillByDifficulty = {
+          1: 3,   // Beginner: skill 3 (~15%)
+          2: 5,   // Easy: skill 5 (25%)
+          3: 10,  // Medium: skill 10 (50%)
+          4: 15,  // Hard: skill 15 (75%)
         };
-        const depth = depthByDifficulty[this.state.aiDifficulty] || 16;
+        const skillLevel = skillByDifficulty[this.state.aiDifficulty] || 5;
         
-        console.log('[XiangqiGame] AI using Fairy-Stockfish engine, depth:', depth);
+        console.log('[XiangqiGame] AI using Fairy-Stockfish, skill level:', skillLevel);
         
-        const engineMoves = await getTopMovesEngine(this.game, 1);
+        const engineMoves = await getTopMovesEngine(this.game, 1, [], { skillLevel });
         
         if (engineMoves && engineMoves.length > 0) {
           bestMove = engineMoves[0].move;

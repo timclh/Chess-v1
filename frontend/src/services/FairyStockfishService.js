@@ -373,7 +373,8 @@ class FairyStockfishService {
    *
    * @param {string} ourFen - FEN in our notation (rheakaehr…)
    * @param {string} turn - 'r' or 'b'
-   * @param {object} options - { depth, timeMs, numLines }
+   * @param {object} options - { depth, timeMs, numLines, skillLevel }
+   *   - skillLevel: 0-20 (0=weakest, 20=strongest), default 20 for full strength
    * @returns {Promise<{bestMove, lines, depth, score}>}
    */
   async analyze(ourFen, turn = 'r', options = {}) {
@@ -386,6 +387,7 @@ class FairyStockfishService {
       depth = 18,
       timeMs = 3000,
       numLines = 3,
+      skillLevel = 20, // Default to max strength (GM level)
     } = options;
 
     // Stop any ongoing analysis
@@ -396,6 +398,12 @@ class FairyStockfishService {
     this._bestMove = null;
     this._depth = 0;
     this._score = null;
+
+    // Set skill level (0-20, where 20 is strongest)
+    // Skill level controls how "human-like" the engine plays
+    const clampedSkill = Math.max(0, Math.min(20, Math.round(skillLevel)));
+    this._send(`setoption name Skill Level value ${clampedSkill}`);
+    console.log(`[FairyStockfish] Skill Level set to ${clampedSkill}`);
 
     // Set MultiPV
     this._send(`setoption name MultiPV value ${numLines}`);
