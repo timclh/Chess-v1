@@ -10,11 +10,11 @@ class Leaderboard extends Component {
     recentGames: [],
     activeTab: "leaderboard", // 'leaderboard', 'history', 'ratings'
     historyFilter: "all", // 'all', 'ai', 'human'
-    // Player ELO ratings
-    chessRating: getRating(GAME_TYPE.CHESS),
-    xiangqiRating: getRating(GAME_TYPE.XIANGQI),
-    chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS)),
-    xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI)),
+    // Player ELO ratings (getRating returns {rating, gamesPlayed, wins, ...})
+    chessRatingData: getRating(GAME_TYPE.CHESS),
+    xiangqiRatingData: getRating(GAME_TYPE.XIANGQI),
+    chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS).rating || 1200),
+    xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI).rating || 1200),
   };
 
   componentDidMount() {
@@ -24,13 +24,15 @@ class Leaderboard extends Component {
   loadData = () => {
     const leaderboard = getLeaderboard();
     const recentGames = getGameHistory().slice(0, 50);
+    const chessData = getRating(GAME_TYPE.CHESS);
+    const xiangqiData = getRating(GAME_TYPE.XIANGQI);
     this.setState({
       leaderboard,
       recentGames,
-      chessRating: getRating(GAME_TYPE.CHESS),
-      xiangqiRating: getRating(GAME_TYPE.XIANGQI),
-      chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS)),
-      xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI)),
+      chessRatingData: chessData,
+      xiangqiRatingData: xiangqiData,
+      chessRank: EloService.getRank(chessData.rating || 1200),
+      xiangqiRank: EloService.getRank(xiangqiData.rating || 1200),
     });
   };
 
@@ -82,8 +84,12 @@ class Leaderboard extends Component {
   };
 
   render() {
-    const { leaderboard, activeTab, historyFilter, chessRating, xiangqiRating, chessRank, xiangqiRank } = this.state;
+    const { leaderboard, activeTab, historyFilter, chessRatingData, xiangqiRatingData, chessRank, xiangqiRank } = this.state;
     const filteredGames = this.getFilteredGames();
+    
+    // Extract rating numbers for display
+    const chessRating = chessRatingData?.rating || 1200;
+    const xiangqiRating = xiangqiRatingData?.rating || 1200;
 
     return (
       <div className="leaderboard-container">
