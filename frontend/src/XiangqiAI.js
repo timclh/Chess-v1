@@ -993,11 +993,13 @@ function analyzePosition(game) {
 }
 
 // Get strategic advice for coach mode
+// Now position-aware: reads actual piece placement, threats, and structure
 function getStrategicAdvice(game) {
   const advice = [];
   const board = game.board;
   const turn = game.turn;
   const turnName = turn === 'r' ? '红方' : '黑方';
+  const oppColor = turn === 'r' ? 'b' : 'r';
 
   // Check detection
   if (game.in_check()) {
@@ -1009,112 +1011,182 @@ function getStrategicAdvice(game) {
     return advice;
   }
 
-  // Count pieces
-  let redPieces = { total: 0, r: 0, h: 0, c: 0, s: 0 };
-  let blackPieces = { total: 0, r: 0, h: 0, c: 0, s: 0 };
+  // ── Scan board for piece positions ──
+  const pieces = { r: [], b: [] };
+  let redPieces = { total: 0, r: 0, h: 0, c: 0, s: 0, a: 0, e: 0 };
+  let blackPieces = { total: 0, r: 0, h: 0, c: 0, s: 0, a: 0, e: 0 };
+  let kingPos = {};
 
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
       const piece = board[row][col];
       if (!piece) continue;
-
-      if (piece.color === 'r') {
-        redPieces.total++;
-        if (redPieces[piece.type] !== undefined) redPieces[piece.type]++;
-      } else {
-        blackPieces.total++;
-        if (blackPieces[piece.type] !== undefined) blackPieces[piece.type]++;
-      }
+      pieces[piece.color].push({ ...piece, row, col });
+      const counter = piece.color === 'r' ? redPieces : blackPieces;
+      counter.total++;
+      if (counter[piece.type] !== undefined) counter[piece.type]++;
+      if (piece.type === 'k') kingPos[piece.color] = { row, col };
     }
   }
 
   const myPieces = turn === 'r' ? redPieces : blackPieces;
   const oppPieces = turn === 'r' ? blackPieces : redPieces;
-
-  // Phase detection
+  const myPieceList = pieces[turn];
+  const oppPieceList = pieces[oppColor];
   const totalPieces = redPieces.total + blackPieces.total;
+
+  // ── Phase detection ──
   const isOpening = totalPieces >= 28;
   const isEndgame = totalPieces <= 14;
+  const isMidgame = !isOpening && !isEndgame;
 
+  // ── Material balance ──
+  const matVal = (p) => p.r * 9 + p.h * 4 + p.c * 4.5 + p.s * 1;
+  const myMat = matVal(myPieces);
+  const oppMat = matVal(oppPieces);
+  const matDiff = myMat - oppMat;
+
+  // ── Detect specific patterns ──
+
+  // 1. Undeveloped back-rank pieces (opening only)
   if (isOpening) {
-    // Opening advice
-    if (myPieces.c === 2) {
+    const homeRow = turn === 'r' ? 9 : 0;
+    const backRankPieces = myPieceList.filter(p =>
+      p.row === homeRow && (p.type === 'h' || p.type === 'r')
+    );
+    if (backRankPieces.length >= 3) {
       advice.push({
-        cn: '💡 开局阶段：可以考虑当头炮或仕角炮开局',
-        en: 'Opening: Consider central cannon or palace corner cannon',
+        cn: '🚀 多个大子未出动，优先出车出马抢先手',
+        en: 'Multiple major pieces undeveloped — prioritize chariot & horse development',
+        priority: 'high',
+      });
+    } else if (backRankPieces.filter(p => p.type === 'r').length === 2) {
+      advice.push({
+        cn: '🚀 双车仍在底线，尽快出车占据开放线',
+        en: 'Both chariots still on back rank — deploy them to open files',
+        priority: 'high',
+      });
+    }
+  }
+
+  // 2. Open file control — chariots on files without soldiers
+  if (myPieces.r > 0 && !isOpening) {
+    const myChariots = myPieceList.filter(p => p.type === 'r');
+    const mySoldierCols = new Set(myPieceList.filter(p => p.type === 's').map(p => p.col));
+    const oppSoldierCols = new Set(oppPieceList.filter(p => p.type === 's').map(p => p.col));
+    const openFiles = myChariots.filter(ch =>
+      !mySoldierCols.has(ch.col) && !oppSoldierCols.has(ch.col)
+    );
+    if (openFiles.length > 0) {
+      advice.push({
+        cn: '📐 车已占据开放线，利用车的纵向机动力',
+        en: 'Chariot controls open file — exploit its vertical mobility',
         priority: 'medium',
       });
     }
+  }
 
-    if (myPieces.h === 2) {
-      advice.push({
-        cn: '💡 及时出动双马，控制中心',
-        en: 'Develop both horses to control the center',
-        priority: 'medium',
-      });
-    }
-
+  // 3. Crossed soldiers (valuable in mid/endgame)
+  const riverRow = turn === 'r' ? 4 : 5;
+  const crossedSoldiers = myPieceList.filter(p =>
+    p.type === 's' && (turn === 'r' ? p.row <= riverRow : p.row >= riverRow)
+  );
+  if (crossedSoldiers.length >= 2 && !isOpening) {
     advice.push({
-      cn: '💡 保护好将帅，注意士象的防守',
-      en: 'Protect the general, maintain advisor and elephant defense',
+      cn: '💪 多个过河兵卒，配合大子可构成强攻',
+      en: `${crossedSoldiers.length} crossed soldiers — coordinate with major pieces to attack`,
       priority: 'medium',
     });
-  } else if (isEndgame) {
-    // Endgame advice
-    if (myPieces.r > 0) {
+  }
+
+  // 4. King safety — missing advisors/elephants
+  const defenseCount = myPieces.a + myPieces.e;
+  if (defenseCount <= 1 && !isEndgame) {
+    advice.push({
+      cn: '🛡️ 防守子力不足（仅剩' + defenseCount + '个士象），注意将帅安全',
+      en: `Low defense (only ${defenseCount} advisor/elephant left) — watch king safety`,
+      priority: 'high',
+    });
+  }
+
+  // 5. Cannon without platform (midgame)
+  if (isMidgame && myPieces.c > 0 && totalPieces <= 20) {
+    advice.push({
+      cn: '💡 子力减少后炮威力降低，考虑用炮换马',
+      en: 'Fewer pieces reduce cannon power — consider trading cannon for horse',
+      priority: 'medium',
+    });
+  }
+
+  // 6. Material advantage / disadvantage
+  if (matDiff >= 9) {
+    advice.push({
+      cn: '✅ 大子力优势！主动兑子简化局面，稳步取胜',
+      en: 'Big material lead — trade pieces to simplify and win',
+      priority: 'high',
+    });
+  } else if (matDiff >= 4) {
+    advice.push({
+      cn: '✅ 子力优势，保持积极但避免不必要的冒险',
+      en: 'Material advantage — stay active but avoid unnecessary risks',
+      priority: 'medium',
+    });
+  } else if (matDiff <= -9) {
+    advice.push({
+      cn: '⚠️ 大幅落后，必须寻找战术反击或逼和',
+      en: 'Far behind in material — must find tactical counterplay or draw',
+      priority: 'critical',
+    });
+  } else if (matDiff <= -4) {
+    advice.push({
+      cn: '⚠️ 子力落后，避免兑子，寻找攻王机会',
+      en: 'Material down — avoid trades, look for king attack chances',
+      priority: 'high',
+    });
+  }
+
+  // 7. Endgame specific
+  if (isEndgame) {
+    if (myPieces.r > 0 && oppPieces.r === 0) {
       advice.push({
-        cn: '💡 残局中车是最强的子力，要充分发挥车的作用',
-        en: 'In endgame, the chariot is most powerful. Use it actively',
+        cn: '🏆 残局有车无车优势极大，用车控制对方将帅活动空间',
+        en: 'Chariot vs no chariot — dominate king\'s movement space',
         priority: 'high',
       });
     }
-
-    if (myPieces.s > 0) {
+    if (myPieces.r === 0 && myPieces.h > 0 && myPieces.c === 0) {
       advice.push({
-        cn: '💡 过河卒子价值大增，可以配合其他子力进攻',
-        en: 'Crossed soldiers are very valuable for attack',
+        cn: '💡 残局马比炮强，利用马的近距离攻击',
+        en: 'Horse is stronger than cannon in endgame — use its close-range power',
         priority: 'medium',
       });
     }
-  } else {
-    // Middle game
-    if (myPieces.r > oppPieces.r) {
+    // King opposition (facing kings on same file)
+    if (kingPos.r && kingPos.b && kingPos.r.col === kingPos.b.col) {
       advice.push({
-        cn: '💡 你有车的优势，应积极进攻',
-        en: 'You have chariot advantage, attack actively',
-        priority: 'high',
-      });
-    }
-
-    if (myPieces.c > 0) {
-      advice.push({
-        cn: '💡 炮需要炮架才能发挥威力，注意配合',
-        en: 'Cannons need platforms to be effective, coordinate pieces',
+        cn: '👑 双王对面，注意利用或避开对面笑规则',
+        en: 'Kings face each other — be aware of the facing kings rule',
         priority: 'medium',
       });
     }
   }
 
-  // Material advice
-  const materialDiff = (myPieces.r - oppPieces.r) * 9 +
-                       (myPieces.h - oppPieces.h) * 4 +
-                       (myPieces.c - oppPieces.c) * 4.5;
-
-  if (materialDiff > 5) {
-    advice.push({
-      cn: '✅ 你有子力优势，可以考虑兑子简化局面',
-      en: 'You have material advantage, consider trading pieces',
-      priority: 'high',
-    });
-  } else if (materialDiff < -5) {
-    advice.push({
-      cn: '⚠️ 对方子力占优，需要寻找战术机会',
-      en: 'Opponent has material advantage, look for tactics',
-      priority: 'high',
-    });
+  // 8. Double chariot coordination
+  if (myPieces.r === 2 && !isOpening) {
+    const chariots = myPieceList.filter(p => p.type === 'r');
+    if (chariots.length === 2 && chariots[0].col === chariots[1].col) {
+      advice.push({
+        cn: '🔥 双车叠在同一线上，火力集中，威胁极大',
+        en: 'Double chariots on same file — concentrated firepower!',
+        priority: 'high',
+      });
+    }
   }
 
-  return advice;
+  // Limit to top 3 most relevant advice (prioritize critical > high > medium)
+  const priorityOrder = { critical: 0, high: 1, medium: 2 };
+  advice.sort((a, b) => (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9));
+  return advice.slice(0, 3);
 }
 
 // Explain AI move
