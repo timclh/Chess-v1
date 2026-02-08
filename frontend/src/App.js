@@ -44,7 +44,11 @@ class AppContent extends Component {
     currentPage: getPageFromHash(),
     user: null,
     showLogin: false,
+    showInstallPrompt: false,
+    isOffline: !navigator.onLine,
   };
+
+  deferredPrompt = null;
 
   componentDidMount() {
     // Listen for auth changes
@@ -54,6 +58,13 @@ class AppContent extends Component {
 
     // Listen for URL hash changes (browser back/forward)
     window.addEventListener('hashchange', this.handleHashChange);
+
+    // Listen for PWA install prompt
+    window.addEventListener('beforeinstallprompt', this.handleInstallPrompt);
+
+    // Listen for online/offline events
+    window.addEventListener('online', this.handleOnline);
+    window.addEventListener('offline', this.handleOffline);
   }
 
   componentWillUnmount() {
@@ -61,7 +72,38 @@ class AppContent extends Component {
       this.unsubscribe();
     }
     window.removeEventListener('hashchange', this.handleHashChange);
+    window.removeEventListener('beforeinstallprompt', this.handleInstallPrompt);
+    window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
   }
+
+  handleInstallPrompt = (e) => {
+    e.preventDefault();
+    this.deferredPrompt = e;
+    // Only show if user hasn't dismissed before
+    const dismissed = localStorage.getItem('pwa_install_dismissed');
+    if (!dismissed) {
+      this.setState({ showInstallPrompt: true });
+    }
+  };
+
+  handleInstallClick = async () => {
+    if (!this.deferredPrompt) return;
+    this.deferredPrompt.prompt();
+    const { outcome } = await this.deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      this.setState({ showInstallPrompt: false });
+    }
+    this.deferredPrompt = null;
+  };
+
+  dismissInstallPrompt = () => {
+    localStorage.setItem('pwa_install_dismissed', 'true');
+    this.setState({ showInstallPrompt: false });
+  };
+
+  handleOnline = () => this.setState({ isOffline: false });
+  handleOffline = () => this.setState({ isOffline: true });
 
   handleHashChange = () => {
     const page = getPageFromHash();
@@ -84,11 +126,29 @@ class AppContent extends Component {
   };
 
   render() {
-    const { currentPage, user, showLogin } = this.state;
+    const { currentPage, user, showLogin, showInstallPrompt, isOffline } = this.state;
     const configured = isFirebaseConfigured();
 
     return (
       <div className="App">
+        {/* Offline Indicator */}
+        {isOffline && (
+          <div className="offline-banner">
+            <span>⚡ You're offline — local features still work!</span>
+          </div>
+        )}
+
+        {/* PWA Install Prompt */}
+        {showInstallPrompt && (
+          <div className="pwa-install-banner">
+            <span>📱 Install 棋 Arena for the best experience!</span>
+            <div className="install-actions">
+              <button className="install-btn" onClick={this.handleInstallClick}>Install</button>
+              <button className="dismiss-btn" onClick={this.dismissInstallPrompt}>×</button>
+            </div>
+          </div>
+        )}
+
         <header className="App-header">
           <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
           <p className="App-subtitle">Chess & Xiangqi — Two Games, One Arena</p>

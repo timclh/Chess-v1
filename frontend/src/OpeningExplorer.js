@@ -835,8 +835,6 @@ class OpeningExplorer extends Component {
         trainingFeedback: null,
       });
     }
-      trainingFeedback: null,
-    });
   };
 
   exitTraining = () => {

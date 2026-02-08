@@ -6,13 +6,23 @@
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "favicon.ico",
+      "sizes": "192x192",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": "./index.html",
+  "start_url": ".",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#1a1a2e",
   "background_color": "#1a1a2e",
   "categories": ["games", "education"],
-  "description": "Master both International Chess and Chinese Chess (Xiangqi) with GM-level AI coaching, puzzles, and tutorials."
+  "description": "Master both International Chess and Chinese Chess (Xiangqi) with GM-level AI coaching, puzzles, and tutorials.",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }
