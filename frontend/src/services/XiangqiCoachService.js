@@ -6,6 +6,9 @@
  *
  * Provides the same API shape as the existing XiangqiAI functions
  * (getTopMoves, analyzePosition) but powered by a GM-strength engine.
+ *
+ * Includes an LRU position cache to avoid re-analyzing the same position,
+ * and branch-cutting logic to skip engine calls for trivial positions.
  */
 
 import fairyStockfishService, {
@@ -17,6 +20,72 @@ import { PIECE_NAMES } from '../xiangqi';
 // Whether the engine has been successfully initialized
 let engineReady = false;
 let engineInitFailed = false;
+
+// ─── Position Cache (LRU) ───────────────────────────────────────────────────
+
+const CACHE_MAX_SIZE = 200;   // Max cached positions
+const CACHE_DEEP_THRESHOLD = 14; // Only cache results >= this depth (reliable)
+
+class PositionCache {
+  constructor(maxSize = CACHE_MAX_SIZE) {
+    this.maxSize = maxSize;
+    this.cache = new Map(); // key → { result, depth, timestamp }
+  }
+
+  /**
+   * Build a cache key from FEN + turn + skill tier.
+   * We bucket skill into tiers so nearby skill levels share cache.
+   */
+  _key(fen, turn, skillLevel) {
+    // Tier: 'coach' (15-20), 'strong' (8-14), 'weak' (0-7)
+    const tier = skillLevel >= 15 ? 'coach' : skillLevel >= 8 ? 'strong' : 'weak';
+    return `${fen}|${turn}|${tier}`;
+  }
+
+  get(fen, turn, skillLevel, minDepth = 0) {
+    const key = this._key(fen, turn, skillLevel);
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (entry.depth < minDepth) return null;
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.result;
+  }
+
+  set(fen, turn, skillLevel, result, depth) {
+    if (depth < CACHE_DEEP_THRESHOLD) return; // Don't cache shallow results
+    const key = this._key(fen, turn, skillLevel);
+    // If already cached with deeper result, keep the deeper one
+    const existing = this.cache.get(key);
+    if (existing && existing.depth >= depth) return;
+    // Evict oldest if full
+    if (this.cache.size >= this.maxSize) {
+      const oldest = this.cache.keys().next().value;
+      this.cache.delete(oldest);
+    }
+    this.cache.set(key, { result, depth, timestamp: Date.now() });
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  get size() {
+    return this.cache.size;
+  }
+}
+
+const moveCache = new PositionCache(CACHE_MAX_SIZE);
+const evalCache = new PositionCache(CACHE_MAX_SIZE);
+
+/**
+ * Clear all cached analysis. Call on new game / reset.
+ */
+export function clearAnalysisCache() {
+  moveCache.clear();
+  evalCache.clear();
+}
 
 /**
  * Initialize the Fairy-Stockfish engine.
@@ -72,6 +141,47 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
   const legalMoves = game.moves({ verbose: true });
 
   if (legalMoves.length === 0) return [];
+
+  // ── Branch cut: only 1 legal move → no analysis needed ──
+  if (legalMoves.length === 1) {
+    const onlyMove = legalMoves[0];
+    return [{
+      rank: 1,
+      move: onlyMove,
+      san: onlyMove.san,
+      score: 0,
+      winProbability: 0.50,
+      explanation: '唯一着法 / Only legal move',
+      engineDepth: 0,
+      pv: [],
+    }];
+  }
+
+  // ── Branch cut (AI opponent only): forced recapture / obvious capture ──
+  if (skillLevel < 15 && legalMoves.length <= 3) {
+    const captureMoves = legalMoves.filter(m => m.captured);
+    // If there's only 1 capture and it's a high-value piece, just play it
+    const highValuePieces = ['r', 'c', 'h']; // chariot, cannon, horse
+    if (captureMoves.length === 1 && highValuePieces.includes(captureMoves[0].captured)) {
+      const m = captureMoves[0];
+      return [{
+        rank: 1,
+        move: m,
+        san: m.san,
+        score: 200,
+        winProbability: 0.65,
+        explanation: `${PIECE_NAMES[m.piece]?.[m.color] || m.piece}吃${PIECE_NAMES[m.captured]?.[m.color === 'r' ? 'b' : 'r'] || m.captured} / Capture`,
+        engineDepth: 0,
+        pv: [],
+      }];
+    }
+  }
+
+  // ── Cache lookup ──
+  const cached = moveCache.get(fen, turn, skillLevel);
+  if (cached) {
+    return cached;
+  }
 
   try {
     // Adjust depth/time based on skill level
@@ -151,6 +261,12 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
       });
     }
 
+    // Cache the result if deep enough
+    if (suggestions.length > 0) {
+      const maxDepth = Math.max(...suggestions.map(s => s.engineDepth || 0));
+      moveCache.set(fen, turn, skillLevel, suggestions, maxDepth);
+    }
+
     return suggestions;
 
   } catch (err) {
@@ -175,6 +291,12 @@ export async function analyzePositionEngine(game) {
 
   const fen = game.toFEN();
   const turn = game.turn;
+
+  // ── Cache lookup ──
+  const cached = evalCache.get(fen, turn, 20); // eval always uses coach-tier
+  if (cached) {
+    return cached;
+  }
 
   try {
     const result = await fairyStockfishService.analyze(fen, turn, {
@@ -212,7 +334,7 @@ export async function analyzePositionEngine(game) {
       evaluation = scoreFromRed > 0 ? '红方必胜 / Red decisive' : '黑方必胜 / Black decisive';
     }
 
-    return {
+    const evalResult = {
       score: scoreFromRed,
       evaluation,
       winProbability: {
@@ -222,6 +344,11 @@ export async function analyzePositionEngine(game) {
       depth: result.depth,
       enginePowered: true,
     };
+
+    // Cache the eval result
+    evalCache.set(fen, turn, 20, evalResult, result.depth || 0);
+
+    return evalResult;
 
   } catch (err) {
     console.error('[XiangqiCoach] Eval error:', err);

@@ -22,6 +22,7 @@ import {
   analyzePositionEngine,
   stopAnalysis,
   destroyEngine,
+  clearAnalysisCache,
 } from './services/XiangqiCoachService';
 
 // Tutorial lessons for Chinese Chess
@@ -694,6 +695,7 @@ class XiangqiGame extends Component {
     this.game.reset();
     clearCache();
     resetPositionHistory();
+    clearAnalysisCache();
 
     // Clear saved state when starting new game
     this.clearSavedState();
