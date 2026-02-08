@@ -24,6 +24,7 @@ class GameReview extends Component {
     // UI state
     showEvalBar: true,
     autoPlay: false,
+    savedGames: [],
   };
 
   analysisService = null;
@@ -32,6 +33,10 @@ class GameReview extends Component {
   componentDidMount() {
     this.analysisService = getAnalysisService();
     
+    // Load saved games
+    const saved = JSON.parse(localStorage.getItem('reviewed_games') || '[]');
+    this.setState({ savedGames: saved });
+
     // If game data is provided, start analysis
     if (this.props.game) {
       this.analyzeGame(this.props.game);
@@ -124,6 +129,68 @@ class GameReview extends Component {
       }, 1500);
       this.setState({ autoPlay: true });
     }
+  };
+
+  saveReview = () => {
+    const { analysis } = this.state;
+    if (!analysis) return;
+
+    const saved = JSON.parse(localStorage.getItem('reviewed_games') || '[]');
+    const review = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      moves: this.props.game?.moves?.map(m => m.san || m).join(' ') || '',
+      whiteAccuracy: analysis.summary.white.accuracy,
+      blackAccuracy: analysis.summary.black.accuracy,
+      totalMoves: analysis.summary.totalMoves,
+      criticalMoments: analysis.summary.criticalMoments,
+    };
+
+    const updated = [review, ...saved].slice(0, 20); // Keep last 20
+    localStorage.setItem('reviewed_games', JSON.stringify(updated));
+    this.setState({ savedGames: updated });
+  };
+
+  generateInsights = () => {
+    const { analysis } = this.state;
+    if (!analysis?.summary) return [];
+
+    const { white, black, criticalMoments, totalMoves } = analysis.summary;
+    const insights = [];
+
+    // Overall assessment
+    if (white.accuracy >= 90 && black.accuracy >= 90) {
+      insights.push({ cn: '双方都下得非常精准！高质量对局。', en: 'Both sides played very accurately! High-quality game.' });
+    } else if (white.accuracy >= 85) {
+      insights.push({ cn: '白方表现出色，走棋精准。', en: 'White played excellently with precise moves.' });
+    } else if (black.accuracy >= 85) {
+      insights.push({ cn: '黑方表现出色，走棋精准。', en: 'Black played excellently with precise moves.' });
+    }
+
+    // Blunder analysis
+    if (white.blunder > 0) {
+      insights.push({ cn: `白方有${white.blunder}个严重失误需要注意。`, en: `White had ${white.blunder} blunder(s) to work on.` });
+    }
+    if (black.blunder > 0) {
+      insights.push({ cn: `黑方有${black.blunder}个严重失误需要注意。`, en: `Black had ${black.blunder} blunder(s) to work on.` });
+    }
+
+    // Game phase
+    if (totalMoves <= 20) {
+      insights.push({ cn: '短局——注意开局阶段的战术陷阱。', en: 'Short game — watch for opening traps and tactics.' });
+    } else if (totalMoves >= 60) {
+      insights.push({ cn: '长局——双方都展现了耐心和残局技术。', en: 'Long game — both sides showed patience and endgame skills.' });
+    }
+
+    // Critical moments
+    if (criticalMoments.length > 0) {
+      insights.push({ 
+        cn: `关键转折点在第 ${criticalMoments.join(', ')} 步。点击下方时间线查看。`, 
+        en: `Critical moments at moves ${criticalMoments.join(', ')}. Click the timeline below.` 
+      });
+    }
+
+    return insights;
   };
 
   /**
@@ -232,6 +299,72 @@ class GameReview extends Component {
                   </div>
                 </div>
               </div>
+
+              {/* Post-Game Insights */}
+              {(() => {
+                const insights = this.generateInsights();
+                return insights.length > 0 && (
+                  <div className="game-insights">
+                    <h4>💡 Insights / 分析</h4>
+                    {insights.map((insight, i) => (
+                      <div key={i} className="insight-item">
+                        <p className="insight-cn">{insight.cn}</p>
+                        <p className="insight-en">{insight.en}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Critical Moments Timeline */}
+              {summary.criticalMoments && summary.criticalMoments.length > 0 && (
+                <div className="critical-moments">
+                  <h4>⚡ Critical Moments / 关键转折</h4>
+                  <div className="timeline">
+                    <div className="timeline-bar">
+                      {analysis.moves.map((move, idx) => {
+                        const isCritical = summary.criticalMoments.includes(move.moveNumber);
+                        return (
+                          <div
+                            key={idx}
+                            className={`timeline-point ${this.getQualityClass(move.quality)} ${isCritical ? 'critical' : ''} ${idx === currentMoveIndex ? 'current' : ''}`}
+                            style={{ left: `${(idx / (analysis.moves.length - 1)) * 100}%` }}
+                            onClick={() => this.goToMove(idx)}
+                            title={`Move ${move.moveNumber}: ${move.move} ${move.quality.emoji || ''}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="timeline-labels">
+                      <span>1</span>
+                      <span>{Math.ceil(analysis.moves.length / 2)}</span>
+                      <span>{analysis.moves.length}</span>
+                    </div>
+                  </div>
+                  <div className="critical-list">
+                    {analysis.moves
+                      .filter(m => m.quality.type === 'blunder' || m.quality.type === 'mistake')
+                      .map((m, i) => (
+                        <button
+                          key={i}
+                          className={`critical-btn ${this.getQualityClass(m.quality)}`}
+                          onClick={() => {
+                            const idx = analysis.moves.indexOf(m);
+                            this.goToMove(idx);
+                          }}
+                        >
+                          {m.quality.emoji} Move {m.moveNumber}: {m.move}
+                        </button>
+                      ))
+                    }
+                  </div>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <button className="save-review-btn" onClick={this.saveReview}>
+                💾 Save Review / 保存复盘
+              </button>
             </div>
 
             {/* Board and Eval */}

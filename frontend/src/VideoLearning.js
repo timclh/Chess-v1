@@ -15,7 +15,16 @@ class VideoLearning extends Component {
     selectedVideo: null,
     searchQuery: '',
     searchResults: null,
+    watchedVideos: [],
+    bookmarkedVideos: [],
+    showBookmarks: false,
   };
+
+  componentDidMount() {
+    const watched = JSON.parse(localStorage.getItem('video_watched') || '[]');
+    const bookmarked = JSON.parse(localStorage.getItem('video_bookmarks') || '[]');
+    this.setState({ watchedVideos: watched, bookmarkedVideos: bookmarked });
+  }
 
   handleTopicChange = (topic) => {
     this.setState({ currentTopic: topic, selectedVideo: null, searchResults: null });
@@ -54,20 +63,80 @@ class VideoLearning extends Component {
     this.setState({ searchQuery: '', searchResults: null });
   };
 
+  toggleWatched = (videoId, e) => {
+    if (e) e.stopPropagation();
+    this.setState(state => {
+      const watched = state.watchedVideos.includes(videoId)
+        ? state.watchedVideos.filter(id => id !== videoId)
+        : [...state.watchedVideos, videoId];
+      localStorage.setItem('video_watched', JSON.stringify(watched));
+      return { watchedVideos: watched };
+    });
+  };
+
+  toggleBookmark = (videoId, e) => {
+    if (e) e.stopPropagation();
+    this.setState(state => {
+      const bookmarked = state.bookmarkedVideos.includes(videoId)
+        ? state.bookmarkedVideos.filter(id => id !== videoId)
+        : [...state.bookmarkedVideos, videoId];
+      localStorage.setItem('video_bookmarks', JSON.stringify(bookmarked));
+      return { bookmarkedVideos: bookmarked };
+    });
+  };
+
+  isWatched = (videoId) => this.state.watchedVideos.includes(videoId);
+  isBookmarked = (videoId) => this.state.bookmarkedVideos.includes(videoId);
+
   getVideos = () => {
-    const { gameType, currentTopic, currentLevel, searchResults } = this.state;
+    const { gameType, currentTopic, currentLevel, searchResults, showBookmarks, bookmarkedVideos } = this.state;
     
     if (searchResults !== null) {
       return searchResults;
     }
 
+    if (showBookmarks) {
+      // Get all videos for this game type and filter by bookmarks
+      const allTopics = getTopics(gameType);
+      const allVideos = [];
+      allTopics.forEach(topic => {
+        if (gameType === 'chess') {
+          ['beginner', 'intermediate', 'advanced'].forEach(level => {
+            allVideos.push(...getVideosByTopic(gameType, topic, level));
+          });
+        } else {
+          allVideos.push(...getVideosByTopic(gameType, topic));
+        }
+      });
+      return allVideos.filter(v => bookmarkedVideos.includes(v.id));
+    }
+
     return getVideosByTopic(gameType, currentTopic, currentLevel);
   };
 
+  getProgressStats = () => {
+    const { gameType, watchedVideos } = this.state;
+    const allTopics = getTopics(gameType);
+    const allVideos = [];
+    allTopics.forEach(topic => {
+      if (gameType === 'chess') {
+        ['beginner', 'intermediate', 'advanced'].forEach(level => {
+          allVideos.push(...getVideosByTopic(gameType, topic, level));
+        });
+      } else {
+        allVideos.push(...getVideosByTopic(gameType, topic));
+      }
+    });
+    const total = allVideos.length;
+    const watched = allVideos.filter(v => watchedVideos.includes(v.id)).length;
+    return { total, watched };
+  };
+
   render() {
-    const { gameType, currentTopic, currentLevel, selectedVideo, searchQuery, searchResults } = this.state;
+    const { gameType, currentTopic, currentLevel, selectedVideo, searchQuery, searchResults, showBookmarks } = this.state;
     const videos = this.getVideos();
     const topics = getTopics(gameType);
+    const progress = this.getProgressStats();
 
     return (
       <div className="video-learning">
@@ -113,12 +182,30 @@ class VideoLearning extends Component {
           {/* Sidebar - Topics */}
           <div className="topics-sidebar">
             <h3>Topics / 主题</h3>
+
+            {/* Progress */}
+            <div className="watch-progress">
+              <div className="progress-label">
+                <span>Progress</span>
+                <span>{progress.watched}/{progress.total}</span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${progress.total > 0 ? (progress.watched / progress.total * 100) : 0}%` }} />
+              </div>
+            </div>
+
             <div className="topics-list">
+              <button
+                className={`topic-btn ${showBookmarks ? 'active' : ''}`}
+                onClick={() => this.setState({ showBookmarks: !showBookmarks, selectedVideo: null, searchResults: null })}
+              >
+                ⭐ Bookmarks ({this.state.bookmarkedVideos.length})
+              </button>
               {topics.map(topic => (
                 <button
                   key={topic}
-                  className={`topic-btn ${currentTopic === topic ? 'active' : ''}`}
-                  onClick={() => this.handleTopicChange(topic)}
+                  className={`topic-btn ${!showBookmarks && currentTopic === topic ? 'active' : ''}`}
+                  onClick={() => this.setState({ currentTopic: topic, selectedVideo: null, searchResults: null, showBookmarks: false })}
                 >
                   {topic === 'openings' && '📖 '}
                   {topic === 'tactics' && '⚔️ '}
@@ -170,6 +257,20 @@ class VideoLearning extends Component {
                 <div className="video-details">
                   <h3>{selectedVideo.title}</h3>
                   <p className="title-cn">{selectedVideo.titleCn}</p>
+                  <div className="video-detail-actions">
+                    <button
+                      className={`detail-action-btn ${this.isWatched(selectedVideo.id) ? 'active' : ''}`}
+                      onClick={() => this.toggleWatched(selectedVideo.id)}
+                    >
+                      {this.isWatched(selectedVideo.id) ? '✓ Watched' : '○ Mark as Watched'}
+                    </button>
+                    <button
+                      className={`detail-action-btn ${this.isBookmarked(selectedVideo.id) ? 'active' : ''}`}
+                      onClick={() => this.toggleBookmark(selectedVideo.id)}
+                    >
+                      {this.isBookmarked(selectedVideo.id) ? '★ Bookmarked' : '☆ Bookmark'}
+                    </button>
+                  </div>
                   <p className="channel">📺 {selectedVideo.channel}</p>
                   <p className="duration">⏱️ {selectedVideo.duration} min</p>
                   <p className="description">{selectedVideo.description}</p>
@@ -196,7 +297,7 @@ class VideoLearning extends Component {
                   videos.map(video => (
                     <div
                       key={video.id}
-                      className="video-card"
+                      className={`video-card ${this.isWatched(video.id) ? 'watched' : ''}`}
                       onClick={() => this.handleVideoSelect(video)}
                     >
                       <div className="thumbnail">
@@ -205,11 +306,30 @@ class VideoLearning extends Component {
                           alt={video.title}
                         />
                         <span className="duration">{video.duration}:00</span>
+                        {this.isWatched(video.id) && <span className="watched-badge">✓</span>}
                       </div>
                       <div className="video-info">
                         <h4>{video.title}</h4>
                         <p className="title-cn">{video.titleCn}</p>
-                        <p className="channel">{video.channel}</p>
+                        <div className="video-meta">
+                          <span className="channel">{video.channel}</span>
+                          <div className="video-actions">
+                            <button
+                              className={`action-btn ${this.isBookmarked(video.id) ? 'active' : ''}`}
+                              onClick={(e) => this.toggleBookmark(video.id, e)}
+                              title="Bookmark"
+                            >
+                              {this.isBookmarked(video.id) ? '★' : '☆'}
+                            </button>
+                            <button
+                              className={`action-btn ${this.isWatched(video.id) ? 'active' : ''}`}
+                              onClick={(e) => this.toggleWatched(video.id, e)}
+                              title="Mark as watched"
+                            >
+                              {this.isWatched(video.id) ? '👁' : '○'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))

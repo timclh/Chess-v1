@@ -214,14 +214,70 @@ const OPENING_TRAINING = {
   "Italian Game": [
     { fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", correctMove: "Bc5", hint: "Develop the bishop actively" },
     { fen: "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", correctMove: "c3", hint: "Prepare d4 push" },
+    { fen: "r1bqk1nr/pppp1ppp/2n5/2b1p3/2BPP3/5N2/PPP2PPP/RNBQK2R b KQkq - 0 4", correctMove: "exd4", hint: "Capture the center pawn" },
+    { fen: "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 5", correctMove: "O-O", hint: "Castle to safety" },
   ],
   "Sicilian Defense": [
     { fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", correctMove: "Nf3", hint: "Develop knight, prepare d4" },
     { fen: "rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2", correctMove: "d6", hint: "Prepare ...Nf6 and ...e5" },
+    { fen: "rnbqkbnr/pp2pppp/3p4/2p5/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3", correctMove: "cxd4", hint: "Capture the d4 pawn" },
+    { fen: "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/2N5/PPP2PPP/R1BQKB1R b KQkq - 2 5", correctMove: "a6", hint: "Najdorf! Control b5" },
   ],
   "Queen's Gambit": [
     { fen: "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2", correctMove: "e6", hint: "Decline the gambit, support d5" },
     { fen: "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3", correctMove: "Nc3", hint: "Develop and add pressure to d5" },
+    { fen: "rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4", correctMove: "Bg5", hint: "Pin the knight, increase pressure" },
+    { fen: "rnbqk2r/ppp1bppp/4pn2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR w KQkq - 4 5", correctMove: "e3", hint: "Solid center, prepare Bd3" },
+  ],
+  "Evans Gambit": [
+    { fen: "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", correctMove: "b4", hint: "Sacrifice pawn for development!" },
+    { fen: "r1bqk1nr/pppp1ppp/2n5/4p3/1bB1P3/5N2/P1PP1PPP/RNBQK2R w KQkq - 0 5", correctMove: "c3", hint: "Attack the bishop, gain center" },
+  ],
+  "French Defense": [
+    { fen: "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", correctMove: "d4", hint: "Claim the center" },
+    { fen: "rnbqkbnr/ppp2ppp/4p3/3pP3/3P4/8/PPP2PPP/RNBQKBNR b KQkq - 0 3", correctMove: "c5", hint: "Attack white's center" },
+  ],
+  "Ruy Lopez": [
+    { fen: "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", correctMove: "Bb5", hint: "Pin the knight defending e5" },
+    { fen: "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", correctMove: "a6", hint: "Morphy Defense - challenge the bishop" },
+  ],
+  "King's Indian": [
+    { fen: "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1", correctMove: "Nf6", hint: "Flexible setup - King's Indian" },
+    { fen: "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3", correctMove: "Nc3", hint: "Develop and control center" },
+  ],
+  "London System": [
+    { fen: "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1", correctMove: "d5", hint: "Contest the center" },
+    { fen: "rnbqkbnr/ppp1pppp/8/3p4/3P1B2/8/PPP1PPPP/RN1QKBNR b KQkq - 0 2", correctMove: "Nf6", hint: "Develop knight toward center" },
+  ],
+};
+
+// ============================================
+// Xiangqi Opening Training Puzzles
+// ============================================
+const XIANGQI_OPENING_TRAINING = {
+  "Central Cannon": [
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'h2-e2', hint: "炮二平五 — Move cannon to center" },
+    { fen: 'rheakae1r/9/1c4hc1/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR', correctMove: 'h0-g2', hint: "马二进三 — Develop the right horse" },
+  ],
+  "Central Cannon vs Screen Horse": [
+    { fen: 'r1eakaehr/9/1ch4c1/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR', correctMove: 'b0-c2', hint: "马八进七 — Develop the left horse" },
+    { fen: 'r1eakae1r/9/1ch2h1c1/s1s1s1s1s/9/9/S1S1S1S1S/1CH1C4/9/R1EAKAEHR', correctMove: 'a0-a1', hint: "车九进一 — Activate the chariot" },
+  ],
+  "Queen's Knight Opening": [
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'c0-e2', hint: "相三进五 — Advance the elephant" },
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RH1AKAEHR', correctMove: 'h0-g2', hint: "马二进三 — Develop the horse" },
+  ],
+  "Pawn Opening": [
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'c3-c4', hint: "兵三进一 — Advance the flank pawn" },
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/2S6/S3S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'h0-g2', hint: "马二进三 — Follow up with horse" },
+  ],
+  "Horse Opening": [
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'h0-g2', hint: "马八进七 — Develop the horse first" },
+    { fen: 'rheakae1r/9/1c4hc1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/4H4/RHEAKAE1R', correctMove: 'h2-e2', hint: "炮二平五 — Central cannon follow-up" },
+  ],
+  "Opposite Direction Cannons": [
+    { fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RHEAKAEHR', correctMove: 'h2-e2', hint: "炮二平五 — Central cannon" },
+    { fen: 'rheakaehr/9/1c2c4/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR', correctMove: 'b0-c2', hint: "马八进七 — Develop left horse" },
   ],
 };
 
@@ -580,8 +636,10 @@ class OpeningExplorer extends Component {
   };
 
   loadNextTrainingPosition = () => {
-    const { trainingOpening, trainingStep } = this.state;
-    const training = OPENING_TRAINING[trainingOpening.name];
+    const { trainingOpening, trainingStep, gameType } = this.state;
+    const isXiangqi = gameType === 'xiangqi';
+    const trainingData = isXiangqi ? XIANGQI_OPENING_TRAINING : OPENING_TRAINING;
+    const training = trainingData[trainingOpening.name];
 
     if (!training || trainingStep >= training.length) {
       // Training complete
@@ -589,11 +647,19 @@ class OpeningExplorer extends Component {
     }
 
     const puzzle = training[trainingStep];
-    this.game = new Chess(puzzle.fen);
-    this.setState({
-      fen: puzzle.fen,
-      squareStyles: {},
-    });
+    if (isXiangqi) {
+      this.xiangqiGame = new Xiangqi(puzzle.fen);
+      this.setState({
+        fen: this.xiangqiGame.fen(),
+        xiangqiValidMoves: [],
+      });
+    } else {
+      this.game = new Chess(puzzle.fen);
+      this.setState({
+        fen: puzzle.fen,
+        squareStyles: {},
+      });
+    }
   };
 
   resetExplorer = () => {
@@ -681,39 +747,117 @@ class OpeningExplorer extends Component {
     });
   };
 
-  startTraining = (opening) => {
-    if (this.state.gameType === 'xiangqi') {
-      alert("Xiangqi opening training coming soon! / 象棋开局训练即将推出！");
+  onXiangqiTrainingSelect = (row, col) => {
+    if (!this.xiangqiGame) return;
+    const validMoves = this.xiangqiGame.getValidMoves(row, col);
+    this.setState({ xiangqiValidMoves: validMoves });
+  };
+
+  onXiangqiTrainingMove = (from, to) => {
+    if (!this.xiangqiGame) return;
+    const { trainingOpening, trainingStep, gameType } = this.state;
+    const training = XIANGQI_OPENING_TRAINING[trainingOpening.name];
+    if (!training || trainingStep >= training.length) return;
+
+    const puzzle = training[trainingStep];
+    const result = this.xiangqiGame.move({ from, to });
+
+    if (!result) {
+      this.setState({ xiangqiValidMoves: [] });
       return;
     }
 
-    const training = OPENING_TRAINING[opening.name];
+    const expectedMove = puzzle.correctMove;
+    const actualMove = `${from}-${to}`;
+    const isCorrect = actualMove === expectedMove;
+
+    if (isCorrect) {
+      this.setState(state => ({
+        fen: this.xiangqiGame.fen(),
+        trainingCorrect: state.trainingCorrect + 1,
+        trainingStep: state.trainingStep + 1,
+        trainingFeedback: { type: "correct", message: "正确! Correct!" },
+        xiangqiValidMoves: [],
+        showTrainingHint: false,
+      }), () => {
+        setTimeout(() => {
+          this.setState({ trainingFeedback: null });
+          this.loadNextTrainingPosition();
+        }, 1000);
+      });
+    } else {
+      this.xiangqiGame.undo();
+      this.setState(state => ({
+        trainingWrong: state.trainingWrong + 1,
+        trainingFeedback: { type: "wrong", message: "再试一次 Try again" },
+        xiangqiValidMoves: [],
+      }), () => {
+        setTimeout(() => {
+          this.setState({ trainingFeedback: null });
+        }, 1000);
+      });
+    }
+  };
+
+  startTraining = (opening) => {
+    const isXiangqi = this.state.gameType === 'xiangqi';
+    const trainingData = isXiangqi ? XIANGQI_OPENING_TRAINING : OPENING_TRAINING;
+    const training = trainingData[opening.name];
+
     if (!training || training.length === 0) {
       alert("Training not available for this opening yet / 此开局暂无训练题目");
       return;
     }
 
-    this.game = new Chess(training[0].fen);
-    this.setState({
-      viewMode: "train",
-      trainingOpening: opening,
-      trainingStep: 0,
-      trainingCorrect: 0,
-      trainingWrong: 0,
-      fen: training[0].fen,
-      showTrainingHint: false,
+    if (isXiangqi) {
+      this.xiangqiGame = new Xiangqi(training[0].fen);
+      this.setState({
+        viewMode: "train",
+        trainingOpening: opening,
+        trainingStep: 0,
+        trainingCorrect: 0,
+        trainingWrong: 0,
+        fen: this.xiangqiGame.fen(),
+        showTrainingHint: false,
+        trainingFeedback: null,
+        xiangqiValidMoves: [],
+      });
+    } else {
+      this.game = new Chess(training[0].fen);
+      this.setState({
+        viewMode: "train",
+        trainingOpening: opening,
+        trainingStep: 0,
+        trainingCorrect: 0,
+        trainingWrong: 0,
+        fen: training[0].fen,
+        showTrainingHint: false,
+        trainingFeedback: null,
+      });
+    }
       trainingFeedback: null,
     });
   };
 
   exitTraining = () => {
-    this.game = new Chess();
-    this.setState({
-      viewMode: "explore",
-      trainingOpening: null,
-      fen: "start",
-      moveHistory: [],
-    }, this.updateMatchingOpenings);
+    if (this.state.gameType === 'xiangqi') {
+      this.xiangqiGame = new Xiangqi();
+      this.setState({
+        viewMode: "explore",
+        trainingOpening: null,
+        fen: this.xiangqiGame.fen(),
+        moveHistory: [],
+        xiangqiValidMoves: [],
+      }, this.updateMatchingOpenings);
+    } else {
+      this.game = new Chess();
+      this.setState({
+        viewMode: "explore",
+        trainingOpening: null,
+        fen: "start",
+        moveHistory: [],
+      }, this.updateMatchingOpenings);
+    }
   };
 
   toggleRepertoire = (opening) => {
@@ -806,9 +950,10 @@ class OpeningExplorer extends Component {
     } = this.state;
 
     const filteredOpenings = this.getFilteredOpenings();
-    const training = trainingOpening ? OPENING_TRAINING[trainingOpening.name] : null;
-    const currentTrainingPuzzle = training && trainingStep < training.length ? training[trainingStep] : null;
     const isXiangqi = gameType === 'xiangqi';
+    const trainingData = isXiangqi ? XIANGQI_OPENING_TRAINING : OPENING_TRAINING;
+    const training = trainingOpening ? trainingData[trainingOpening.name] : null;
+    const currentTrainingPuzzle = training && trainingStep < training.length ? training[trainingStep] : null;
 
     return (
       <div className="opening-explorer-container">
@@ -977,19 +1122,33 @@ class OpeningExplorer extends Component {
                 </div>
               ) : (
                 <>
-                  <Chessboard
-                    id="openingboard"
-                    position={fen}
-                    width={480}
-                    orientation="white"
-                    onDrop={this.onDrop}
-                    onSquareClick={this.onSquareClick}
-                    squareStyles={squareStyles}
-                    boardStyle={{
-                      borderRadius: "8px",
-                      boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
-                    }}
-                  />
+                  {isXiangqi ? (
+                    <XiangqiBoard
+                      board={this.xiangqiGame ? this.xiangqiGame.board : null}
+                      turn={this.xiangqiGame ? this.xiangqiGame.turn : 'r'}
+                      playerColor="r"
+                      width={480}
+                      orientation="red"
+                      validMoves={xiangqiValidMoves}
+                      onSquareSelect={this.onXiangqiTrainingSelect}
+                      onMove={this.onXiangqiTrainingMove}
+                      disabled={false}
+                    />
+                  ) : (
+                    <Chessboard
+                      id="openingboard"
+                      position={fen}
+                      width={480}
+                      orientation="white"
+                      onDrop={this.onDrop}
+                      onSquareClick={this.onSquareClick}
+                      squareStyles={squareStyles}
+                      boardStyle={{
+                        borderRadius: "8px",
+                        boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
+                      }}
+                    />
+                  )}
 
                   <div className="training-controls">
                     <button
@@ -1032,8 +1191,8 @@ class OpeningExplorer extends Component {
 
               {isXiangqi ? (
                 <XiangqiBoard
-                  board={this.xiangqiGame ? this.xiangqiGame.board() : null}
-                  turn={this.xiangqiGame ? this.xiangqiGame.turn() : 'r'}
+                  board={this.xiangqiGame ? this.xiangqiGame.board : null}
+                  turn={this.xiangqiGame ? this.xiangqiGame.turn : 'r'}
                   playerColor="r"
                   width={480}
                   orientation="red"

@@ -6,6 +6,198 @@
 import React, { Component } from 'react';
 import './AICoach.css';
 
+// ============================================
+// Position Analysis Engine (FEN-aware)
+// ============================================
+const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+
+function parseFEN(fen) {
+  const parts = fen.split(' ');
+  const boardStr = parts[0];
+  const turn = parts[1] || 'w';
+  const castling = parts[2] || '-';
+  const rows = boardStr.split('/');
+  const pieces = { w: [], b: [] };
+  const pawns = { w: [], b: [] };
+  const board = [];
+
+  for (let r = 0; r < 8; r++) {
+    const row = [];
+    let col = 0;
+    for (const ch of rows[r]) {
+      if (/\d/.test(ch)) {
+        for (let i = 0; i < parseInt(ch); i++) { row.push(null); col++; }
+      } else {
+        const color = ch === ch.toUpperCase() ? 'w' : 'b';
+        const type = ch.toLowerCase();
+        const pos = String.fromCharCode(97 + col) + (8 - r);
+        row.push({ type, color, pos });
+        pieces[color].push({ type, pos });
+        if (type === 'p') pawns[color].push({ col, row: r, pos });
+        col++;
+      }
+    }
+    board.push(row);
+  }
+  return { board, pieces, pawns, turn, castling };
+}
+
+function analyzeMaterial(pieces) {
+  const count = (color) => pieces[color].reduce((sum, p) => sum + (PIECE_VALUES[p.type] || 0), 0);
+  const w = count('w'), b = count('b');
+  const diff = w - b;
+  const pieceCounts = {};
+  ['w', 'b'].forEach(c => {
+    pieceCounts[c] = {};
+    pieces[c].forEach(p => { pieceCounts[c][p.type] = (pieceCounts[c][p.type] || 0) + 1; });
+  });
+  return { white: w, black: b, diff, pieceCounts };
+}
+
+function analyzePawnStructure(pawns) {
+  const result = { w: { doubled: [], isolated: [], passed: [], islands: 0 }, b: { doubled: [], isolated: [], passed: [], islands: 0 } };
+
+  ['w', 'b'].forEach(color => {
+    const opp = color === 'w' ? 'b' : 'w';
+    const cols = {};
+    pawns[color].forEach(p => { cols[p.col] = (cols[p.col] || []).concat(p); });
+
+    // Doubled
+    Object.entries(cols).forEach(([col, ps]) => {
+      if (ps.length > 1) result[color].doubled.push(...ps.map(p => p.pos));
+    });
+
+    // Isolated
+    Object.keys(cols).forEach(col => {
+      const c = parseInt(col);
+      if (!cols[c - 1] && !cols[c + 1]) {
+        result[color].isolated.push(...cols[c].map(p => p.pos));
+      }
+    });
+
+    // Passed
+    pawns[color].forEach(p => {
+      const oppPawns = pawns[opp];
+      const isBlocked = oppPawns.some(op => {
+        if (Math.abs(op.col - p.col) > 1) return false;
+        return color === 'w' ? op.row < p.row : op.row > p.row;
+      });
+      if (!isBlocked) result[color].passed.push(p.pos);
+    });
+
+    // Islands
+    const sortedCols = Object.keys(cols).map(Number).sort((a, b) => a - b);
+    let islands = 0;
+    for (let i = 0; i < sortedCols.length; i++) {
+      if (i === 0 || sortedCols[i] - sortedCols[i - 1] > 1) islands++;
+    }
+    result[color].islands = islands;
+  });
+
+  return result;
+}
+
+function explainPosition(fen) {
+  const { pieces, pawns, turn, castling } = parseFEN(fen);
+  const material = analyzeMaterial(pieces);
+  const pawnStruct = analyzePawnStructure(pawns);
+
+  const insights = [];
+  const insightsCn = [];
+
+  // Material
+  if (material.diff > 0) {
+    insights.push(`White is up ${material.diff} point${material.diff > 1 ? 's' : ''} of material (${material.white} vs ${material.black}).`);
+    insightsCn.push(`白方多${material.diff}分子力（${material.white} 对 ${material.black}）。`);
+  } else if (material.diff < 0) {
+    insights.push(`Black is up ${-material.diff} point${material.diff < -1 ? 's' : ''} of material (${material.black} vs ${material.white}).`);
+    insightsCn.push(`黑方多${-material.diff}分子力（${material.black} 对 ${material.white}）。`);
+  } else {
+    insights.push(`Material is equal (${material.white} each).`);
+    insightsCn.push(`子力相等（各${material.white}分）。`);
+  }
+
+  // Turn
+  insights.push(`It's ${turn === 'w' ? "White" : "Black"}'s turn to move.`);
+  insightsCn.push(`轮到${turn === 'w' ? '白' : '黑'}方走棋。`);
+
+  // Castling rights
+  if (castling !== '-') {
+    const rights = [];
+    if (castling.includes('K')) rights.push('White O-O');
+    if (castling.includes('Q')) rights.push('White O-O-O');
+    if (castling.includes('k')) rights.push('Black O-O');
+    if (castling.includes('q')) rights.push('Black O-O-O');
+    insights.push(`Castling available: ${rights.join(', ')}.`);
+  } else {
+    insights.push('No castling rights remain.');
+    insightsCn.push('双方都不能王车易位了。');
+  }
+
+  // Pawn structure
+  ['w', 'b'].forEach(color => {
+    const name = color === 'w' ? 'White' : 'Black';
+    const nameCn = color === 'w' ? '白方' : '黑方';
+    const ps = pawnStruct[color];
+    if (ps.doubled.length > 0) {
+      insights.push(`${name} has doubled pawns on ${ps.doubled.join(', ')}.`);
+      insightsCn.push(`${nameCn}有叠兵在${ps.doubled.join(', ')}。`);
+    }
+    if (ps.isolated.length > 0) {
+      insights.push(`${name} has isolated pawns on ${ps.isolated.join(', ')}.`);
+      insightsCn.push(`${nameCn}有孤兵在${ps.isolated.join(', ')}。`);
+    }
+    if (ps.passed.length > 0) {
+      insights.push(`${name} has passed pawns on ${ps.passed.join(', ')} — potential promotion threats!`);
+      insightsCn.push(`${nameCn}有通路兵在${ps.passed.join(', ')}——潜在升变威胁！`);
+    }
+  });
+
+  // Piece presence
+  const totalPieces = pieces.w.length + pieces.b.length;
+  if (totalPieces <= 10) {
+    insights.push('This is an endgame position — activate your king!');
+    insightsCn.push('这是残局局面——要积极使用国王！');
+  } else if (totalPieces <= 20) {
+    insights.push('This is a middlegame position with some pieces exchanged.');
+    insightsCn.push('中局局面，已有部分子力交换。');
+  }
+
+  return { cn: insightsCn.join('\n'), en: insights.join('\n') };
+}
+
+function getStudySuggestions() {
+  // Read user stats from localStorage
+  const chessRating = JSON.parse(localStorage.getItem('puzzle_rating_chess') || '{"rating":1200}');
+  const puzzlesSolved = JSON.parse(localStorage.getItem('puzzles_solved') || '[]');
+  const suggestions = [];
+  const suggestionsCn = [];
+
+  if (chessRating.rating < 1000) {
+    suggestions.push('📚 Focus on basic tactics (forks, pins, skewers) — try the Puzzle section!');
+    suggestionsCn.push('📚 重点练习基本战术（双攻、牵制、串打）——去做题吧！');
+  } else if (chessRating.rating < 1300) {
+    suggestions.push('🧩 Work on intermediate patterns and start studying openings.');
+    suggestionsCn.push('🧩 练习中级模式，开始学习开局。');
+  } else {
+    suggestions.push('🏆 Study positional play and endgame technique to break through.');
+    suggestionsCn.push('🏆 学习位置型棋艺和残局技巧来突破瓶颈。');
+  }
+
+  if (puzzlesSolved.length < 20) {
+    suggestions.push('🎯 Try solving more puzzles daily — consistency is key!');
+    suggestionsCn.push('🎯 每天多做一些题目——持之以恒是关键！');
+  }
+
+  suggestions.push('📺 Watch the video tutorials in the Video Library for visual learning.');
+  suggestionsCn.push('📺 去视频教程区观看教学视频，可视化学习更高效。');
+
+  suggestions.push('📖 Practice openings in the Opening Explorer to build your repertoire.');
+  suggestionsCn.push('📖 在开局库中练习开局，建立自己的开局体系。');
+
+  return { cn: suggestionsCn.join('\n'), en: suggestions.join('\n') };
+}
+
 // Predefined coaching responses (will be replaced with LLM API later)
 const COACHING_TIPS = {
   opening: [
@@ -112,6 +304,55 @@ class AICoach extends Component {
   };
 
   generateResponse = (input) => {
+    // Check if input is a FEN string
+    const fenMatch = input.match(/^([rnbqkpRNBQKP1-8/]+)\s+([wb])\s+([KQkq-]+)\s+([a-h1-8-]+)/);
+    if (fenMatch) {
+      const analysis = explainPosition(input.trim());
+      this.addBotMessage({
+        cn: `📊 局面分析：\n${analysis.cn}`,
+        en: `📊 Position Analysis:\n${analysis.en}`,
+      }, 800);
+      return;
+    }
+
+    // Check for position/explain keywords
+    if (input.includes('explain') || input.includes('position') || input.includes('分析') || input.includes('局面')) {
+      this.addBotMessage({
+        cn: '请粘贴一个FEN字符串，我来帮你分析局面！\n例如：rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+        en: 'Paste a FEN string and I\'ll analyze the position!\nExample: rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+      }, 600);
+      return;
+    }
+
+    // Check for pawn structure keywords
+    if (input.includes('pawn') || input.includes('兵') || input.includes('structure') || input.includes('结构')) {
+      this.addBotMessage({
+        cn: '兵型分析要点：\n1️⃣ 避免叠兵（同一列两个兵）\n2️⃣ 保护孤兵或用子力支援\n3️⃣ 创建通路兵是获胜关键\n4️⃣ 兵链的基底是攻击目标\n\n粘贴FEN可以分析具体局面的兵型！',
+        en: 'Pawn structure tips:\n1️⃣ Avoid doubled pawns (two pawns on same file)\n2️⃣ Support isolated pawns with pieces\n3️⃣ Creating passed pawns is key to winning\n4️⃣ The base of a pawn chain is the target\n\nPaste a FEN to analyze a specific position\'s structure!',
+      }, 800);
+      return;
+    }
+
+    // Check for study/weakness suggestions
+    if (input.includes('study') || input.includes('weak') || input.includes('学习') || input.includes('建议') || input.includes('suggest')) {
+      const suggestions = getStudySuggestions();
+      this.addBotMessage({
+        cn: `📋 个性化学习建议：\n${suggestions.cn}`,
+        en: `📋 Personalized Study Suggestions:\n${suggestions.en}`,
+      }, 800);
+      return;
+    }
+
+    // Check for opening keywords - try to detect and recommend
+    if (input.includes('opening') || input.includes('开局')) {
+      const openingTip = COACHING_TIPS.opening[Math.floor(Math.random() * COACHING_TIPS.opening.length)];
+      this.addBotMessage({
+        cn: `关于开局：${openingTip.cn}\n\n💡 去开局库可以学习和练习各种开局！`,
+        en: `About openings: ${openingTip.en}\n\n💡 Visit the Opening Explorer to learn and practice!`,
+      }, 800);
+      return;
+    }
+
     // Check for keyword matches
     for (const [key, response] of Object.entries(SAMPLE_RESPONSES)) {
       if (input.includes(key)) {
@@ -122,9 +363,7 @@ class AICoach extends Component {
 
     // Topic detection
     let topic = 'general';
-    if (input.includes('opening') || input.includes('开局')) {
-      topic = 'opening';
-    } else if (input.includes('tactic') || input.includes('战术') || input.includes('fork') || input.includes('pin')) {
+    if (input.includes('tactic') || input.includes('战术') || input.includes('fork') || input.includes('pin')) {
       topic = 'tactics';
     } else if (input.includes('endgame') || input.includes('残局')) {
       topic = 'endgame';
@@ -134,7 +373,6 @@ class AICoach extends Component {
     const tips = COACHING_TIPS[topic];
     const tip = tips[Math.floor(Math.random() * tips.length)];
 
-    // Create response
     const responses = [
       { cn: `好问题！这里有一个建议：${tip.cn}`, en: `Great question! Here's a tip: ${tip.en}` },
       { cn: `让我分享一个技巧：${tip.cn}`, en: `Let me share a technique: ${tip.en}` },
@@ -146,6 +384,25 @@ class AICoach extends Component {
   };
 
   handleQuickAction = (action) => {
+    if (action === 'explain') {
+      this.addUserMessage('Explain position');
+      this.addBotMessage({
+        cn: '📊 粘贴FEN字符串来分析局面。\n你可以从对局中复制FEN，也可以使用初始局面：\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+        en: '📊 Paste a FEN string to analyze. You can copy FEN from your game.\nOr try the starting position:\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      }, 600);
+      return;
+    }
+
+    if (action === 'study') {
+      this.addUserMessage('Study suggestions');
+      const suggestions = getStudySuggestions();
+      this.addBotMessage({
+        cn: `📋 个性化学习建议：\n${suggestions.cn}`,
+        en: `📋 Personalized Study Suggestions:\n${suggestions.en}`,
+      }, 600);
+      return;
+    }
+
     const actions = {
       analyze: {
         cn: '要分析对局，请在下完棋后点击"复盘"按钮。我会帮你找出失误，给出最佳走法建议！',
@@ -155,10 +412,6 @@ class AICoach extends Component {
         cn: '每日小贴士：' + COACHING_TIPS.general[Math.floor(Math.random() * COACHING_TIPS.general.length)].cn,
         en: 'Daily tip: ' + COACHING_TIPS.general[Math.floor(Math.random() * COACHING_TIPS.general.length)].en,
       },
-      study: {
-        cn: '推荐学习计划：\n1️⃣ 每天10道战术题\n2️⃣ 学习一个开局变化\n3️⃣ 下2-3盘慢棋并复盘\n4️⃣ 观看一个教学视频',
-        en: 'Recommended study plan:\n1️⃣ 10 tactics puzzles daily\n2️⃣ Learn one opening variation\n3️⃣ Play 2-3 slow games and review\n4️⃣ Watch one instructional video',
-      },
       videos: {
         cn: '推荐视频教程：\n📺 GothamChess - 适合初中级\n📺 Agadmator - 大师对局讲解\n📺 ChessBase India - 印度大师课程',
         en: 'Recommended videos:\n📺 GothamChess - Beginner to Intermediate\n📺 Agadmator - Master game analysis\n📺 ChessBase India - Indian master lessons',
@@ -166,8 +419,7 @@ class AICoach extends Component {
     };
 
     this.addUserMessage(action === 'analyze' ? 'Analyze my game' : 
-                        action === 'tips' ? 'Give me a tip' :
-                        action === 'study' ? 'Study plan' : 'Video recommendations');
+                        action === 'tips' ? 'Give me a tip' : 'Video recommendations');
     this.addBotMessage(actions[action], 600);
   };
 
@@ -219,10 +471,10 @@ class AICoach extends Component {
 
         {/* Quick Actions */}
         <div className="quick-actions">
-          <button onClick={() => this.handleQuickAction('analyze')}>📊 Analyze Game</button>
+          <button onClick={() => this.handleQuickAction('explain')}>📊 Explain Position</button>
+          <button onClick={() => this.handleQuickAction('analyze')}>🔍 Analyze Game</button>
           <button onClick={() => this.handleQuickAction('tips')}>💡 Get Tips</button>
           <button onClick={() => this.handleQuickAction('study')}>📚 Study Plan</button>
-          <button onClick={() => this.handleQuickAction('videos')}>📺 Videos</button>
         </div>
 
         {/* Input */}

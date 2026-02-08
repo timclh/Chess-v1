@@ -10,6 +10,13 @@ import {
   todayPuzzleIndex,
   dailyPuzzleLabel,
 } from "./services/DailyPuzzleService";
+import {
+  EXTRA_CHESS_PUZZLES,
+  EXTRA_XIANGQI_PUZZLES,
+  getPuzzleRating,
+  updatePuzzleRating,
+  getPuzzleRatingHistory,
+} from "./data/PuzzleDatabase";
 
 // Puzzle categories
 const PUZZLE_CATEGORIES = {
@@ -24,7 +31,7 @@ const PUZZLE_CATEGORIES = {
 };
 
 // Puzzle database - organized by difficulty
-const PUZZLES = [
+const BASE_PUZZLES = [
   // Easy puzzles (1-star)
   {
     id: 1,
@@ -234,6 +241,9 @@ const PUZZLES = [
   },
 ];
 
+// Merge base puzzles with expanded database
+const PUZZLES = [...BASE_PUZZLES, ...EXTRA_CHESS_PUZZLES];
+
 // ============================================
 // Xiangqi Puzzle Categories
 // ============================================
@@ -250,7 +260,7 @@ const XIANGQI_PUZZLE_CATEGORIES = {
 // FEN format: rows from top (black side) to bottom (red side)
 // Red = uppercase (R,H,E,A,K,C,S), Black = lowercase (r,h,e,a,k,c,s)
 // Red moves first in Xiangqi
-const XIANGQI_PUZZLES = [
+const BASE_XIANGQI_PUZZLES = [
   // === Easy (1 star) ===
   {
     id: 101,
@@ -356,6 +366,9 @@ const XIANGQI_PUZZLES = [
   },
 ];
 
+// Merge base xiangqi puzzles with expanded database
+const XIANGQI_PUZZLES = [...BASE_XIANGQI_PUZZLES, ...EXTRA_XIANGQI_PUZZLES];
+
 // Get today's date string for daily tracking
 const getTodayKey = () => {
   const today = new Date();
@@ -405,6 +418,8 @@ class Puzzles extends Component {
 
     // Stats
     puzzleStats: JSON.parse(localStorage.getItem('puzzle_stats') || '{}'),
+    puzzleRating: getPuzzleRating('chess'),
+    ratingDelta: null, // show +/- after solve/fail
 
     // UI state
     showCategoryFilter: false,
@@ -449,6 +464,7 @@ class Puzzles extends Component {
         puzzleFailed: false,
         showHint: false,
         xiangqiValidMoves: [],
+        ratingDelta: null,
       });
     } else {
       this.game = new Chess(puzzle.fen);
@@ -462,6 +478,7 @@ class Puzzles extends Component {
         puzzleFailed: false,
         showHint: false,
         xiangqiValidMoves: [],
+        ratingDelta: null,
       });
     }
   };
@@ -485,7 +502,10 @@ class Puzzles extends Component {
   };
 
   switchGameType = (gameType) => {
-    this.setState({ gameType, selectedCategory: null, currentPuzzleIndex: 0, viewMode: 'daily' }, () => {
+    this.setState({
+      gameType, selectedCategory: null, currentPuzzleIndex: 0, viewMode: 'daily',
+      puzzleRating: getPuzzleRating(gameType), ratingDelta: null,
+    }, () => {
       this.loadDailyPuzzles();
     });
   };
@@ -592,6 +612,8 @@ class Puzzles extends Component {
     } else {
       // Wrong move - undo and show red
       this.game.undo();
+      const puzzle = this.getCurrentPuzzle();
+      const ratingResult = updatePuzzleRating(this.state.gameType, puzzle.difficulty, false);
       this.setState({
         squareStyles: {
           [move.from]: { backgroundColor: "rgba(239, 68, 68, 0.5)" },
@@ -599,6 +621,8 @@ class Puzzles extends Component {
         },
         pieceSquare: "",
         puzzleFailed: true,
+        puzzleRating: ratingResult.newRating,
+        ratingDelta: ratingResult.delta,
       });
     }
   };
@@ -649,6 +673,10 @@ class Puzzles extends Component {
     stats[puzzle.category].attempted += 1;
     localStorage.setItem('puzzle_stats', JSON.stringify(stats));
 
+    // Update puzzle rating
+    const { gameType } = this.state;
+    const ratingResult = updatePuzzleRating(gameType, puzzle.difficulty, true);
+
     this.setState({
       puzzleSolved: true,
       solvedToday,
@@ -656,6 +684,8 @@ class Puzzles extends Component {
       streakData: updatedStreak,
       todayCompleted: true,
       puzzleStats: stats,
+      puzzleRating: ratingResult.newRating,
+      ratingDelta: ratingResult.delta,
     });
   };
 
@@ -726,9 +756,12 @@ class Puzzles extends Component {
       }
     } else {
       // Wrong move — show failure
+      const ratingResult = updatePuzzleRating(this.state.gameType, puzzle.difficulty, false);
       this.setState({
         puzzleFailed: true,
         xiangqiValidMoves: [],
+        puzzleRating: ratingResult.newRating,
+        ratingDelta: ratingResult.delta,
       });
     }
   };
@@ -770,7 +803,7 @@ class Puzzles extends Component {
       fen, squareStyles, puzzleSolved, puzzleFailed, showHint,
       dailyPuzzles, solvedToday, streakData, totalSolved, dailyLabel, todayCompleted,
       viewMode, selectedCategory, puzzleStats, currentPuzzleIndex,
-      gameType, xiangqiValidMoves
+      gameType, xiangqiValidMoves, puzzleRating, ratingDelta
     } = this.state;
 
     const streak = streakData.current; // For backwards compatibility
@@ -819,8 +852,12 @@ class Puzzles extends Component {
           {/* Stats Summary */}
           <div className="puzzle-stats-summary">
             <div className="stat-item">
+              <span className="stat-value">{puzzleRating}</span>
+              <span className="stat-label">Puzzle Rating / 谜题评分</span>
+            </div>
+            <div className="stat-item">
               <span className="stat-value">{totalSolved}</span>
-              <span className="stat-label">Total Solved / 总计完成</span>
+              <span className="stat-label">Solved / 已解</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">{solvedToday.length}/3</span>
@@ -913,8 +950,20 @@ class Puzzles extends Component {
 
               {/* Status Message */}
               <div className={`puzzle-status ${puzzleSolved ? 'solved' : ''} ${puzzleFailed ? 'failed' : ''}`}>
-                {puzzleSolved && '🎉 Solved! / 完成！'}
-                {puzzleFailed && '❌ Wrong! Try again / 错误！再试一次'}
+                {puzzleSolved && (
+                  <span>🎉 Solved! / 完成！{ratingDelta !== null && (
+                    <span className={`rating-delta ${ratingDelta >= 0 ? 'positive' : 'negative'}`}>
+                      {' '}({ratingDelta >= 0 ? '+' : ''}{ratingDelta})
+                    </span>
+                  )}</span>
+                )}
+                {puzzleFailed && (
+                  <span>❌ Wrong! Try again / 错误！再试一次{ratingDelta !== null && (
+                    <span className={`rating-delta negative`}>
+                      {' '}({ratingDelta})
+                    </span>
+                  )}</span>
+                )}
                 {!puzzleSolved && !puzzleFailed && (
                   gameType === 'chess'
                     ? `${this.game?.turn() === 'w' ? 'White' : 'Black'} to move / ${this.game?.turn() === 'w' ? '白方' : '黑方'}走棋`
@@ -1002,6 +1051,10 @@ class Puzzles extends Component {
               <h2>📊 Puzzle Statistics / 谜题统计</h2>
 
               <div className="stats-overview">
+                <div className="stat-card">
+                  <div className="stat-big-number">{puzzleRating}</div>
+                  <div className="stat-big-label">Puzzle Rating / 谜题评分</div>
+                </div>
                 <div className="stat-card">
                   <div className="stat-big-number">{totalSolved}</div>
                   <div className="stat-big-label">Total Solved / 总完成数</div>
