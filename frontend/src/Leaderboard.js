@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { getLeaderboard, getGameHistory } from "./GameHistory";
 import { getRating } from "./services/UserRatingService";
-import { getRank } from "./services/EloService";
+import EloService from "./services/EloService";
 import { GAME_TYPE, RANK_THRESHOLDS } from "./constants";
 
 class Leaderboard extends Component {
@@ -13,8 +13,8 @@ class Leaderboard extends Component {
     // Player ELO ratings
     chessRating: getRating(GAME_TYPE.CHESS),
     xiangqiRating: getRating(GAME_TYPE.XIANGQI),
-    chessRank: getRank(getRating(GAME_TYPE.CHESS)),
-    xiangqiRank: getRank(getRating(GAME_TYPE.XIANGQI)),
+    chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS)),
+    xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI)),
   };
 
   componentDidMount() {
@@ -29,8 +29,8 @@ class Leaderboard extends Component {
       recentGames,
       chessRating: getRating(GAME_TYPE.CHESS),
       xiangqiRating: getRating(GAME_TYPE.XIANGQI),
-      chessRank: getRank(getRating(GAME_TYPE.CHESS)),
-      xiangqiRank: getRank(getRating(GAME_TYPE.XIANGQI)),
+      chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS)),
+      xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI)),
     });
   };
 
