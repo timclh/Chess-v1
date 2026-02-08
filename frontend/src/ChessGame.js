@@ -7,6 +7,10 @@ import {
   getBestMoveForRetrospect, scoreToWinProbability
 } from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
+import { getRating, recordResult } from "./services/UserRatingService";
+import { GAME_TYPE, RESULT } from "./constants";
+import { RatingDisplay } from "./components/RatingDisplay";
+import { GameResultDialog } from "./components/GameResultDialog";
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -170,6 +174,11 @@ class ChessGame extends Component {
     // Pending game result (before user confirms submission)
     pendingResult: null, // { result: 'win'/'loss'/'draw', status: 'Checkmate!...' }
     showResultDialog: false,
+    // Rating state
+    oldRating: null,
+    newRating: null,
+    ratingDelta: 0,
+    ratingProcessed: false,
     // Save/Load state
     hasSavedGame: false,
     showSaveNotification: false,
@@ -266,6 +275,10 @@ class ChessGame extends Component {
           pendingResult: { result: gameResult, status: status },
           showResultDialog: true,
         });
+        // Process rating in AI/coach mode
+        if ((this.state.gameMode === 'ai' || this.state.gameMode === 'coach') && !this.state.ratingProcessed) {
+          this.processGameResult(gameResult, status);
+        }
       } else {
         this.setState({ gameOver: true, gameStatus: status });
       }
@@ -290,6 +303,47 @@ class ChessGame extends Component {
   // Continue exploring without submitting score
   continueExploring = () => {
     this.setState({ showResultDialog: false });
+  };
+
+  // Process game result and update rating
+  processGameResult = async (result, status) => {
+    if (this.state.ratingProcessed) return;
+    
+    const gameType = GAME_TYPE.CHESS;
+    const oldRating = getRating(gameType);
+    
+    // Map result string to RESULT constant
+    let resultValue;
+    if (result === 'win') resultValue = RESULT.WIN;
+    else if (result === 'loss') resultValue = RESULT.LOSS;
+    else resultValue = RESULT.DRAW;
+    
+    // Record result and get new rating
+    const newRating = await recordResult(
+      gameType,
+      resultValue,
+      this.state.aiDifficulty, // difficulty 1-4
+      'ai',
+      this.props.user
+    );
+    
+    this.setState({
+      oldRating,
+      newRating,
+      ratingDelta: newRating - oldRating,
+      ratingProcessed: true,
+    });
+  };
+
+  // Close result dialog
+  closeResultDialog = () => {
+    this.setState({ showResultDialog: false });
+  };
+
+  // Handle rematch request
+  handleRematch = () => {
+    this.closeResultDialog();
+    this.resetGame();
   };
 
   saveGame = async (result) => {
@@ -565,6 +619,11 @@ class ChessGame extends Component {
       retrospectMoveIndex: -1,
       pendingResult: null,
       showResultDialog: false,
+      // Reset rating state
+      oldRating: null,
+      newRating: null,
+      ratingDelta: 0,
+      ratingProcessed: false,
     });
     this.updateGameStatus();
 
@@ -946,6 +1005,9 @@ class ChessGame extends Component {
             />
           </div>
 
+          {/* Player Rating */}
+          <RatingDisplay gameType={GAME_TYPE.CHESS} />
+
           {/* Game Mode Selector */}
           <div className="settings-section">
             <div className="section-label">Game Mode</div>
@@ -1132,57 +1194,17 @@ class ChessGame extends Component {
 
           {/* Game Result Dialog */}
           {showResultDialog && pendingResult && (
-            <div className="result-dialog-overlay">
-              <div className={`result-dialog ${pendingResult.result}`}>
-                <div className="result-icon">
-                  {pendingResult.result === 'win' ? '🏆' : pendingResult.result === 'loss' ? '😞' : '🤝'}
-                </div>
-                <h3 className="result-title">{pendingResult.status}</h3>
-                <p className="result-description">
-                  {pendingResult.result === 'win'
-                    ? '恭喜你赢了！要提交成绩还是继续研究棋局？'
-                    : pendingResult.result === 'loss'
-                    ? '很遗憾，你输了。要提交成绩还是悔棋继续？'
-                    : '和棋结束。要提交成绩还是继续研究？'}
-                </p>
-                <p className="result-description-en">
-                  {pendingResult.result === 'win'
-                    ? 'Congratulations! Submit your score or continue exploring?'
-                    : pendingResult.result === 'loss'
-                    ? 'You lost. Submit score or undo to continue?'
-                    : 'Game drawn. Submit score or continue exploring?'}
-                </p>
-                <div className="result-actions">
-                  <button
-                    className="btn btn-primary result-btn"
-                    onClick={this.submitScore}
-                    disabled={!this.state.playerName}
-                  >
-                    📊 Submit Score
-                  </button>
-                  <button
-                    className="btn btn-secondary result-btn"
-                    onClick={this.continueExploring}
-                  >
-                    🔍 Continue Exploring
-                  </button>
-                  <button
-                    className="btn btn-retrospect result-btn"
-                    onClick={() => { this.continueExploring(); this.enterRetrospect(); }}
-                    disabled={history.length < 4}
-                  >
-                    📈 Review Game
-                  </button>
-                </div>
-                {!this.state.playerName && (
-                  <p className="result-warning">
-                    请先输入玩家名称才能提交成绩
-                    <br />
-                    Please enter a player name to submit your score
-                  </p>
-                )}
-              </div>
-            </div>
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult.result}
+              message={pendingResult.status}
+              oldRating={this.state.oldRating}
+              newRating={this.state.newRating}
+              onRematch={this.handleRematch}
+              onReview={() => { this.closeResultDialog(); this.enterRetrospect(); }}
+              onHome={this.closeResultDialog}
+              onClose={this.closeResultDialog}
+            />
           )}
 
           {/* Move History under board (not in tutorial mode) */}

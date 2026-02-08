@@ -150,10 +150,14 @@ class FairyStockfishService {
         this.engine = await Promise.race([
           Stockfish({
             wasmBinary,
-            // Use blob URL for worker to avoid COEP issues
+            // Use blob URLs for both worker and main script to avoid COEP issues
+            mainScriptUrlOrBlob: this._engineScriptBlobUrl || '/fairy-stockfish.js',
             locateFile: (path) => {
               if (path.endsWith('.worker.js')) {
                 return workerBlobUrl;
+              }
+              if (path.endsWith('.js') && this._engineScriptBlobUrl) {
+                return this._engineScriptBlobUrl;
               }
               return '/' + path;
             },
@@ -215,26 +219,46 @@ class FairyStockfishService {
 
   /**
    * Load the Fairy-Stockfish JS engine script.
+   *
+   * Strategy: fetch the script as text, wrap it in a blob URL, and load it.
+   * This avoids COEP/CORS issues because blob URLs are same-origin.
+   * The inner worker's importScripts also needs the blob version, which is
+   * handled by passing mainScriptUrlOrBlob through locateFile.
    */
   _loadEngineScript() {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       // Check if already loaded
       if (window.Stockfish) {
         resolve(window.Stockfish);
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = '/fairy-stockfish.js';
-      script.onload = () => {
-        if (window.Stockfish) {
-          resolve(window.Stockfish);
-        } else {
-          reject(new Error('Stockfish global not found after script load'));
-        }
-      };
-      script.onerror = () => reject(new Error('Failed to load fairy-stockfish.js'));
-      document.head.appendChild(script);
+      try {
+        // Fetch the engine JS as text and load via blob URL to bypass COEP
+        const response = await fetch('/fairy-stockfish.js');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const code = await response.text();
+
+        const blob = new Blob([code], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        // Store for the worker's importScripts (locateFile will return this)
+        this._engineScriptBlobUrl = blobUrl;
+
+        const script = document.createElement('script');
+        script.src = blobUrl;
+        script.onload = () => {
+          if (window.Stockfish) {
+            resolve(window.Stockfish);
+          } else {
+            reject(new Error('Stockfish global not found after blob script load'));
+          }
+        };
+        script.onerror = () => reject(new Error('Failed to load fairy-stockfish.js blob'));
+        document.head.appendChild(script);
+      } catch (err) {
+        reject(new Error('Failed to fetch fairy-stockfish.js: ' + err.message));
+      }
     });
   }
 

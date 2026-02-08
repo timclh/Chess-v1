@@ -1,6 +1,9 @@
 # Private files - business docs, credentials, etc.
 .private/
 
+# Business plan documents (confidential)
+docs/business-plan*.md
+
 # Dependencies
 node_modules/
 

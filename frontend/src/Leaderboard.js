@@ -1,12 +1,20 @@
 import React, { Component } from "react";
 import { getLeaderboard, getGameHistory } from "./GameHistory";
+import { getRating } from "./services/UserRatingService";
+import { getRank } from "./services/EloService";
+import { GAME_TYPE, RANK_THRESHOLDS } from "./constants";
 
 class Leaderboard extends Component {
   state = {
     leaderboard: [],
     recentGames: [],
-    activeTab: "leaderboard", // 'leaderboard', 'ai-games', 'human-games'
+    activeTab: "leaderboard", // 'leaderboard', 'history', 'ratings'
     historyFilter: "all", // 'all', 'ai', 'human'
+    // Player ELO ratings
+    chessRating: getRating(GAME_TYPE.CHESS),
+    xiangqiRating: getRating(GAME_TYPE.XIANGQI),
+    chessRank: getRank(getRating(GAME_TYPE.CHESS)),
+    xiangqiRank: getRank(getRating(GAME_TYPE.XIANGQI)),
   };
 
   componentDidMount() {
@@ -16,7 +24,14 @@ class Leaderboard extends Component {
   loadData = () => {
     const leaderboard = getLeaderboard();
     const recentGames = getGameHistory().slice(0, 50);
-    this.setState({ leaderboard, recentGames });
+    this.setState({
+      leaderboard,
+      recentGames,
+      chessRating: getRating(GAME_TYPE.CHESS),
+      xiangqiRating: getRating(GAME_TYPE.XIANGQI),
+      chessRank: getRank(getRating(GAME_TYPE.CHESS)),
+      xiangqiRank: getRank(getRating(GAME_TYPE.XIANGQI)),
+    });
   };
 
   formatDate = (timestamp) => {
@@ -67,7 +82,7 @@ class Leaderboard extends Component {
   };
 
   render() {
-    const { leaderboard, activeTab, historyFilter } = this.state;
+    const { leaderboard, activeTab, historyFilter, chessRating, xiangqiRating, chessRank, xiangqiRank } = this.state;
     const filteredGames = this.getFilteredGames();
 
     return (
@@ -82,6 +97,12 @@ class Leaderboard extends Component {
               排行榜 Leaderboard
             </button>
             <button
+              className={`tab-btn ${activeTab === "ratings" ? "active" : ""}`}
+              onClick={() => this.setState({ activeTab: "ratings" })}
+            >
+              评分 My Ratings
+            </button>
+            <button
               className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
               onClick={() => this.setState({ activeTab: "history" })}
             >
@@ -90,7 +111,51 @@ class Leaderboard extends Component {
           </div>
         </div>
 
+        {/* My Ratings Section */}
+        {activeTab === "ratings" && (
+          <div className="ratings-section">
+            <h3>📊 Your ELO Ratings / 你的等级分</h3>
+            <div className="ratings-grid">
+              {/* Chess Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">♟️</div>
+                <div className="rating-game-name">Chess / 国际象棋</div>
+                <div className="rating-value">{chessRating}</div>
+                <div className="rating-rank" style={{ color: chessRank.color }}>
+                  <span className="rank-icon">{chessRank.icon}</span>
+                  <span className="rank-name">{chessRank.name}</span>
+                </div>
+              </div>
+              {/* Xiangqi Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">車</div>
+                <div className="rating-game-name">Xiangqi / 象棋</div>
+                <div className="rating-value">{xiangqiRating}</div>
+                <div className="rating-rank" style={{ color: xiangqiRank.color }}>
+                  <span className="rank-icon">{xiangqiRank.icon}</span>
+                  <span className="rank-name">{xiangqiRank.name}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* ELO Explanation */}
+            <div className="elo-explanation">
+              <h4>ELO Rating System / ELO等级分系统</h4>
+              <p>Your rating changes based on game results against AI or other players.</p>
+              <p>你的等级分会根据与AI或其他玩家的对战结果而变化。</p>
+              <div className="rank-thresholds">
+                {RANK_THRESHOLDS.map((t, i) => (
+                  <span key={i} className="threshold-item" style={{ color: t.color }}>
+                    {t.icon} {t.name} ({t.min}+)
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Scoring Rules */}
+        {activeTab === "leaderboard" && (
         <div className="scoring-rules">
           <div className="rule-title">积分规则 / Scoring Rules:</div>
           <div className="rules-grid">
@@ -102,6 +167,7 @@ class Leaderboard extends Component {
             <span>🤝 Draw: Half points</span>
           </div>
         </div>
+        )}
 
         {activeTab === "leaderboard" && (
           <div className="leaderboard-content">

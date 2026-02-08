@@ -3,6 +3,13 @@ import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
 import Xiangqi from "./xiangqi";
 import XiangqiBoard from "./XiangqiBoard";
+import {
+  getStreak,
+  recordPuzzleCompletion,
+  isTodayCompleted,
+  todayPuzzleIndex,
+  dailyPuzzleLabel,
+} from "./services/DailyPuzzleService";
 
 // Puzzle categories
 const PUZZLE_CATEGORIES = {
@@ -388,11 +395,12 @@ class Puzzles extends Component {
     // Xiangqi-specific state
     xiangqiValidMoves: [],
 
-    // Daily tracking
+    // Daily tracking (now using DailyPuzzleService)
     dailyPuzzles: [],
     solvedToday: JSON.parse(localStorage.getItem(`puzzles_solved_${getTodayKey()}`) || '[]'),
-    streak: parseInt(localStorage.getItem('puzzle_streak') || '0'),
-    lastPlayDate: localStorage.getItem('puzzle_last_date') || '',
+    streakData: getStreak(), // { current, best, lastDate }
+    todayCompleted: isTodayCompleted(),
+    dailyLabel: dailyPuzzleLabel(),
     totalSolved: parseInt(localStorage.getItem('puzzle_total_solved') || '0'),
 
     // Stats
@@ -409,26 +417,8 @@ class Puzzles extends Component {
 
   componentDidMount() {
     this.game = new Chess();
-    this.updateStreak();
     this.loadDailyPuzzles();
   }
-
-  updateStreak = () => {
-    const today = getTodayKey();
-    const lastDate = this.state.lastPlayDate;
-
-    if (lastDate) {
-      const lastDateObj = new Date(lastDate);
-      const todayObj = new Date(today);
-      const diffDays = Math.floor((todayObj - lastDateObj) / (1000 * 60 * 60 * 24));
-
-      if (diffDays > 1) {
-        // Streak broken
-        this.setState({ streak: 0 });
-        localStorage.setItem('puzzle_streak', '0');
-      }
-    }
-  };
 
   loadDailyPuzzles = () => {
     const dailyPuzzles = getDailyPuzzles(this.state.gameType);
@@ -647,14 +637,8 @@ class Puzzles extends Component {
     const totalSolved = this.state.totalSolved + 1;
     localStorage.setItem('puzzle_total_solved', totalSolved.toString());
 
-    // Update streak
-    let streak = this.state.streak;
-    const lastDate = this.state.lastPlayDate;
-    if (lastDate !== today) {
-      streak += 1;
-      localStorage.setItem('puzzle_streak', streak.toString());
-      localStorage.setItem('puzzle_last_date', today);
-    }
+    // Update streak using DailyPuzzleService (handles consecutive day tracking)
+    const updatedStreak = recordPuzzleCompletion();
 
     // Update category stats
     const stats = { ...this.state.puzzleStats };
@@ -669,8 +653,8 @@ class Puzzles extends Component {
       puzzleSolved: true,
       solvedToday,
       totalSolved,
-      streak,
-      lastPlayDate: today,
+      streakData: updatedStreak,
+      todayCompleted: true,
       puzzleStats: stats,
     });
   };
@@ -784,10 +768,12 @@ class Puzzles extends Component {
   render() {
     const {
       fen, squareStyles, puzzleSolved, puzzleFailed, showHint,
-      dailyPuzzles, solvedToday, streak, totalSolved,
+      dailyPuzzles, solvedToday, streakData, totalSolved, dailyLabel, todayCompleted,
       viewMode, selectedCategory, puzzleStats, currentPuzzleIndex,
       gameType, xiangqiValidMoves
     } = this.state;
+
+    const streak = streakData.current; // For backwards compatibility
 
     const puzzle = this.getCurrentPuzzle();
     const puzzles = viewMode === 'daily' ? dailyPuzzles : this.getFilteredPuzzles();
@@ -823,7 +809,11 @@ class Puzzles extends Component {
             <div className="streak-info">
               <div className="streak-number">{streak}</div>
               <div className="streak-label">Day Streak / 连续天数</div>
+              {streakData.best > streak && (
+                <div className="streak-best">Best: {streakData.best} / 最高: {streakData.best}</div>
+              )}
             </div>
+            {todayCompleted && <div className="streak-badge">✓ Today</div>}
           </div>
 
           {/* Stats Summary */}
@@ -1019,6 +1009,7 @@ class Puzzles extends Component {
                 <div className="stat-card streak-card">
                   <div className="stat-big-number">🔥 {streak}</div>
                   <div className="stat-big-label">Day Streak / 连续天数</div>
+                  <div className="stat-sub-label">Best: {streakData.best} / 最高: {streakData.best}</div>
                 </div>
               </div>
 

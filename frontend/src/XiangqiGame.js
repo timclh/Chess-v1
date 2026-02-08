@@ -24,6 +24,10 @@ import {
   destroyEngine,
   clearAnalysisCache,
 } from './services/XiangqiCoachService';
+import { getRating, recordResult } from './services/UserRatingService';
+import { GAME_TYPE, RESULT } from './constants';
+import { RatingDisplay } from './components/RatingDisplay';
+import { GameResultDialog } from './components/GameResultDialog';
 
 // Tutorial lessons for Chinese Chess
 const XIANGQI_LESSONS = [
@@ -192,6 +196,13 @@ class XiangqiGame extends Component {
     lastMove: null,
     // Responsive board width
     boardWidth: Math.min(450, window.innerWidth - 40),
+    // Rating system state
+    showResultDialog: false,
+    pendingResult: null,        // { result: 'win'|'loss'|'draw', status: string }
+    oldRating: null,
+    newRating: null,
+    ratingDelta: null,
+    ratingProcessed: false,     // Prevent double-processing
   };
 
   game = null;
@@ -364,13 +375,24 @@ class XiangqiGame extends Component {
       // Whether in check (checkmate/将死) or not (困毙/trapped), the side to move loses
       const winner = this.game.turn === 'r' ? '黑方' : '红方';
       const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+      const winnerColor = this.game.turn === 'r' ? 'b' : 'r';
+
       if (this.game.in_checkmate()) {
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
       } else {
         // No legal moves but not in check = 困毙 (kùn bì) = trapped, still a loss
         status = `困毙！${winner}获胜！/ No moves! ${winnerEn} wins!`;
       }
-      this.setState({ gameOver: true, gameStatus: status });
+
+      // Calculate game result for rating
+      const result = winnerColor === this.state.playerColor ? RESULT.WIN : RESULT.LOSS;
+
+      // Only process rating once per game and only in AI mode
+      if (!this.state.ratingProcessed && (this.state.gameMode === 'ai' || this.state.gameMode === 'coach')) {
+        this.processGameResult(result, status);
+      } else {
+        this.setState({ gameOver: true, gameStatus: status });
+      }
     } else {
       if (this.game.in_check()) {
         status = `${turn}被将军！/ ${turnEn} is in check!`;
@@ -379,6 +401,56 @@ class XiangqiGame extends Component {
       }
       this.setState({ gameOver: false, gameStatus: status });
     }
+  };
+
+  /**
+   * Process game result and update ELO rating.
+   */
+  processGameResult = async (result, status) => {
+    const oldRatingData = getRating(GAME_TYPE.XIANGQI);
+    const oldRating = oldRatingData.rating;
+
+    try {
+      const { newRating, delta } = await recordResult({
+        gameType: GAME_TYPE.XIANGQI,
+        result,
+        difficulty: this.state.aiDifficulty,
+      });
+
+      this.setState({
+        gameOver: true,
+        gameStatus: status,
+        pendingResult: { result, status },
+        showResultDialog: true,
+        oldRating,
+        newRating,
+        ratingDelta: delta,
+        ratingProcessed: true,
+      });
+    } catch (err) {
+      console.error('Failed to record game result:', err);
+      this.setState({
+        gameOver: true,
+        gameStatus: status,
+        ratingProcessed: true,
+      });
+    }
+  };
+
+  /**
+   * Close the result dialog and reset for new game.
+   */
+  closeResultDialog = () => {
+    this.setState({ showResultDialog: false });
+  };
+
+  /**
+   * Handle rematch from result dialog.
+   */
+  handleRematch = () => {
+    this.setState({ showResultDialog: false }, () => {
+      this.resetGame();
+    });
   };
 
   updateAnalysis = () => {
@@ -711,6 +783,13 @@ class XiangqiGame extends Component {
       analysis: null,
       suggestedMoves: [],
       threatWarning: null,
+      // Reset rating state for new game
+      showResultDialog: false,
+      pendingResult: null,
+      oldRating: null,
+      newRating: null,
+      ratingDelta: null,
+      ratingProcessed: false,
     });
     this.updateGameStatus();
 
@@ -955,6 +1034,7 @@ class XiangqiGame extends Component {
       threatWarning,
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       validMoves, lastMove,
+      showResultDialog, pendingResult, oldRating, newRating,
     } = this.state;
 
     const currentTutorialLesson = XIANGQI_LESSONS[currentLesson];
@@ -962,9 +1042,27 @@ class XiangqiGame extends Component {
 
     return (
       <div className="xiangqi-game-layout">
+        {/* Game Result Dialog with Rating Change */}
+        <GameResultDialog
+          isOpen={showResultDialog}
+          result={pendingResult?.result}
+          message={pendingResult?.status}
+          oldRating={oldRating}
+          newRating={newRating}
+          onRematch={this.handleRematch}
+          onClose={this.closeResultDialog}
+        />
+
         {/* Left Panel - Settings */}
         <div className="settings-panel xiangqi-settings">
           <div className="panel-title">中国象棋 / Chinese Chess</div>
+
+          {/* Player Rating Display */}
+          {(gameMode === 'ai' || gameMode === 'coach') && (
+            <div className="settings-section">
+              <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+            </div>
+          )}
 
           {/* Game Mode */}
           <div className="settings-section">
