@@ -3,6 +3,7 @@ import { getLeaderboard, getGameHistory } from "./GameHistory";
 import { getRating } from "./services/UserRatingService";
 import EloService from "./services/EloService";
 import { GAME_TYPE, RANK_THRESHOLDS } from "./constants";
+import { RatingHistoryGraph, RatingTrend } from "./components/RatingHistoryGraph";
 
 class Leaderboard extends Component {
   state = {
@@ -126,21 +127,47 @@ class Leaderboard extends Component {
               <div className="rating-card">
                 <div className="rating-game-icon">♟️</div>
                 <div className="rating-game-name">Chess / 国际象棋</div>
-                <div className="rating-value">{chessRating}</div>
+                <div className="rating-value">
+                  {chessRating}
+                  {' '}
+                  <RatingTrend history={chessRatingData?.history || []} currentRating={chessRating} />
+                </div>
                 <div className="rating-rank" style={{ color: chessRank.color }}>
                   <span className="rank-icon">{chessRank.icon}</span>
                   <span className="rank-name">{chessRank.name}</span>
                 </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {chessRatingData?.gamesPlayed || 0} games · 
+                  {chessRatingData?.wins || 0}W / {chessRatingData?.losses || 0}L / {chessRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={chessRatingData?.history || []}
+                  currentRating={chessRating}
+                  label="Chess"
+                />
               </div>
               {/* Xiangqi Rating */}
               <div className="rating-card">
                 <div className="rating-game-icon">車</div>
                 <div className="rating-game-name">Xiangqi / 象棋</div>
-                <div className="rating-value">{xiangqiRating}</div>
+                <div className="rating-value">
+                  {xiangqiRating}
+                  {' '}
+                  <RatingTrend history={xiangqiRatingData?.history || []} currentRating={xiangqiRating} />
+                </div>
                 <div className="rating-rank" style={{ color: xiangqiRank.color }}>
                   <span className="rank-icon">{xiangqiRank.icon}</span>
                   <span className="rank-name">{xiangqiRank.name}</span>
                 </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {xiangqiRatingData?.gamesPlayed || 0} games · 
+                  {xiangqiRatingData?.wins || 0}W / {xiangqiRatingData?.losses || 0}L / {xiangqiRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={xiangqiRatingData?.history || []}
+                  currentRating={xiangqiRating}
+                  label="Xiangqi"
+                />
               </div>
             </div>
             

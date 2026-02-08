@@ -6,6 +6,8 @@
  */
 
 const WebSocket = require('ws');
+const EloService = require('../services/EloService');
+const config = require('../config');
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -22,6 +24,75 @@ function broadcastToRoom(room, payload) {
   });
 }
 
+/**
+ * Calculate ELO changes for both players and broadcast game_over
+ * with rating information to each player.
+ *
+ * @param {object} room
+ * @param {string} winnerColor - 'w', 'b', or null for draw
+ * @param {string} reason - 'checkmate', 'resign', 'draw', 'timeout', 'disconnect'
+ * @param {string} message - human-readable message
+ */
+function endGameWithRating(room, winnerColor, reason, message) {
+  room.gameState.gameOver = true;
+  room.gameState.result = message;
+
+  const white = room.players.find(p => p.playerColor === 'w');
+  const black = room.players.find(p => p.playerColor === 'b');
+
+  if (!white || !black) {
+    // Can't calculate ratings without both players
+    broadcastToRoom(room, { type: 'game_over', reason, winner: winnerColor, message });
+    return;
+  }
+
+  // Determine scores
+  let scoreWhite;
+  if (winnerColor === 'w') scoreWhite = 1;
+  else if (winnerColor === 'b') scoreWhite = 0;
+  else scoreWhite = 0.5; // draw
+
+  const whiteRating = white.playerRating || config.elo.defaultRating;
+  const blackRating = black.playerRating || config.elo.defaultRating;
+  const whiteGames = white.playerGamesPlayed || 0;
+  const blackGames = black.playerGamesPlayed || 0;
+
+  const result = EloService.calculate(
+    { rating: whiteRating, gamesPlayed: whiteGames },
+    { rating: blackRating, gamesPlayed: blackGames },
+    scoreWhite
+  );
+
+  // Send personalised game_over to each player
+  const basePayload = {
+    type: 'game_over',
+    reason,
+    winner: winnerColor,
+    message,
+    gameType: room.gameType,
+  };
+
+  send(white, {
+    ...basePayload,
+    playerResult: winnerColor === 'w' ? 'win' : winnerColor === 'b' ? 'loss' : 'draw',
+    oldRating: whiteRating,
+    newRating: result.newRatingA,
+    ratingDelta: result.deltaA,
+    opponentOldRating: blackRating,
+    opponentNewRating: result.newRatingB,
+  });
+
+  send(black, {
+    ...basePayload,
+    playerResult: winnerColor === 'b' ? 'win' : winnerColor === 'w' ? 'loss' : 'draw',
+    oldRating: blackRating,
+    newRating: result.newRatingB,
+    ratingDelta: result.deltaB,
+    opponentOldRating: whiteRating,
+    opponentNewRating: result.newRatingA,
+  });
+}
+
 // ── Handlers ─────────────────────────────────────────────────
 
 function handleCreateRoom(ws, message, roomManager) {
@@ -30,6 +101,10 @@ function handleCreateRoom(ws, message, roomManager) {
 
   const name = message.playerName || 'Player 1';
   room.addPlayer(ws, name);
+
+  // Store player rating info on the WebSocket for ELO calculation
+  ws.playerRating = message.rating || config.elo.defaultRating;
+  ws.playerGamesPlayed = message.gamesPlayed || 0;
 
   send(ws, {
     type: 'room_created',
@@ -54,18 +129,27 @@ function handleJoinRoom(ws, message, roomManager) {
   const name = playerName || 'Player 2';
   const color = room.addPlayer(ws, name);
 
+  // Store player rating info on the WebSocket for ELO calculation
+  ws.playerRating = message.rating || config.elo.defaultRating;
+  ws.playerGamesPlayed = message.gamesPlayed || 0;
+
+  const opponent = room.players.find(p => p !== ws);
   send(ws, {
     type: 'room_joined',
     roomId,
     playerColor: color,
     gameType: room.gameType,
     gameState: room.gameState,
-    opponentName: room.players[0]?.playerName || 'Opponent',
+    opponentName: opponent?.playerName || 'Opponent',
+    opponentRating: opponent?.playerRating || config.elo.defaultRating,
   });
 
   if (room.players.length === 2) {
-    const other = room.opponent(ws);
-    send(other, { type: 'opponent_joined', opponentName: name });
+    send(opponent, {
+      type: 'opponent_joined',
+      opponentName: name,
+      opponentRating: ws.playerRating,
+    });
 
     broadcastToRoom(room, {
       type: 'game_start',
@@ -91,14 +175,29 @@ function handleMove(ws, message, roomManager) {
   room.drawOffer = null;
   room.touch();
 
+  // If game ended via the move (checkmate/stalemate/draw)
+  if (message.gameOver) {
+    let winnerColor = null;
+    let reason = 'checkmate';
+    if (message.result && message.result.toLowerCase().includes('checkmate')) {
+      // The side whose turn it is has been checkmated
+      winnerColor = message.turn === 'w' ? 'b' : 'w';
+    } else if (message.result && (message.result.toLowerCase().includes('stalemate') || message.result.toLowerCase().includes('draw'))) {
+      winnerColor = null; // draw
+      reason = 'draw';
+    }
+    endGameWithRating(room, winnerColor, reason, message.result);
+    return;
+  }
+
   const opponent = room.opponent(ws);
   send(opponent, {
     type: 'opponent_move',
     move: message.move,
     fen: message.fen,
     history: message.history,
-    gameOver: message.gameOver,
-    result: message.result,
+    gameOver: false,
+    result: null,
   });
 }
 
@@ -124,15 +223,8 @@ function handleResign(ws, _message, roomManager) {
   if (!room) return;
 
   const winner = ws.playerColor === 'w' ? 'b' : 'w';
-  room.gameState.gameOver = true;
-  room.gameState.result = `${winner === 'w' ? 'White' : 'Black'} wins by resignation`;
-
-  broadcastToRoom(room, {
-    type: 'game_over',
-    reason: 'resign',
-    winner,
-    message: `${ws.playerName} 认输 / ${ws.playerName} resigned`,
-  });
+  const msg = `${ws.playerName} 认输 / ${ws.playerName} resigned`;
+  endGameWithRating(room, winner, 'resign', msg);
 }
 
 function handleDrawOffer(ws, _message, roomManager) {
@@ -147,13 +239,7 @@ function handleDrawResponse(ws, message, roomManager) {
   if (!room || !room.drawOffer) return;
 
   if (message.accept) {
-    room.gameState.gameOver = true;
-    room.gameState.result = 'Draw by agreement';
-    broadcastToRoom(room, {
-      type: 'game_over',
-      reason: 'draw',
-      message: '双方同意和棋 / Draw by agreement',
-    });
+    endGameWithRating(room, null, 'draw', '双方同意和棋 / Draw by agreement');
   } else {
     room.drawOffer = null;
     send(room.opponent(ws), { type: 'draw_declined' });
@@ -179,6 +265,13 @@ function handleDisconnect(ws, roomManager) {
   if (!ws.roomId) return;
   const room = roomManager.get(ws.roomId);
   if (!room) return;
+
+  // If game was in progress (2 players, not over), award win to remaining player
+  if (room.players.length === 2 && !room.gameState.gameOver) {
+    const winner = ws.playerColor === 'w' ? 'b' : 'w';
+    const msg = `${ws.playerName} 断线判负 / ${ws.playerName} disconnected — opponent wins`;
+    endGameWithRating(room, winner, 'disconnect', msg);
+  }
 
   room.removePlayer(ws);
 

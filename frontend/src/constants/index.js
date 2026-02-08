@@ -38,15 +38,15 @@ export const COLOR = {
 
 // ── ELO Rank Labels ───────────────────────────────────────
 export const RANK_THRESHOLDS = [
-  { min: 2400, label: 'Grandmaster', icon: '👑' },
-  { min: 2200, label: 'Master',      icon: '🏆' },
-  { min: 2000, label: 'Expert',      icon: '⭐' },
-  { min: 1800, label: 'Class A',     icon: '🔷' },
-  { min: 1600, label: 'Class B',     icon: '🔶' },
-  { min: 1400, label: 'Class C',     icon: '🟢' },
-  { min: 1200, label: 'Class D',     icon: '🟡' },
-  { min: 1000, label: 'Beginner',    icon: '🟠' },
-  { min: 0,    label: 'Novice',      icon: '⚪' },
+  { min: 2400, label: 'Grandmaster', name: 'Grandmaster', icon: '👑', color: '#FFD700' },
+  { min: 2200, label: 'Master',      name: 'Master',      icon: '🏆', color: '#C0C0C0' },
+  { min: 2000, label: 'Expert',      name: 'Expert',      icon: '⭐', color: '#CD7F32' },
+  { min: 1800, label: 'Class A',     name: 'Class A',     icon: '🔷', color: '#3498db' },
+  { min: 1600, label: 'Class B',     name: 'Class B',     icon: '🔶', color: '#e67e22' },
+  { min: 1400, label: 'Class C',     name: 'Class C',     icon: '🟢', color: '#27ae60' },
+  { min: 1200, label: 'Class D',     name: 'Class D',     icon: '🟡', color: '#f1c40f' },
+  { min: 1000, label: 'Beginner',    name: 'Beginner',    icon: '🟠', color: '#e74c3c' },
+  { min: 0,    label: 'Novice',      name: 'Novice',      icon: '⚪', color: '#95a5a6' },
 ];
 
 // ── WebSocket Message Types ───────────────────────────────

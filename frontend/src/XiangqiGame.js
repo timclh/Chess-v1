@@ -196,6 +196,8 @@ class XiangqiGame extends Component {
     lastMove: null,
     // Responsive board width
     boardWidth: Math.min(450, window.innerWidth - 40),
+    // Fullscreen mode
+    isFullscreen: false,
     // Rating system state
     showResultDialog: false,
     pendingResult: null,        // { result: 'win'|'loss'|'draw', status: string }
@@ -1040,6 +1042,53 @@ class XiangqiGame extends Component {
     const currentTutorialLesson = XIANGQI_LESSONS[currentLesson];
     const boardOrientation = (gameMode === 'ai' || gameMode === 'coach') && playerColor === 'b' ? 'black' : 'red';
 
+    // ── Fullscreen mode ──
+    if (this.state.isFullscreen) {
+      const fsBoard = Math.min(this.state.boardWidth, window.innerHeight - 120);
+      return (
+        <div className="chess-fullscreen-mode">
+          <div className="fullscreen-corner-menu">
+            <button className="corner-menu-btn" onClick={() => this.setState({ isFullscreen: false })} title="Exit fullscreen">✕</button>
+            <button className="corner-menu-btn" onClick={this.resetGame} title="New game">🔄</button>
+            <button className="corner-menu-btn" onClick={this.undoMove} disabled={history.length === 0 || aiThinking} title="Undo">↩️</button>
+          </div>
+          <div className="fullscreen-status">
+            <span>{aiThinking ? 'AI 思考中...' : gameStatus}</span>
+          </div>
+          <div className="fullscreen-board-area" style={{ touchAction: 'none' }}>
+            {this.game && (
+              <XiangqiBoard
+                board={this.game.board}
+                width={fsBoard}
+                orientation={boardOrientation}
+                turn={this.game.turn}
+                playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
+                validMoves={validMoves}
+                lastMove={lastMove}
+                onMove={this.handleMove}
+                onSquareSelect={this.handleSquareSelect}
+                disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
+              />
+            )}
+          </div>
+          <div className="fullscreen-rating">
+            <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+          </div>
+          {showResultDialog && (
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult?.result}
+              message={pendingResult?.status}
+              oldRating={oldRating}
+              newRating={newRating}
+              onRematch={this.handleRematch}
+              onClose={this.closeResultDialog}
+            />
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="xiangqi-game-layout">
         {/* Game Result Dialog with Rating Change */}
@@ -1174,7 +1223,7 @@ class XiangqiGame extends Component {
             {aiThinking ? 'AI 思考中... / AI thinking...' : gameStatus}
           </div>
 
-          <div className="xiangqi-board-wrapper">
+          <div className="xiangqi-board-wrapper" style={{ touchAction: 'none' }}>
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
@@ -1190,6 +1239,10 @@ class XiangqiGame extends Component {
               />
             )}
           </div>
+
+          <button className="fullscreen-toggle-btn" onClick={() => this.setState({ isFullscreen: true })}>
+            ⛶ Fullscreen
+          </button>
 
           {/* Move History */}
           {gameMode !== 'tutorial' && (

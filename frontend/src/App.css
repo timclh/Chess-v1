@@ -4949,3 +4949,142 @@ body {
     transform: translateY(0);
   }
 }
+
+/* ══════════════════════════════════════════
+   Fullscreen Game Mode
+   ══════════════════════════════════════════ */
+
+.chess-fullscreen-mode {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Corner menu – top-right cluster */
+.fullscreen-corner-menu {
+  position: absolute;
+  top: env(safe-area-inset-top, 12px);
+  right: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 10001;
+  padding-top: 8px;
+}
+
+.corner-menu-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  padding: 0;
+  line-height: 1;
+}
+
+.corner-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.corner-menu-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Status bar – top-left */
+.fullscreen-status {
+  position: absolute;
+  top: env(safe-area-inset-top, 12px);
+  left: 12px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 10001;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 8px;
+}
+
+/* Board area – centred */
+.fullscreen-board-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+  touch-action: none;
+}
+
+/* Rating chip – bottom-left */
+.fullscreen-rating {
+  position: absolute;
+  bottom: env(safe-area-inset-bottom, 12px);
+  left: 12px;
+  z-index: 10001;
+  padding-bottom: 8px;
+}
+
+.fullscreen-rating .rating-display {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 16px;
+  padding: 6px 14px;
+  color: #e2e8f0;
+}
+
+/* Toggle button (shown in normal mode to enter fullscreen) */
+.fullscreen-toggle-btn {
+  display: none; /* hidden on desktop, shown on mobile via media query */
+  margin: 8px auto;
+  padding: 6px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.fullscreen-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+}
+
+/* Show fullscreen button on mobile / tablet */
+@media (max-width: 950px) {
+  .fullscreen-toggle-btn {
+    display: block;
+  }
+}
+
+/* Touch-action overrides for board containers */
+.board-container,
+.xiangqi-board-wrapper {
+  touch-action: none;
+}

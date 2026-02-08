@@ -1,6 +1,10 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
+import { GameResultDialog } from "./components/GameResultDialog";
+import { RatingDisplay } from "./components/RatingDisplay";
+import { getRating, recordResult } from "./services/UserRatingService";
+import { GAME_TYPE, RESULT } from "./constants";
 
 // Use environment variable or fallback to localhost
 const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:3030";
@@ -13,6 +17,7 @@ class Multiplayer extends Component {
     playerColor: null,
     playerName: localStorage.getItem('chess_player_name') || "",
     opponentName: null,
+    opponentRating: null,
 
     // Game state
     fen: "start",
@@ -30,6 +35,13 @@ class Multiplayer extends Component {
     drawOffered: false,
     drawReceived: false,
     copySuccess: false,
+
+    // Rating state
+    showResultDialog: false,
+    gameResult: null,        // 'win' | 'loss' | 'draw'
+    resultMessage: "",
+    oldRating: null,
+    newRating: null,
   };
 
   ws = null;
@@ -115,6 +127,7 @@ class Multiplayer extends Component {
           roomId: message.roomId,
           playerColor: message.playerColor,
           opponentName: message.opponentName,
+          opponentRating: message.opponentRating || null,
           showJoinDialog: false,
         });
         if (message.gameState && message.gameState.fen !== 'start') {
@@ -127,7 +140,10 @@ class Multiplayer extends Component {
         break;
 
       case 'opponent_joined':
-        this.setState({ opponentName: message.opponentName });
+        this.setState({
+          opponentName: message.opponentName,
+          opponentRating: message.opponentRating || null,
+        });
         this.addSystemMessage(`${message.opponentName} joined the game`);
         break;
 
@@ -147,10 +163,7 @@ class Multiplayer extends Component {
             history: this.game.history({ verbose: true }),
           });
           this.updateGameStatus();
-
-          if (message.gameOver) {
-            this.setState({ gameOver: true, gameStatus: message.result });
-          }
+          // Game completion is handled by the 'game_over' message from server
         }
         break;
 
@@ -159,11 +172,28 @@ class Multiplayer extends Component {
         break;
 
       case 'game_over':
-        this.setState({
-          gameOver: true,
-          gameStatus: message.message,
-        });
-        this.addSystemMessage(message.message);
+        {
+          const playerResult = message.playerResult || null;
+          // Persist rating change via UserRatingService
+          if (playerResult && message.oldRating != null && message.newRating != null) {
+            recordResult({
+              gameType: GAME_TYPE.CHESS,
+              result: playerResult,
+              opponentRating: message.opponentOldRating,
+              opponentGames: 0,
+            }).catch(() => {});
+          }
+          this.setState({
+            gameOver: true,
+            gameStatus: message.message,
+            showResultDialog: true,
+            gameResult: playerResult,
+            resultMessage: message.message,
+            oldRating: message.oldRating ?? null,
+            newRating: message.newRating ?? null,
+          });
+          this.addSystemMessage(message.message);
+        }
         break;
 
       case 'draw_offered':
@@ -190,6 +220,11 @@ class Multiplayer extends Component {
           gameStatus: `Rematch! ${message.whitePlayer} (White) vs ${message.blackPlayer} (Black)`,
           drawOffered: false,
           drawReceived: false,
+          showResultDialog: false,
+          gameResult: null,
+          resultMessage: "",
+          oldRating: null,
+          newRating: null,
         });
         // Update player color after swap
         const newColor = this.state.playerColor === 'w' ? 'b' : 'w';
@@ -231,9 +266,12 @@ class Multiplayer extends Component {
       return;
     }
     localStorage.setItem('chess_player_name', this.state.playerName);
+    const ratingData = getRating(GAME_TYPE.CHESS);
     this.sendMessage({
       type: 'create_room',
       playerName: this.state.playerName,
+      rating: ratingData.rating,
+      gamesPlayed: ratingData.gamesPlayed,
     });
   };
 
@@ -247,10 +285,13 @@ class Multiplayer extends Component {
       return;
     }
     localStorage.setItem('chess_player_name', this.state.playerName);
+    const ratingData = getRating(GAME_TYPE.CHESS);
     this.sendMessage({
       type: 'join_room',
       roomId: this.state.joinRoomId.trim(),
       playerName: this.state.playerName,
+      rating: ratingData.rating,
+      gamesPlayed: ratingData.gamesPlayed,
     });
   };
 
@@ -440,12 +481,17 @@ class Multiplayer extends Component {
     this.sendMessage({ type: 'rematch' });
   };
 
+  closeResultDialog = () => {
+    this.setState({ showResultDialog: false });
+  };
+
   render() {
     const {
-      connected, roomId, playerColor, playerName, opponentName,
+      connected, roomId, playerColor, playerName, opponentName, opponentRating,
       fen, squareStyles, gameStatus, gameOver, history,
       showJoinDialog, joinRoomId, messages, chatInput,
       drawOffered, drawReceived, copySuccess,
+      showResultDialog, gameResult, resultMessage, oldRating, newRating,
     } = this.state;
 
     const boardOrientation = playerColor === 'b' ? 'black' : 'white';
@@ -546,6 +592,15 @@ class Multiplayer extends Component {
               <div className="player-row">
                 <span className="color-indicator black">⬛</span>
                 <span>{playerColor === 'b' ? `${playerName} (You)` : (opponentName || 'Waiting...')}</span>
+              </div>
+              {/* Rating displays */}
+              <div style={{ marginTop: '8px' }}>
+                <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+                {opponentRating && (
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#aaa' }}>
+                    Opponent: {opponentRating} ELO
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -679,6 +734,18 @@ class Multiplayer extends Component {
             </button>
           </div>
         </div>
+
+        {/* Game Result Dialog with Rating */}
+        <GameResultDialog
+          isOpen={showResultDialog}
+          result={gameResult}
+          message={resultMessage}
+          oldRating={oldRating}
+          newRating={newRating}
+          onRematch={inGame ? this.requestRematch : undefined}
+          onHome={this.props.onBack}
+          onClose={this.closeResultDialog}
+        />
       </div>
     );
   }

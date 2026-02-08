@@ -12,7 +12,9 @@ const config = {
   // ── CORS ─────────────────────────────────────────────────
   corsOrigins: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
-    : ['*'],
+    : (process.env.NODE_ENV || 'development') === 'production'
+      ? ['https://chess-frontend-28eh.onrender.com']
+      : ['*'],
 
   // ── Game Rooms ───────────────────────────────────────────
   roomTTL: parseInt(process.env.ROOM_TTL || '7200000', 10),         // 2 hours

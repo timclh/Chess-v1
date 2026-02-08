@@ -142,6 +142,74 @@ class XiangqiBoard extends Component {
     }
   };
 
+  // Touch event handlers — map touch coords to mouse-like behaviour
+  handleTouchStart = (e, row, col) => {
+    const { board, turn, playerColor, disabled } = this.props;
+    if (disabled) return;
+
+    const canSelectColor = playerColor || turn;
+    const isPlayerTurn = turn === canSelectColor;
+    const piece = board[row][col];
+
+    if (piece && piece.color === canSelectColor && isPlayerTurn) {
+      e.preventDefault(); // prevent scroll while dragging a piece
+      const touch = e.touches[0];
+      const rect = this.boardRef.current.getBoundingClientRect();
+      this.setState({
+        selectedSquare: { row, col },
+        dragging: { row, col, piece },
+        dragPosition: {
+          x: touch.clientX - rect.left,
+          y: touch.clientY - rect.top,
+        },
+      });
+
+      if (this.props.onSquareSelect) {
+        this.props.onSquareSelect(row, col);
+      }
+    }
+  };
+
+  handleTouchMove = (e) => {
+    if (!this.state.dragging) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = this.boardRef.current.getBoundingClientRect();
+    this.setState({
+      dragPosition: {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      },
+    });
+  };
+
+  handleTouchEnd = (e) => {
+    const { dragging } = this.state;
+    const { onMove, validMoves = [] } = this.props;
+    if (!dragging) return;
+
+    e.preventDefault();
+    // Use last known drag position (changedTouches gives lift-off point)
+    const touch = e.changedTouches[0];
+    const rect = this.boardRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const target = this.getSquareFromPixel(x, y);
+
+    if (target) {
+      const isValidMove = validMoves.some(
+        m => m.row === target.row && m.col === target.col
+      );
+      if (isValidMove && onMove) {
+        const from = String.fromCharCode('a'.charCodeAt(0) + dragging.col) + (9 - dragging.row);
+        const to = String.fromCharCode('a'.charCodeAt(0) + target.col) + (9 - target.row);
+        onMove({ from, to });
+        this.setState({ selectedSquare: null });
+      }
+    }
+    this.setState({ dragging: null, dragPosition: null });
+  };
+
   handleMouseMove = (e) => {
     if (!this.state.dragging) return;
 
@@ -211,10 +279,12 @@ class XiangqiBoard extends Component {
       <div
         ref={this.boardRef}
         className="xiangqi-board-container"
-        style={{ width, height, position: 'relative' }}
+        style={{ width, height, position: 'relative', touchAction: 'none' }}
         onMouseMove={this.handleMouseMove}
         onMouseUp={this.handleMouseUp}
         onMouseLeave={this.handleMouseLeave}
+        onTouchMove={this.handleTouchMove}
+        onTouchEnd={this.handleTouchEnd}
       >
         {/* Board SVG */}
         <svg width={width} height={height} className="xiangqi-board-svg">
@@ -370,6 +440,7 @@ class XiangqiBoard extends Component {
                   }}
                   onClick={() => this.handleClick(rowIdx, colIdx)}
                   onMouseDown={(e) => this.handleMouseDown(e, rowIdx, colIdx)}
+                  onTouchStart={(e) => this.handleTouchStart(e, rowIdx, colIdx)}
                 >
                   {pieceChar}
                 </div>

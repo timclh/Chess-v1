@@ -5,6 +5,15 @@
 const config = require('../config');
 
 /**
+ * Check whether the given origin is allowed by config.corsOrigins.
+ * Supports wildcard ('*') and exact-match entries.
+ */
+function isOriginAllowed(origin) {
+  if (config.corsOrigins.includes('*')) return true;
+  return config.corsOrigins.includes(origin);
+}
+
+/**
  * Attach HTTP routes to an existing http.Server request handler.
  * Returns a request listener function for http.createServer().
  *
@@ -12,10 +21,15 @@ const config = require('../config');
  */
 function createRequestHandler(roomManager) {
   return (req, res) => {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS — validate origin against config
+    const origin = req.headers.origin || '';
+    const allowedOrigin = isOriginAllowed(origin) ? origin : '';
+    if (allowedOrigin || config.corsOrigins.includes('*')) {
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigin || '*');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Vary', 'Origin');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);

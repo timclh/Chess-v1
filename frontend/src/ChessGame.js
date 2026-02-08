@@ -197,6 +197,9 @@ class ChessGame extends Component {
     // Best move comparison
     retrospectBestMove: null, // { san, score, winProb } best move at current position
     retrospectAnalyzing: false, // loading state for analysis
+    // Mobile fullscreen mode
+    isFullscreen: false,
+    boardWidth: Math.min(520, window.innerWidth - 30),
   };
 
   game = null;
@@ -209,10 +212,21 @@ class ChessGame extends Component {
     });
     this.updateGameStatus();
     this.updateAnalysis();
+    // Responsive board sizing
+    this._handleResize = () => {
+      const newWidth = Math.min(520, window.innerWidth - 30);
+      if (newWidth !== this.state.boardWidth) {
+        this.setState({ boardWidth: newWidth });
+      }
+    };
+    window.addEventListener('resize', this._handleResize);
   }
 
   componentWillUnmount() {
     this.game = null;
+    if (this._handleResize) {
+      window.removeEventListener('resize', this._handleResize);
+    }
   }
 
   updateAnalysis = () => {
@@ -981,11 +995,87 @@ class ChessGame extends Component {
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       showRetrospect, evaluations, criticalMoments, learningTips,
       retrospectMoveIndex, showPatternLibrary,
-      retrospectBestMove, retrospectAnalyzing
+      retrospectBestMove, retrospectAnalyzing,
+      isFullscreen, boardWidth,
     } = this.state;
 
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
+
+    // Fullscreen mobile mode — board fills screen, corner menu for controls
+    if (isFullscreen) {
+      return (
+        <div className="chess-fullscreen-mode">
+          {/* Corner menu button */}
+          <div className="fullscreen-corner-menu">
+            <button
+              className="corner-menu-btn"
+              onClick={() => this.setState({ isFullscreen: false })}
+              title="Exit fullscreen"
+            >
+              ✕
+            </button>
+            <button
+              className="corner-menu-btn"
+              onClick={this.newGame}
+              title="New Game"
+            >
+              🔄
+            </button>
+            <button
+              className="corner-menu-btn"
+              onClick={this.undoMove}
+              disabled={history.length === 0 || aiThinking}
+              title="Undo"
+            >
+              ↩️
+            </button>
+          </div>
+
+          {/* Status bar */}
+          <div className={`fullscreen-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
+            {aiThinking ? '🤔 AI thinking...' : gameStatus}
+          </div>
+
+          {/* Board — fills available space */}
+          <div className="fullscreen-board-area">
+            <Chessboard
+              id="chessboard-fullscreen"
+              position={fen}
+              width={Math.min(boardWidth, window.innerHeight - 120)}
+              orientation={boardOrientation}
+              onDrop={this.onDrop}
+              onSquareClick={this.onSquareClick}
+              squareStyles={squareStyles}
+              boardStyle={{ borderRadius: '4px' }}
+              lightSquareStyle={{ backgroundColor: '#f0d9b5' }}
+              darkSquareStyle={{ backgroundColor: '#b58863' }}
+              dropSquareStyle={{ boxShadow: 'inset 0 0 1px 4px rgb(255, 255, 0)' }}
+              draggable={!aiThinking && (!gameOver || gameMode === 'tutorial') && !(gameMode === 'tutorial' && lessonComplete)}
+            />
+          </div>
+
+          {/* Rating display */}
+          <div className="fullscreen-rating">
+            <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+          </div>
+
+          {/* Game Result Dialog */}
+          {showResultDialog && pendingResult && (
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult.result}
+              message={pendingResult.status}
+              oldRating={this.state.oldRating}
+              newRating={this.state.newRating}
+              onRematch={this.newGame}
+              onHome={() => this.setState({ isFullscreen: false })}
+              onClose={() => this.setState({ showResultDialog: false })}
+            />
+          )}
+        </div>
+      );
+    }
 
     return (
       <div className="chess-game-layout">
@@ -1170,11 +1260,11 @@ class ChessGame extends Component {
           </div>
 
           {/* Chess Board */}
-          <div className="board-container">
+          <div className="board-container" style={{ touchAction: 'none' }}>
             <Chessboard
               id="chessboard"
               position={fen}
-              width={520}
+              width={boardWidth}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
@@ -1190,6 +1280,14 @@ class ChessGame extends Component {
               dropSquareStyle={{ boxShadow: "inset 0 0 1px 4px rgb(255, 255, 0)" }}
               draggable={!aiThinking && (!gameOver || gameMode === "tutorial") && !(gameMode === "tutorial" && lessonComplete)}
             />
+            {/* Fullscreen button — shown on smaller screens */}
+            <button
+              className="fullscreen-toggle-btn"
+              onClick={() => this.setState({ isFullscreen: true })}
+              title="Enter fullscreen mode"
+            >
+              ⛶ Fullscreen
+            </button>
           </div>
 
           {/* Game Result Dialog */}
