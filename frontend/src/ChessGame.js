@@ -198,7 +198,8 @@ class ChessGame extends Component {
     retrospectBestMove: null, // { san, score, winProb } best move at current position
     retrospectAnalyzing: false, // loading state for analysis
     // Mobile fullscreen mode
-    isFullscreen: false,
+    isFullscreen: true,
+    showFullscreenCoach: false,
     boardWidth: Math.min(520, window.innerWidth - 30),
   };
 
@@ -220,11 +221,6 @@ class ChessGame extends Component {
       }
     };
     window.addEventListener('resize', this._handleResize);
-
-    // Auto-enter fullscreen on mobile / tablet
-    if (window.innerWidth <= 950) {
-      this.setState({ isFullscreen: true });
-    }
   }
 
   componentWillUnmount() {
@@ -1007,11 +1003,13 @@ class ChessGame extends Component {
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
 
-    // Fullscreen mobile mode — board fills screen, corner menu for controls
+    // Fullscreen mode — board fills screen, corner menu for controls
     if (isFullscreen) {
+      const { showFullscreenCoach } = this.state;
+      const hasCoachContent = gameMode === 'coach' || (analysis || lastAIExplanation || suggestedMoves.length > 0);
       return (
         <div className="chess-fullscreen-mode">
-          {/* Corner menu button */}
+          {/* Corner menu */}
           <div className="fullscreen-corner-menu">
             <button
               className="corner-menu-btn"
@@ -1035,6 +1033,15 @@ class ChessGame extends Component {
             >
               ↩️
             </button>
+            {hasCoachContent && (
+              <button
+                className={`corner-menu-btn ${showFullscreenCoach ? 'active' : ''}`}
+                onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
+                title="Coach"
+              >
+                💡
+              </button>
+            )}
           </div>
 
           {/* Status bar */}
@@ -1064,6 +1071,73 @@ class ChessGame extends Component {
           <div className="fullscreen-rating">
             <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
           </div>
+
+          {/* Slide-in Coach Panel */}
+          {showFullscreenCoach && (
+            <div className="fullscreen-coach-panel">
+              <div className="fullscreen-coach-header">
+                <span>💡 Coach</span>
+                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}>✕</button>
+              </div>
+              <div className="fullscreen-coach-body">
+                {analysis && (
+                  <div className="analysis-section">
+                    <div className="section-label">Win Probability</div>
+                    <div className="win-probability">
+                      <div className="prob-bar">
+                        <div className="prob-white" style={{ width: `${analysis.winProbability.white * 100}%` }}>
+                          {analysis.winProbability.white >= 0.15 && <span>{Math.round(analysis.winProbability.white * 100)}%</span>}
+                        </div>
+                        <div className="prob-black" style={{ width: `${analysis.winProbability.black * 100}%` }}>
+                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
+                        </div>
+                      </div>
+                      <div className="evaluation-text">{analysis.evaluation}</div>
+                    </div>
+                  </div>
+                )}
+                {lastAIExplanation && (
+                  <div className="analysis-section">
+                    <div className="section-label">🤖 AI Move</div>
+                    <div className="ai-explanation-box">{lastAIExplanation}</div>
+                  </div>
+                )}
+                {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
+                  <div className="analysis-section">
+                    <div className="section-label">Recommended Moves</div>
+                    <div className="suggested-moves-list">
+                      {suggestedMoves.map((item, index) => (
+                        <div key={index} className={`suggestion ${index === 0 ? 'best' : ''}`} onClick={() => this.playSuggestedMove(item.move)}>
+                          <div className="suggestion-move">
+                            <span className="rank">#{item.rank}</span>
+                            <span className="san">{item.san}</span>
+                            <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                          </div>
+                          <div className="suggestion-reason">{item.explanation}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {strategicAdvice && strategicAdvice.length > 0 && (
+                  <div className="analysis-section">
+                    <div className="section-label">Strategic Advice</div>
+                    <div className="strategic-advice-list">
+                      {strategicAdvice.map((advice, index) => (
+                        <div key={index} className={`advice-item priority-${advice.priority}`}>
+                          <p className="advice-cn">{advice.cn}</p>
+                          <p className="advice-en">{advice.en}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+                  <div className="analysis-empty">Play a move to see coach analysis</div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Game Result Dialog */}
           {showResultDialog && pendingResult && (
