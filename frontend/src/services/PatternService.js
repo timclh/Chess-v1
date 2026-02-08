@@ -86,6 +86,122 @@ const XIANGQI_OPENINGS = [
   { name: '单提马 Single Horse', moves: ['H2+3', 'H8+9'] },
 ];
 
+// ── Opening Book (recommended next moves for common positions) ──
+
+const CHESS_OPENING_BOOK = {
+  // Starting position — best first moves for White
+  '': ['e4', 'd4', 'c4', 'Nf3'],
+  // After 1.e4
+  'e4': ['e5', 'c5', 'e6', 'c6', 'Nf6', 'd5'],
+  // After 1.d4
+  'd4': ['d5', 'Nf6', 'e6', 'f5'],
+  // After 1.c4
+  'c4': ['e5', 'Nf6', 'c5', 'e6'],
+  // After 1.e4 e5
+  'e4,e5': ['Nf3', 'Bc4', 'f4', 'Nc3'],
+  // After 1.e4 c5 (Sicilian)
+  'e4,c5': ['Nf3', 'Nc3', 'c3', 'd4'],
+  // After 1.e4 e6 (French)
+  'e4,e6': ['d4', 'Nf3'],
+  // After 1.e4 c6 (Caro-Kann)
+  'e4,c6': ['d4', 'Nf3', 'Nc3'],
+  // After 1.d4 d5
+  'd4,d5': ['c4', 'Nf3', 'Bf4', 'e3'],
+  // After 1.d4 Nf6 (Indian)
+  'd4,Nf6': ['c4', 'Nf3', 'Bg5'],
+  // After 1.e4 e5 2.Nf3
+  'e4,e5,Nf3': ['Nc6', 'Nf6', 'd6'],
+  // After 1.e4 e5 2.Nf3 Nc6
+  'e4,e5,Nf3,Nc6': ['Bb5', 'Bc4', 'd4', 'Nc3'],
+  // After 1.e4 e5 2.Nf3 Nc6 3.Bb5 (Ruy Lopez)
+  'e4,e5,Nf3,Nc6,Bb5': ['a6', 'Nf6', 'Bc5', 'd6'],
+  // After 1.e4 e5 2.Nf3 Nc6 3.Bc4 (Italian)
+  'e4,e5,Nf3,Nc6,Bc4': ['Bc5', 'Nf6', 'Be7'],
+  // After 1.d4 d5 2.c4 (Queen's Gambit)
+  'd4,d5,c4': ['e6', 'c6', 'dxc4', 'Nf6'],
+  // After 1.d4 Nf6 2.c4
+  'd4,Nf6,c4': ['g6', 'e6', 'c5', 'e5'],
+  // After 1.e4 c5 2.Nf3 (Sicilian main line)
+  'e4,c5,Nf3': ['d6', 'Nc6', 'e6'],
+  // After 1.e4 c5 2.Nf3 d6
+  'e4,c5,Nf3,d6': ['d4', 'Bb5+'],
+};
+
+// ── Common Tactical Patterns (position-independent tips) ──
+
+const TACTICAL_PATTERNS = [
+  {
+    id: 'fork',
+    name: 'Fork',
+    description: 'A piece attacks two or more enemy pieces simultaneously',
+    tip: 'Look for knight forks on the king and queen, or pawn forks on two pieces.',
+  },
+  {
+    id: 'pin',
+    name: 'Pin',
+    description: 'A piece cannot move because it would expose a more valuable piece behind it',
+    tip: 'Use bishops and rooks to pin pieces against the king or queen.',
+  },
+  {
+    id: 'skewer',
+    name: 'Skewer',
+    description: 'Attack a valuable piece that must move, exposing a piece behind it',
+    tip: 'Look for skewers with bishops/rooks along diagonals and files.',
+  },
+  {
+    id: 'discoveredAttack',
+    name: 'Discovered Attack',
+    description: 'Moving one piece reveals an attack by another piece behind it',
+    tip: 'Move a piece that blocks your own bishop/rook to unleash a discovery.',
+  },
+  {
+    id: 'doubleCheck',
+    name: 'Double Check',
+    description: 'Two pieces give check at the same time; the king must move',
+    tip: 'Discovered checks where the moving piece also gives check are devastating.',
+  },
+  {
+    id: 'backRankMate',
+    name: 'Back Rank Mate',
+    description: 'Checkmate on the back rank when the king is trapped by its own pawns',
+    tip: 'Create a luft (h3/h6 pawn move) to avoid back-rank threats. Look for Qd8/Re8 mates.',
+  },
+  {
+    id: 'sacrifice',
+    name: 'Exchange Sacrifice',
+    description: 'Giving up material for positional advantage or attack',
+    tip: 'Consider sacrificing a rook for a knight to destroy the king\'s pawn cover.',
+  },
+  {
+    id: 'deflection',
+    name: 'Deflection',
+    description: 'Force a defending piece to move away from what it is protecting',
+    tip: 'Attack a piece that guards a key square to break through.',
+  },
+];
+
+/**
+ * Get opening book moves for the current position.
+ *
+ * @param {Array} moveHistory - Array of SAN move strings played so far
+ * @returns {Array} Recommended moves from the opening book, or empty array
+ */
+export function getOpeningBookMoves(moveHistory) {
+  if (!moveHistory) return [];
+  // Normalize move strings (strip +, #, !, ?)
+  const normalized = moveHistory.map(m => m.replace(/[+#!?]/g, ''));
+  const key = normalized.join(',');
+  return CHESS_OPENING_BOOK[key] || [];
+}
+
+/**
+ * Get all tactical patterns (for learning / display).
+ * @returns {Array} Array of tactical pattern objects
+ */
+export function getTacticalPatterns() {
+  return TACTICAL_PATTERNS;
+}
+
 // ── Local Storage Fallback ─────────────────────────────────
 
 function loadLocalPatterns() {
@@ -431,4 +547,6 @@ export default {
   getOpeningStats,
   getUserOpenings,
   getOpeningLibrary,
+  getOpeningBookMoves,
+  getTacticalPatterns,
 };

@@ -8,6 +8,7 @@ import {
 } from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
 import { getRating, recordResult } from "./services/UserRatingService";
+import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
 import { GAME_TYPE, RESULT } from "./constants";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
@@ -231,18 +232,66 @@ class ChessGame extends Component {
   }
 
   updateAnalysis = () => {
-    if (!this.game || this.state.gameMode !== "coach") return;
+    if (!this.game) return;
+    if (this.state.gameMode !== "coach" && this.state.gameMode !== "ai") return;
 
     const analysis = analyzePosition(this.game);
-    // Use selected difficulty for suggestions (balances speed vs quality)
-    const depth = this.state.aiDifficulty;
-    const suggestedMoves = getTopMoves(this.game, 3, depth);
+    // Use at least depth 3 for decent suggestions
+    const depth = Math.max(3, this.state.aiDifficulty);
+    let suggestedMoves = getTopMoves(this.game, 3, depth);
     const strategicAdvice = getStrategicAdvice(this.game);
+
+    // Enhance with opening book in the first 12 moves
+    const historyMoves = this.game.history();
+    if (historyMoves.length < 12) {
+      const bookMoves = getOpeningBookMoves(historyMoves);
+      if (bookMoves.length > 0) {
+        // Boost book moves to the top if they appear in suggestions
+        const boosted = [];
+        const remaining = [];
+        for (const sm of suggestedMoves) {
+          if (bookMoves.includes(sm.san?.replace(/[+#!?]/g, ''))) {
+            sm.explanation = '📖 Opening book: ' + (sm.explanation || sm.san);
+            boosted.push(sm);
+          } else {
+            remaining.push(sm);
+          }
+        }
+        // If no engine moves match the book, add the first book move as a suggestion
+        if (boosted.length === 0 && bookMoves.length > 0) {
+          const legalMoves = this.game.moves({ verbose: true });
+          const bookLegal = legalMoves.find(m => bookMoves.includes(m.san.replace(/[+#!?]/g, '')));
+          if (bookLegal) {
+            boosted.push({
+              rank: 0,
+              san: bookLegal.san,
+              move: bookLegal,
+              winProbability: 0.55,
+              explanation: '📖 Opening book move',
+            });
+          }
+        }
+        suggestedMoves = [...boosted, ...remaining].slice(0, 3);
+        // Re-number ranks
+        suggestedMoves.forEach((m, i) => m.rank = i + 1);
+      }
+
+      // Detect current opening
+      const opening = detectOpening(GAME_TYPE.CHESS, historyMoves);
+      if (opening && !strategicAdvice.find(a => a.type === 'opening')) {
+        strategicAdvice.unshift({
+          priority: 'info',
+          type: 'opening',
+          cn: `当前开局: ${opening.name}`,
+          en: `Opening: ${opening.name}${opening.eco ? ` (${opening.eco})` : ''}`,
+        });
+      }
+    }
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
 
-    // Highlight suggested move squares
-    if (this.state.showHints && suggestedMoves.length > 0) {
+    // Highlight suggested move squares (coach mode only, to avoid clutter in AI)
+    if (this.state.gameMode === "coach" && this.state.showHints && suggestedMoves.length > 0) {
       const bestMove = suggestedMoves[0].move;
       this.highlightSuggestedMove(bestMove.from, bestMove.to);
     }
@@ -398,9 +447,9 @@ class ChessGame extends Component {
     setTimeout(() => {
       const bestMove = findBestMove(this.game, this.state.aiDifficulty);
       if (bestMove && this.game) {
-        // Get explanation before making the move (for coach mode)
+        // Get explanation for coach & AI modes
         let explanation = "";
-        if (this.state.gameMode === "coach") {
+        if (this.state.gameMode === "coach" || this.state.gameMode === "ai") {
           explanation = explainAIMove(this.game, bestMove);
         }
 
@@ -504,9 +553,8 @@ class ChessGame extends Component {
             if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
               setTimeout(() => this.makeAIMove(), 300);
             }
-            if (this.state.gameMode === "coach") {
-              setTimeout(() => this.updateAnalysis(), 100);
-            }
+            // Update analysis for both AI and coach mode (for hint button)
+            setTimeout(() => this.updateAnalysis(), 100);
           }, 0);
 
           return newState;
@@ -572,9 +620,8 @@ class ChessGame extends Component {
       setTimeout(() => this.makeAIMove(), 300);
     }
 
-    if (this.state.gameMode === "coach") {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+    // Update analysis for both AI and coach mode (for hint button)
+    setTimeout(() => this.updateAnalysis(), 100);
   };
 
   onMouseOverSquare = (square) => {
@@ -982,7 +1029,7 @@ class ChessGame extends Component {
     });
     this.updateGameStatus();
 
-    if (this.state.gameMode === "coach") {
+    if (this.state.gameMode === "coach" || this.state.gameMode === "ai") {
       setTimeout(() => this.makeAIMove(), 300);
     }
   };
