@@ -121,17 +121,17 @@ class FairyStockfishService {
 
     try {
       // Download WASM binary
-      console.log('[FairyStockfish] Downloading WASM binary...');
+
       const wasmResponse = await fetch('/fairy-stockfish.wasm');
       if (!wasmResponse.ok) {
         throw new Error(`Failed to fetch WASM: ${wasmResponse.status}`);
       }
       const wasmBinary = await wasmResponse.arrayBuffer();
-      console.log('[FairyStockfish] WASM downloaded:', wasmBinary.byteLength, 'bytes');
+
 
       // Download worker script and convert to Blob URL
       // This bypasses COEP issues since blob URLs don't need cross-origin headers
-      console.log('[FairyStockfish] Downloading worker script...');
+
       const workerResponse = await fetch('/stockfish.worker.js');
       if (!workerResponse.ok) {
         throw new Error(`Failed to fetch worker: ${workerResponse.status}`);
@@ -139,13 +139,13 @@ class FairyStockfishService {
       const workerCode = await workerResponse.text();
       const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
       const workerBlobUrl = URL.createObjectURL(workerBlob);
-      console.log('[FairyStockfish] Worker blob URL created');
+
 
       // Load the engine script dynamically
       const Stockfish = await this._loadEngineScript();
 
       // The factory returns a Promise that resolves to the engine instance
-      console.log('[FairyStockfish] Creating engine instance...');
+
       try {
         this.engine = await Promise.race([
           Stockfish({
@@ -153,10 +153,8 @@ class FairyStockfishService {
             // Use blob URL for worker to avoid COEP issues
             locateFile: (path) => {
               if (path.endsWith('.worker.js')) {
-                console.log('[FairyStockfish] locateFile worker ->', workerBlobUrl);
                 return workerBlobUrl;
               }
-              console.log('[FairyStockfish] locateFile:', path);
               return '/' + path;
             },
           }),
@@ -169,40 +167,32 @@ class FairyStockfishService {
         throw factoryError;
       }
 
-      console.log('[FairyStockfish] Engine APIs available:', {
-        addMessageListener: typeof this.engine.addMessageListener,
-        postMessage: typeof this.engine.postMessage,
-        terminate: typeof this.engine.terminate,
-      });
+
 
       // Set up message listener BEFORE waiting for ready
       if (this.engine.addMessageListener) {
         this.engine.addMessageListener((line) => {
-          console.log('[FairyStockfish] <<', line);
           this._onMessage(line);
         });
-        console.log('[FairyStockfish] Message listener attached');
       } else {
         throw new Error('Engine missing addMessageListener API');
       }
 
       // Wait for the engine's internal ready promise (WASM + threads loaded)
       if (this.engine.ready) {
-        console.log('[FairyStockfish] Waiting for engine.ready...');
+
         await Promise.race([
           this.engine.ready,
           new Promise((_, reject) => setTimeout(() => reject(new Error('engine.ready timeout')), 30000))
         ]);
-        console.log('[FairyStockfish] engine.ready resolved');
+
       }
 
       // Small delay to ensure threads are fully initialized
       await new Promise(r => setTimeout(r, 500));
 
       // Initialize UCI and set xiangqi variant
-      console.log('[FairyStockfish] Sending "uci" command...');
-      console.log('[FairyStockfish] postMessage type:', typeof this.engine.postMessage);
-      console.log('[FairyStockfish] postCustomMessage type:', typeof this.engine.postCustomMessage);
+
       await this._sendAndWait('uci', 'uciok', 15000);
       this._send('setoption name UCI_Variant value xiangqi');
       this._send('setoption name Threads value 1');
@@ -212,7 +202,7 @@ class FairyStockfishService {
 
       this.ready = true;
       this.initializing = false;
-      console.log('[FairyStockfish] Engine initialized successfully');
+
       return true;
 
     } catch (err) {
@@ -253,7 +243,6 @@ class FairyStockfishService {
    */
   _send(cmd) {
     if (this.engine && this.engine.postMessage) {
-      console.log('[FairyStockfish] >>', cmd);
       this.engine.postMessage(cmd);
     } else {
       console.error('[FairyStockfish] Cannot send — no postMessage:', cmd);
@@ -403,16 +392,14 @@ class FairyStockfishService {
     // Skill level controls how "human-like" the engine plays
     const clampedSkill = Math.max(0, Math.min(20, Math.round(skillLevel)));
     this._send(`setoption name Skill Level value ${clampedSkill}`);
-    console.log(`[FairyStockfish] Skill Level set to ${clampedSkill}`);
+
 
     // Set MultiPV
     this._send(`setoption name MultiPV value ${numLines}`);
 
     // Set position
     const fairyFen = toFairySF_FEN(ourFen, turn);
-    console.log('[FairyStockfish] Position - Our FEN:', ourFen);
-    console.log('[FairyStockfish] Position - Fairy FEN:', fairyFen);
-    console.log('[FairyStockfish] Analyzing for turn:', turn, '(', turn === 'r' ? 'Red/White' : 'Black', ')');
+
     this._send(`position fen ${fairyFen}`);
 
     // Start search

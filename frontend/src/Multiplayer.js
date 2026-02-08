@@ -62,7 +62,7 @@ class Multiplayer extends Component {
       this.ws = new WebSocket(WS_URL);
 
       this.ws.onopen = () => {
-        console.log("Multiplayer WebSocket connected");
+
         this.reconnectAttempts = 0;
         this.setState({ connected: true });
       };
@@ -77,7 +77,7 @@ class Multiplayer extends Component {
       };
 
       this.ws.onclose = () => {
-        console.log("WebSocket disconnected");
+        console.warn("WebSocket disconnected");
         this.setState({ connected: false });
         this.handleReconnect();
       };
@@ -203,7 +203,7 @@ class Multiplayer extends Component {
         break;
 
       default:
-        console.log("Unknown message type:", message.type);
+        console.warn("Unknown message type:", message.type);
     }
   };
 

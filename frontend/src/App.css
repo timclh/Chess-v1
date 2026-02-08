@@ -2745,6 +2745,40 @@ body {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
+/* Game Type Tabs (Chess / Xiangqi) */
+.game-type-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.game-type-tab {
+  flex: 1;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.game-type-tab.active {
+  background: linear-gradient(135deg, #e94560, #f39422);
+  color: white;
+  box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+}
+
+.game-type-tab:hover:not(.active) {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 /* Streak Display */
 .streak-display {
   display: flex;

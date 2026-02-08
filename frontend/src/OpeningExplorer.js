@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
+import Xiangqi from "./xiangqi";
+import XiangqiBoard from "./XiangqiBoard";
 
 // Opening Database with ECO codes, names, and variations
 const OPENING_DATABASE = [
@@ -223,8 +225,153 @@ const OPENING_TRAINING = {
   ],
 };
 
+// ============================================
+// Xiangqi Opening Database
+// ============================================
+const XIANGQI_OPENINGS = [
+  {
+    eco: "C00",
+    name: "Central Cannon",
+    nameCn: "中炮开局",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR',
+    moves: ['炮二平五 (C8-E8)'],
+    description: "The most popular opening — moving the right cannon to the center to control the e-file.",
+    descriptionCn: "最常见的开局，将右炮移至中路控制中线，进攻性强。",
+    winRate: { red: 0.40, draw: 0.30, black: 0.30 },
+    difficulty: 1,
+    popularity: 98,
+    keyIdeas: [
+      { en: "Control the central file", cn: "控制中路" },
+      { en: "Prepare for direct attack on the general", cn: "准备直接进攻对方将帅" },
+      { en: "Develop chariots to open files", cn: "出车占领开放线" },
+    ],
+  },
+  {
+    eco: "C10",
+    name: "Central Cannon vs Screen Horse",
+    nameCn: "中炮对屏风马",
+    fen: 'r1eakaehr/9/1ch4c1/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR',
+    moves: ['炮二平五', '马8进7'],
+    description: "The most classical Xiangqi opening system. Black counters with a horse screen defense.",
+    descriptionCn: "最经典的象棋开局体系。黑方以屏风马应对中炮。",
+    winRate: { red: 0.38, draw: 0.35, black: 0.27 },
+    difficulty: 2,
+    popularity: 95,
+    keyIdeas: [
+      { en: "Red aims for central attack", cn: "红方追求中路进攻" },
+      { en: "Black builds solid horse defense", cn: "黑方建立稳固的马防线" },
+      { en: "Key battle over e-file control", cn: "中线控制权的争夺是关键" },
+    ],
+  },
+  {
+    eco: "D00",
+    name: "Queen's Knight Opening",
+    nameCn: "飞相局",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/9/RH1AKAEHR',
+    moves: ['相三进五 (E0-C2)'],
+    description: "A solid, positional opening. The elephant (bishop) develops to control the center diagonally.",
+    descriptionCn: "稳健的位置型开局，飞相控制中路对角线。",
+    winRate: { red: 0.34, draw: 0.38, black: 0.28 },
+    difficulty: 1,
+    popularity: 70,
+    keyIdeas: [
+      { en: "Solid, defensive setup", cn: "稳固的防守布局" },
+      { en: "Control diagonal lines", cn: "控制对角线" },
+      { en: "Counter-attack opportunities", cn: "伺机反击" },
+    ],
+  },
+  {
+    eco: "E00",
+    name: "Pawn Opening",
+    nameCn: "仙人指路",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/2S6/S3S1S1S/1C5C1/9/RHEAKAEHR',
+    moves: ['兵三进一 (C6-C5)'],
+    description: "\"Immortal Guides the Way\" — an ancient opening that advances a flank pawn first.",
+    descriptionCn: "仙人指路——先进边兵，灵活多变的古老开局。",
+    winRate: { red: 0.36, draw: 0.34, black: 0.30 },
+    difficulty: 2,
+    popularity: 65,
+    keyIdeas: [
+      { en: "Test opponent's intention", cn: "试探对方意图" },
+      { en: "Flexible transposition", cn: "灵活转换阵型" },
+      { en: "Prepare cannon or horse development", cn: "准备出炮或出马" },
+    ],
+  },
+  {
+    eco: "F00",
+    name: "Horse Opening",
+    nameCn: "起马局",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C5C1/4H4/RHEAKAE1R',
+    moves: ['马八进七 (H0-G2)'],
+    description: "Developing the horse first, a flexible opening that delays committing the cannons.",
+    descriptionCn: "先出马的灵活开局，延迟炮的走法选择。",
+    winRate: { red: 0.35, draw: 0.36, black: 0.29 },
+    difficulty: 1,
+    popularity: 60,
+    keyIdeas: [
+      { en: "Develop knight early", cn: "尽早出马" },
+      { en: "Keep cannon options flexible", cn: "保持炮的灵活性" },
+      { en: "Solid positional approach", cn: "稳健的位置型打法" },
+    ],
+  },
+  {
+    eco: "C20",
+    name: "Opposite Direction Cannons",
+    nameCn: "顺炮",
+    fen: 'rheakaehr/9/1c2c4/s1s1s1s1s/9/9/S1S1S1S1S/1C2C4/9/RHEAKAEHR',
+    moves: ['炮二平五', '炮8平5'],
+    description: "Both sides place cannons on the same file — aggressive and symmetrical.",
+    descriptionCn: "双方都将炮放在中路，攻击性强的对称布局。",
+    winRate: { red: 0.37, draw: 0.30, black: 0.33 },
+    difficulty: 2,
+    popularity: 55,
+    keyIdeas: [
+      { en: "Symmetrical but sharp positions", cn: "对称但尖锐的局面" },
+      { en: "Early tactical skirmishes", cn: "早期战术交锋" },
+      { en: "Both sides fight for initiative", cn: "双方争夺先手" },
+    ],
+  },
+  {
+    eco: "C30",
+    name: "Cross-Palace Cannon",
+    nameCn: "过宫炮",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/1C3C3/9/RHEAKAEHR',
+    moves: ['炮二平六 (C8-F8)'],
+    description: "The cannon moves across the palace — a flexible, modern system.",
+    descriptionCn: "过宫炮——灵活的现代开局体系。",
+    winRate: { red: 0.36, draw: 0.34, black: 0.30 },
+    difficulty: 2,
+    popularity: 50,
+    keyIdeas: [
+      { en: "Flexible cannon placement", cn: "灵活的炮位" },
+      { en: "Support central pawn advance", cn: "支持中兵推进" },
+      { en: "Prepare for delayed central attack", cn: "准备延迟中路进攻" },
+    ],
+  },
+  {
+    eco: "D10",
+    name: "Left Central Cannon",
+    nameCn: "五六炮",
+    fen: 'rheakaehr/9/1c5c1/s1s1s1s1s/9/9/S1S1S1S1S/3C1C3/9/RHEAKAEHR',
+    moves: ['炮二平五', '...', '炮八平六'],
+    description: "Two cannons aiming at center and right flank — a versatile attacking formation.",
+    descriptionCn: "双炮分别瞄准中路和右翼，攻守兼备的阵型。",
+    winRate: { red: 0.38, draw: 0.32, black: 0.30 },
+    difficulty: 3,
+    popularity: 45,
+    keyIdeas: [
+      { en: "Two-pronged attack system", cn: "双管齐下的攻击体系" },
+      { en: "Control center and right flank", cn: "控制中路和右翼" },
+      { en: "Prepare for chariot activation", cn: "准备出车活动" },
+    ],
+  },
+];
+
 class OpeningExplorer extends Component {
   state = {
+    // Game type
+    gameType: 'chess', // 'chess' or 'xiangqi'
+
     // Current position
     fen: "start",
     moveHistory: [],
@@ -252,9 +399,13 @@ class OpeningExplorer extends Component {
     // Board interaction
     squareStyles: {},
     pieceSquare: "",
+
+    // Xiangqi-specific
+    xiangqiValidMoves: [],
   };
 
   game = null;
+  xiangqiGame = null;
 
   componentDidMount() {
     this.game = new Chess();
@@ -446,15 +597,29 @@ class OpeningExplorer extends Component {
   };
 
   resetExplorer = () => {
-    this.game = new Chess();
-    this.setState({
-      fen: "start",
-      moveHistory: [],
-      currentOpening: null,
-      matchingOpenings: [],
-      squareStyles: {},
-      pieceSquare: "",
-    }, this.updateMatchingOpenings);
+    if (this.state.gameType === 'xiangqi') {
+      this.xiangqiGame = new Xiangqi();
+      this.setState({
+        fen: this.xiangqiGame.fen(),
+        moveHistory: [],
+        currentOpening: null,
+        matchingOpenings: XIANGQI_OPENINGS,
+        selectedOpening: null,
+        squareStyles: {},
+        pieceSquare: "",
+        xiangqiValidMoves: [],
+      });
+    } else {
+      this.game = new Chess();
+      this.setState({
+        fen: "start",
+        moveHistory: [],
+        currentOpening: null,
+        matchingOpenings: [],
+        squareStyles: {},
+        pieceSquare: "",
+      }, this.updateMatchingOpenings);
+    }
   };
 
   undoMove = () => {
@@ -469,17 +634,59 @@ class OpeningExplorer extends Component {
   };
 
   playOpening = (opening) => {
-    this.game = new Chess();
-    opening.moves.forEach(move => this.game.move(move));
+    if (this.state.gameType === 'xiangqi') {
+      this.xiangqiGame = new Xiangqi(opening.fen);
+      this.setState({
+        fen: this.xiangqiGame.fen(),
+        moveHistory: opening.moves.map((m, i) => ({ san: m, index: i })),
+        selectedOpening: opening,
+        expandedOpening: opening.eco,
+        xiangqiValidMoves: [],
+      });
+    } else {
+      this.game = new Chess();
+      opening.moves.forEach(move => this.game.move(move));
+      this.setState({
+        fen: this.game.fen(),
+        moveHistory: this.game.history({ verbose: true }),
+        selectedOpening: opening,
+        expandedOpening: opening.eco,
+      }, this.updateMatchingOpenings);
+    }
+  };
+
+  onXiangqiSquareSelect = (row, col) => {
+    if (!this.xiangqiGame) return;
+    const validMoves = this.xiangqiGame.getValidMoves(row, col);
+    this.setState({ xiangqiValidMoves: validMoves });
+  };
+
+  onXiangqiMove = (from, to) => {
+    if (!this.xiangqiGame) return;
+    const result = this.xiangqiGame.move({ from, to });
+    if (result) {
+      this.setState({
+        fen: this.xiangqiGame.fen(),
+        xiangqiValidMoves: [],
+      });
+    }
+  };
+
+  undoXiangqiMove = () => {
+    if (!this.xiangqiGame) return;
+    this.xiangqiGame.undo();
     this.setState({
-      fen: this.game.fen(),
-      moveHistory: this.game.history({ verbose: true }),
-      selectedOpening: opening,
-      expandedOpening: opening.eco,
-    }, this.updateMatchingOpenings);
+      fen: this.xiangqiGame.fen(),
+      xiangqiValidMoves: [],
+    });
   };
 
   startTraining = (opening) => {
+    if (this.state.gameType === 'xiangqi') {
+      alert("Xiangqi opening training coming soon! / 象棋开局训练即将推出！");
+      return;
+    }
+
     const training = OPENING_TRAINING[opening.name];
     if (!training || training.length === 0) {
       alert("Training not available for this opening yet / 此开局暂无训练题目");
@@ -528,7 +735,8 @@ class OpeningExplorer extends Component {
   };
 
   getFilteredOpenings = () => {
-    let openings = OPENING_DATABASE;
+    const { gameType } = this.state;
+    let openings = gameType === 'xiangqi' ? XIANGQI_OPENINGS : OPENING_DATABASE;
 
     if (this.state.filterDifficulty) {
       openings = openings.filter(o => o.difficulty === this.state.filterDifficulty);
@@ -550,23 +758,79 @@ class OpeningExplorer extends Component {
     return openings;
   };
 
+  switchGameType = (gameType) => {
+    if (gameType === 'xiangqi') {
+      this.xiangqiGame = new Xiangqi();
+      this.setState({
+        gameType,
+        fen: this.xiangqiGame.fen(),
+        moveHistory: [],
+        currentOpening: null,
+        matchingOpenings: XIANGQI_OPENINGS,
+        selectedOpening: null,
+        expandedOpening: null,
+        viewMode: 'explore',
+        filterDifficulty: null,
+        searchQuery: '',
+        squareStyles: {},
+        pieceSquare: '',
+        xiangqiValidMoves: [],
+      });
+    } else {
+      this.game = new Chess();
+      this.setState({
+        gameType,
+        fen: 'start',
+        moveHistory: [],
+        currentOpening: null,
+        matchingOpenings: [],
+        selectedOpening: null,
+        expandedOpening: null,
+        viewMode: 'explore',
+        filterDifficulty: null,
+        searchQuery: '',
+        squareStyles: {},
+        pieceSquare: '',
+        xiangqiValidMoves: [],
+      }, this.updateMatchingOpenings);
+    }
+  };
+
   render() {
     const {
       fen, moveHistory, currentOpening, matchingOpenings,
       viewMode, selectedOpening, expandedOpening, filterDifficulty, searchQuery,
       trainingOpening, trainingStep, trainingCorrect, trainingWrong,
-      showTrainingHint, trainingFeedback, squareStyles, repertoire
+      showTrainingHint, trainingFeedback, squareStyles, repertoire,
+      gameType, xiangqiValidMoves
     } = this.state;
 
     const filteredOpenings = this.getFilteredOpenings();
     const training = trainingOpening ? OPENING_TRAINING[trainingOpening.name] : null;
     const currentTrainingPuzzle = training && trainingStep < training.length ? training[trainingStep] : null;
+    const isXiangqi = gameType === 'xiangqi';
 
     return (
       <div className="opening-explorer-container">
         {/* Left Panel - Opening List */}
         <div className="opening-sidebar">
           <div className="panel-title">📖 Opening Explorer / 开局库</div>
+
+          {/* Game Type Tabs */}
+          <div className="game-type-tabs">
+            <button
+              className={`game-type-tab ${gameType === 'chess' ? 'active' : ''}`}
+              onClick={() => this.switchGameType('chess')}
+            >
+              ♟ Chess
+            </button>
+            <button
+              className={`game-type-tab ${gameType === 'xiangqi' ? 'active' : ''}`}
+              onClick={() => this.switchGameType('xiangqi')}
+            >
+              🀄 象棋
+            </button>
+          </div>
 
           {/* View Mode Tabs */}
           <div className="view-mode-tabs">
@@ -643,8 +907,8 @@ class OpeningExplorer extends Component {
 
                     <div className="opening-stats">
                       <div className="win-bar">
-                        <div className="white-wins" style={{ width: `${opening.winRate.white * 100}%` }}>
-                          {Math.round(opening.winRate.white * 100)}%
+                        <div className="white-wins" style={{ width: `${(opening.winRate.white || opening.winRate.red) * 100}%` }}>
+                          {Math.round((opening.winRate.white || opening.winRate.red) * 100)}%
                         </div>
                         <div className="draws" style={{ width: `${opening.winRate.draw * 100}%` }}>
                           {Math.round(opening.winRate.draw * 100)}%
@@ -654,7 +918,7 @@ class OpeningExplorer extends Component {
                         </div>
                       </div>
                       <div className="win-labels">
-                        <span>White</span>
+                        <span>{isXiangqi ? 'Red' : 'White'}</span>
                         <span>Draw</span>
                         <span>Black</span>
                       </div>
@@ -762,27 +1026,41 @@ class OpeningExplorer extends Component {
                     {matchingOpenings.length} possible openings
                   </span>
                 ) : (
-                  <span className="no-opening">Unknown position</span>
+                  <span className="no-opening">{isXiangqi ? 'Select an opening' : 'Unknown position'}</span>
                 )}
               </div>
 
-              <Chessboard
-                id="openingboard"
-                position={fen}
-                width={480}
-                orientation="white"
-                onDrop={this.onDrop}
-                onSquareClick={this.onSquareClick}
-                squareStyles={squareStyles}
-                boardStyle={{
-                  borderRadius: "8px",
-                  boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
-                }}
-              />
+              {isXiangqi ? (
+                <XiangqiBoard
+                  board={this.xiangqiGame ? this.xiangqiGame.board() : null}
+                  turn={this.xiangqiGame ? this.xiangqiGame.turn() : 'r'}
+                  playerColor="r"
+                  width={480}
+                  orientation="red"
+                  validMoves={xiangqiValidMoves}
+                  onSquareSelect={this.onXiangqiSquareSelect}
+                  onMove={this.onXiangqiMove}
+                  disabled={false}
+                />
+              ) : (
+                <Chessboard
+                  id="openingboard"
+                  position={fen}
+                  width={480}
+                  orientation="white"
+                  onDrop={this.onDrop}
+                  onSquareClick={this.onSquareClick}
+                  squareStyles={squareStyles}
+                  boardStyle={{
+                    borderRadius: "8px",
+                    boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
+                  }}
+                />
+              )}
 
               {/* Controls */}
               <div className="explorer-controls">
-                <button className="btn btn-secondary" onClick={this.undoMove} disabled={moveHistory.length === 0}>
+                <button className="btn btn-secondary" onClick={isXiangqi ? this.undoXiangqiMove : this.undoMove} disabled={!isXiangqi && moveHistory.length === 0}>
                   ← Undo
                 </button>
                 <button className="btn btn-primary" onClick={this.resetExplorer}>
@@ -791,19 +1069,21 @@ class OpeningExplorer extends Component {
               </div>
 
               {/* Move History */}
-              <div className="explorer-moves">
-                <span className="moves-label">Moves:</span>
-                {moveHistory.length === 0 ? (
-                  <span className="no-moves">Start position</span>
-                ) : (
-                  moveHistory.map((m, i) => (
-                    <span key={i} className="move-item">
-                      {i % 2 === 0 && <span className="move-num">{Math.floor(i / 2) + 1}.</span>}
-                      {m.san}
-                    </span>
-                  ))
-                )}
-              </div>
+              {!isXiangqi && (
+                <div className="explorer-moves">
+                  <span className="moves-label">Moves:</span>
+                  {moveHistory.length === 0 ? (
+                    <span className="no-moves">Start position</span>
+                  ) : (
+                    moveHistory.map((m, i) => (
+                      <span key={i} className="move-item">
+                        {i % 2 === 0 && <span className="move-num">{Math.floor(i / 2) + 1}.</span>}
+                        {m.san}
+                      </span>
+                    ))
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

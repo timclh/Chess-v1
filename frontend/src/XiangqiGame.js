@@ -259,7 +259,7 @@ class XiangqiGame extends Component {
     // SharedArrayBuffer requires crossOriginIsolated.
     // If COI service worker just registered, wait for it to activate.
     if (!window.crossOriginIsolated) {
-      console.log('[XiangqiGame] Waiting for cross-origin isolation...');
+
       const isolated = await this._waitForCrossOriginIsolation(5000);
       if (!isolated) {
         console.warn('[XiangqiGame] Not cross-origin isolated — SharedArrayBuffer unavailable. Using built-in AI.');
@@ -272,7 +272,7 @@ class XiangqiGame extends Component {
       const ok = await initCoachEngine();
       this.setState({ engineReady: ok, engineLoading: false });
       if (ok) {
-        console.log('[XiangqiGame] Fairy-Stockfish engine ready ✓');
+
       } else {
         console.warn('[XiangqiGame] Engine init failed, using built-in AI');
       }
@@ -453,7 +453,7 @@ class XiangqiGame extends Component {
           enginePowered: true,
         };
 
-        console.log('[XiangqiGame] Engine analysis (turn:', turn, 'raw:', rawScore, 'fromRed:', scoreFromRed, '):', engineAnalysis);
+
         this.setState({ 
           analysis: engineAnalysis,
           suggestedMoves: engineMoves, 
@@ -530,14 +530,14 @@ class XiangqiGame extends Component {
         };
         const skillLevel = skillByDifficulty[this.state.aiDifficulty] || 3;
         
-        console.log('[XiangqiGame] AI using Fairy-Stockfish, skill level:', skillLevel);
+
         
         const engineMoves = await getTopMovesEngine(this.game, 1, [], { skillLevel });
         
         if (engineMoves && engineMoves.length > 0) {
           bestMove = engineMoves[0].move;
           explanation = engineMoves[0].explanation || '';
-          console.log('[XiangqiGame] Engine AI move:', bestMove, 'score:', engineMoves[0].score);
+
         }
       } catch (err) {
         console.warn('[XiangqiGame] Engine AI failed, falling back to built-in:', err);
@@ -546,7 +546,7 @@ class XiangqiGame extends Component {
 
     // Fallback to built-in AI if engine didn't return a move
     if (!bestMove) {
-      console.log('[XiangqiGame] AI using built-in AI');
+
       bestMove = findBestMove(this.game, this.state.aiDifficulty);
       if (this.state.gameMode === 'coach') {
         explanation = explainAIMove(this.game, bestMove);

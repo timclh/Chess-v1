@@ -82,7 +82,7 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
     const timeMs = skillLevel >= 15 ? 5000 : (1500 + skillLevel * 100);
     
     const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
-    console.log(`[XiangqiCoach] Analyzing with skill=${skillLevel}, depth=${depth}, time=${timeMs}ms`);
+
     
     const result = await fairyStockfishService.analyze(fen, turn, {
       depth: depth,
@@ -91,7 +91,7 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
       skillLevel: skillLevel,
     });
 
-    console.log('[XiangqiCoach] Engine result for turn', turn, ':', result);
+
 
     if (!result || !result.lines || result.lines.length === 0) {
       console.warn('[XiangqiCoach] No engine lines returned');
@@ -100,8 +100,7 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
 
     const suggestions = [];
 
-    console.log('[XiangqiCoach] Processing engine lines:', result.lines.length);
-    console.log('[XiangqiCoach] Legal moves:', legalMoves.map(m => `${m.from}-${m.to}`).join(', '));
+
 
     for (let i = 0; i < Math.min(n, result.lines.length); i++) {
       const line = result.lines[i];
@@ -110,7 +109,7 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
       const uciMove = line.pv[0];
       const parsedMove = parseUCIMove(uciMove);
 
-      console.log('[XiangqiCoach] Engine move', i+1, ':', uciMove, '-> parsed:', parsedMove);
+
 
       if (!parsedMove) continue;
 
@@ -119,7 +118,7 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
         m => m.from === parsedMove.from && m.to === parsedMove.to
       );
 
-      console.log('[XiangqiCoach] Matched to:', matchedMove ? `${matchedMove.from}-${matchedMove.to}` : 'NO MATCH');
+
 
       if (!matchedMove) continue;
 
@@ -177,13 +176,13 @@ export async function analyzePositionEngine(game) {
 
     if (!result) return null;
 
-    console.log('[XiangqiCoach] Engine result:', result);
+
 
     // result.score is from side-to-move's perspective
     // Convert to always from Red's perspective
     const scoreFromRed = turn === 'r' ? (result.score || 0) : -(result.score || 0);
 
-    console.log('[XiangqiCoach] Turn:', turn, 'Raw score:', result.score, 'Score from Red:', scoreFromRed);
+
 
     // Convert to win probability
     const winProb = 1 / (1 + Math.exp(-scoreFromRed / 200));
