@@ -420,7 +420,7 @@ class FairyStockfishService {
           depth: this._depth,
           score: this._score,
         });
-      }, timeMs + 8000); // Extra buffer for deep analysis
+      }, timeMs + 10000); // Extra buffer for deep analysis
 
       this._currentAnalysis = {
         resolve: (result) => {

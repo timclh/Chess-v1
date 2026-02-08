@@ -75,12 +75,20 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
 
   try {
     // Adjust depth/time based on skill level
-    // Higher skill = deeper search, more time
-    // Coach (skill 20): depth 30, 10s - GM level, deep analysis
-    // Strong AI (skill 10-14): depth 22, 5s
-    // AI opponent (skill 1-9): depth 14, 2-3s - weaker but still uses engine
-    const depth = skillLevel >= 15 ? 30 : (12 + Math.floor(skillLevel / 2));
-    const timeMs = skillLevel >= 15 ? 10000 : (1500 + skillLevel * 150);
+    // WASM is single-threaded, so depth ≈ time-limited.
+    // The key is keeping a big gap between AI opponent and coach.
+    // Coach (skill 20): depth 30, 15s — deep GM-level analysis
+    // AI opponent (skill 1-9): depth 10-12, 0.5-1.5s — intentionally shallow
+    let depth, timeMs;
+    if (skillLevel >= 15) {
+      // Coach mode — spend serious time for deep analysis
+      depth = 30;
+      timeMs = 15000;
+    } else {
+      // AI opponent — keep shallow so coach is noticeably stronger
+      depth = 8 + Math.floor(skillLevel / 2);   // skill 1→8, skill 7→11
+      timeMs = 500 + skillLevel * 100;            // skill 1→600ms, skill 7→1200ms
+    }
     
     const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
 
@@ -170,8 +178,8 @@ export async function analyzePositionEngine(game) {
 
   try {
     const result = await fairyStockfishService.analyze(fen, turn, {
-      depth: 24,
-      timeMs: 5000,
+      depth: 26,
+      timeMs: 8000,
       numLines: 1,
     });
 
@@ -267,17 +275,20 @@ function getEngineExplanation(move, cpScore, line, game) {
     return `${pieceNameCn}吃${capturedName} / Capture ${capturedName}`;
   }
 
+  // Quality indicator based on search depth
+  const quality = line.depth >= 20 ? '🔬' : line.depth >= 14 ? '⚡' : '';
+
   // Score-based explanations
   if (cpScore > 500) {
-    return `决定性着法 / Decisive move (depth ${line.depth})`;
+    return `${quality} 决定性着法 / Decisive move`.trim();
   } else if (cpScore > 200) {
-    return `强势着法 / Strong move (depth ${line.depth})`;
+    return `${quality} 强势着法 / Strong move`.trim();
   } else if (cpScore > 50) {
-    return `稳健着法 / Solid move (depth ${line.depth})`;
+    return `${quality} 稳健着法 / Solid move`.trim();
   } else if (cpScore > -50) {
-    return `均势着法 / Equal move (depth ${line.depth})`;
+    return `${quality} 均势着法 / Equal move`.trim();
   } else {
-    return `防守着法 / Defensive move (depth ${line.depth})`;
+    return `${quality} 防守着法 / Defensive move`.trim();
   }
 }
 
