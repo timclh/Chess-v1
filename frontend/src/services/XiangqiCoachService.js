@@ -261,6 +261,11 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
       });
     }
 
+    // Sort by score descending (best move first) and re-assign ranks.
+    // MultiPV lines can arrive at different depths, causing inverted scores.
+    suggestions.sort((a, b) => b.score - a.score);
+    suggestions.forEach((s, idx) => { s.rank = idx + 1; });
+
     // Cache the result if deep enough
     if (suggestions.length > 0) {
       const maxDepth = Math.max(...suggestions.map(s => s.engineDepth || 0));
