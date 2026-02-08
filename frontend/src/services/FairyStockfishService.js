@@ -403,8 +403,10 @@ class FairyStockfishService {
     this._send(`position fen ${fairyFen}`);
 
     // Start search
+    // Use movetime as primary limit — engine searches as deep as possible within the time.
+    // Depth is a max cap to prevent runaway in simple positions.
     const searchCmd = depth
-      ? `go depth ${depth} movetime ${timeMs}`
+      ? `go movetime ${timeMs} depth ${depth}`
       : `go movetime ${timeMs}`;
 
     // Create promise for the result
@@ -418,7 +420,7 @@ class FairyStockfishService {
           depth: this._depth,
           score: this._score,
         });
-      }, timeMs + 5000); // Extra buffer
+      }, timeMs + 8000); // Extra buffer for deep analysis
 
       this._currentAnalysis = {
         resolve: (result) => {

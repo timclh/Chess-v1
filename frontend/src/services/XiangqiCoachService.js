@@ -76,10 +76,11 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
   try {
     // Adjust depth/time based on skill level
     // Higher skill = deeper search, more time
-    // Coach (skill 20): depth 24, 5s - GM level
-    // AI opponent (skill 5): depth 14, 2s - weaker but still uses engine
-    const depth = skillLevel >= 15 ? 24 : (12 + Math.floor(skillLevel / 2));
-    const timeMs = skillLevel >= 15 ? 5000 : (1500 + skillLevel * 100);
+    // Coach (skill 20): depth 30, 10s - GM level, deep analysis
+    // Strong AI (skill 10-14): depth 22, 5s
+    // AI opponent (skill 1-9): depth 14, 2-3s - weaker but still uses engine
+    const depth = skillLevel >= 15 ? 30 : (12 + Math.floor(skillLevel / 2));
+    const timeMs = skillLevel >= 15 ? 10000 : (1500 + skillLevel * 150);
     
     const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
 
@@ -169,8 +170,8 @@ export async function analyzePositionEngine(game) {
 
   try {
     const result = await fairyStockfishService.analyze(fen, turn, {
-      depth: 16,
-      timeMs: 1500,
+      depth: 24,
+      timeMs: 5000,
       numLines: 1,
     });
 
