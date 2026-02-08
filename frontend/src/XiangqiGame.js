@@ -1071,7 +1071,7 @@ class XiangqiGame extends Component {
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
-                width={fsBoard}
+                width={Math.min(fsBoard, window.innerHeight - 180)}
                 orientation={boardOrientation}
                 turn={this.game.turn}
                 playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
@@ -1083,8 +1083,37 @@ class XiangqiGame extends Component {
               />
             )}
           </div>
-          <div className="fullscreen-rating">
-            <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+
+          {/* Bottom toolbar */}
+          <div className="fullscreen-bottom-bar">
+            <div className="fullscreen-bottom-rating">
+              <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+            </div>
+            <div className="fullscreen-bottom-actions">
+              <button
+                className="bottom-action-btn hint-btn"
+                onClick={() => suggestedMoves.length > 0 && this.handleMove(suggestedMoves[0].move)}
+                disabled={suggestedMoves.length === 0 || aiThinking || !(this.game && this.game.turn === playerColor)}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint'}
+              >
+                💡 Hint
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.undoMove}
+                disabled={history.length === 0 || aiThinking}
+                title="Undo"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.resetGame}
+                title="New Game"
+              >
+                🔄 New
+              </button>
+            </div>
           </div>
 
           {/* Slide-in Coach Panel */}

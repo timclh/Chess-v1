@@ -5039,7 +5039,7 @@ body {
   touch-action: none;
 }
 
-/* Rating chip – bottom-left */
+/* Rating chip – bottom-left (legacy, kept for compat) */
 .fullscreen-rating {
   position: absolute;
   bottom: env(safe-area-inset-bottom, 12px);
@@ -5055,6 +5055,84 @@ body {
   border-radius: 16px;
   padding: 6px 14px;
   color: #e2e8f0;
+}
+
+/* ── Bottom toolbar (replaces floating rating) ── */
+
+.fullscreen-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 10001;
+}
+
+.fullscreen-bottom-rating .rating-display {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 4px 12px;
+  color: #e2e8f0;
+  font-size: 13px;
+}
+
+.fullscreen-bottom-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bottom-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.bottom-action-btn:active {
+  transform: scale(0.95);
+}
+
+.bottom-action-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.bottom-action-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+}
+
+.bottom-action-btn.hint-btn {
+  background: rgba(250, 204, 21, 0.15);
+  border-color: rgba(250, 204, 21, 0.3);
+  color: #facc15;
+}
+
+.bottom-action-btn.hint-btn:hover:not(:disabled) {
+  background: rgba(250, 204, 21, 0.25);
+}
+
+.bottom-action-btn.hint-btn:disabled {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Toggle button (shown in normal mode to enter fullscreen) */

@@ -1054,7 +1054,7 @@ class ChessGame extends Component {
             <Chessboard
               id="chessboard-fullscreen"
               position={fen}
-              width={Math.min(boardWidth, window.innerHeight - 120)}
+              width={Math.min(boardWidth, window.innerHeight - 180)}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
@@ -1067,9 +1067,36 @@ class ChessGame extends Component {
             />
           </div>
 
-          {/* Rating display */}
-          <div className="fullscreen-rating">
-            <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+          {/* Bottom toolbar */}
+          <div className="fullscreen-bottom-bar">
+            <div className="fullscreen-bottom-rating">
+              <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+            </div>
+            <div className="fullscreen-bottom-actions">
+              <button
+                className="bottom-action-btn hint-btn"
+                onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
+                disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
+              >
+                💡 Hint
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.undoMove}
+                disabled={history.length === 0 || aiThinking}
+                title="Undo"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.newGame}
+                title="New Game"
+              >
+                🔄 New
+              </button>
+            </div>
           </div>
 
           {/* Slide-in Coach Panel */}
