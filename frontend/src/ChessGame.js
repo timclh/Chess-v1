@@ -220,6 +220,11 @@ class ChessGame extends Component {
       }
     };
     window.addEventListener('resize', this._handleResize);
+
+    // Auto-enter fullscreen on mobile / tablet
+    if (window.innerWidth <= 950) {
+      this.setState({ isFullscreen: true });
+    }
   }
 
   componentWillUnmount() {

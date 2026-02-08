@@ -221,6 +221,11 @@ class XiangqiGame extends Component {
     };
     window.addEventListener('resize', this._handleResize);
 
+    // Auto-enter fullscreen on mobile / tablet
+    if (window.innerWidth <= 950) {
+      this.setState({ isFullscreen: true });
+    }
+
     // Start loading Fairy-Stockfish engine in background
     this._initEngine();
 
