@@ -96,6 +96,14 @@
   background: #444;
 }
 
+.wuziqi-btn.hint-btn {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  font-weight: bold;
+}
+.wuziqi-btn.hint-btn:hover {
+  background: linear-gradient(135deg, #219a52, #27ae60);
+}
+
 .wuziqi-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

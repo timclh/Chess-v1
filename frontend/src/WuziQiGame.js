@@ -50,6 +50,8 @@ class WuziQiGame extends Component {
       newRating: null,
       // Analysis
       analysis: null,
+      // AI Hint
+      hintMove: null,
     };
   }
 
@@ -81,6 +83,9 @@ class WuziQiGame extends Component {
 
     const ok = this.game.place(row, col);
     if (!ok) return;
+
+    // Clear hint on move
+    this.setState({ hintMove: null });
 
     // Check for win line
     if (this.game.gameOver && this.game.winner) {
@@ -254,6 +259,17 @@ class WuziQiGame extends Component {
     this.setState({ analysis });
   };
 
+  handleHint = () => {
+    if (this.state.gameOver || this.state.aiThinking) return;
+    // Use the AI to find the best move for the current player
+    const bestMove = findBestMoveWuziQi(this.game, 3); // Use hard difficulty for hints
+    if (bestMove) {
+      this.setState({ hintMove: bestMove });
+      // Auto-clear hint after 5 seconds
+      setTimeout(() => this.setState({ hintMove: null }), 5000);
+    }
+  };
+
   setDifficulty = (diff) => {
     this.setState({ difficulty: diff }, this.handleNewGame);
   };
@@ -271,7 +287,7 @@ class WuziQiGame extends Component {
       board, turn, gameOver, lastMove, winLine, moveCount,
       mode, difficulty, playerColor, aiThinking,
       ratingData, showResult, resultMessage, resultType, oldRating, newRating,
-      analysis,
+      analysis, hintMove,
     } = this.state;
 
     const turnLabel = turn === BLACK ? '⚫ Black' : '⚪ White';
@@ -290,7 +306,7 @@ class WuziQiGame extends Component {
           <div className="wuziqi-panel wuziqi-left-panel">
             {/* Rating */}
             <div className="wuziqi-section">
-              <RatingDisplay rating={ratingData.rating} gamesPlayed={ratingData.gamesPlayed} />
+              <RatingDisplay gameType={GAME_TYPE.WUZIQI} />
             </div>
 
             {/* Mode Selection */}
@@ -365,6 +381,13 @@ class WuziQiGame extends Component {
                 <button className="wuziqi-btn action" onClick={this.handleAnalyze}>
                   📊 Analyze
                 </button>
+                <button
+                  className="wuziqi-btn action hint-btn"
+                  onClick={this.handleHint}
+                  disabled={aiThinking || gameOver}
+                >
+                  💡 Hint
+                </button>
               </div>
             </div>
           </div>
@@ -391,6 +414,7 @@ class WuziQiGame extends Component {
               board={board}
               lastMove={lastMove}
               winLine={winLine}
+              hintMove={hintMove}
               onCellClick={this.handleCellClick}
               disabled={gameOver || aiThinking || !isPlayerTurn}
             />

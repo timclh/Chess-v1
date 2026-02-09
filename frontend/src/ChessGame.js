@@ -374,7 +374,8 @@ class ChessGame extends Component {
     if (this.state.ratingProcessed) return;
     
     const gameType = GAME_TYPE.CHESS;
-    const oldRating = getRating(gameType);
+    const oldRatingData = getRating(gameType);
+    const oldRating = oldRatingData.rating;
     
     // Map result string to RESULT constant
     let resultValue;
@@ -383,18 +384,17 @@ class ChessGame extends Component {
     else resultValue = RESULT.DRAW;
     
     // Record result and get new rating
-    const newRating = await recordResult(
+    const { newRating, delta } = await recordResult({
       gameType,
-      resultValue,
-      this.state.aiDifficulty, // difficulty 1-4
-      'ai',
-      this.props.user
-    );
+      result: resultValue,
+      difficulty: this.state.aiDifficulty,
+      userId: this.props.user,
+    });
     
     this.setState({
       oldRating,
       newRating,
-      ratingDelta: newRating - oldRating,
+      ratingDelta: delta,
       ratingProcessed: true,
     });
   };

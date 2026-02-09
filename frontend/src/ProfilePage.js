@@ -47,6 +47,7 @@ class ProfilePage extends Component {
     // Stats
     chessRating: 1200,
     xiangqiRating: 1200,
+    wuziqiRating: 1200,
   };
 
   componentDidMount() {
@@ -57,8 +58,9 @@ class ProfilePage extends Component {
     this.setState({
       activities: getActivity(20),
       friends: getFriends(),
-      chessRating: getRating(GAME_TYPE.CHESS),
-      xiangqiRating: getRating(GAME_TYPE.XIANGQI),
+      chessRating: getRating(GAME_TYPE.CHESS).rating || 1200,
+      xiangqiRating: getRating(GAME_TYPE.XIANGQI).rating || 1200,
+      wuziqiRating: getRating(GAME_TYPE.WUZIQI).rating || 1200,
       notifPermission: getPermission(),
     });
   }
@@ -274,7 +276,7 @@ class ProfilePage extends Component {
   }
 
   render() {
-    const { activeTab, chessRating, xiangqiRating } = this.state;
+    const { activeTab, chessRating, xiangqiRating, wuziqiRating } = this.state;
 
     return (
       <div className="profile-page">
@@ -283,6 +285,7 @@ class ProfilePage extends Component {
           <div className="profile-ratings">
             <span className="profile-rating">♟ Chess: {chessRating}</span>
             <span className="profile-rating">象棋 Xiangqi: {xiangqiRating}</span>
+            <span className="profile-rating">⚫ Gomoku: {wuziqiRating}</span>
           </div>
         </div>
 

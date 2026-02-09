@@ -14,8 +14,10 @@ class Leaderboard extends Component {
     // Player ELO ratings (getRating returns {rating, gamesPlayed, wins, ...})
     chessRatingData: getRating(GAME_TYPE.CHESS),
     xiangqiRatingData: getRating(GAME_TYPE.XIANGQI),
+    wuziqiRatingData: getRating(GAME_TYPE.WUZIQI),
     chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS).rating || 1200),
     xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI).rating || 1200),
+    wuziqiRank: EloService.getRank(getRating(GAME_TYPE.WUZIQI).rating || 1200),
   };
 
   componentDidMount() {
@@ -27,13 +29,16 @@ class Leaderboard extends Component {
     const recentGames = getGameHistory().slice(0, 50);
     const chessData = getRating(GAME_TYPE.CHESS);
     const xiangqiData = getRating(GAME_TYPE.XIANGQI);
+    const wuziqiData = getRating(GAME_TYPE.WUZIQI);
     this.setState({
       leaderboard,
       recentGames,
       chessRatingData: chessData,
       xiangqiRatingData: xiangqiData,
+      wuziqiRatingData: wuziqiData,
       chessRank: EloService.getRank(chessData.rating || 1200),
       xiangqiRank: EloService.getRank(xiangqiData.rating || 1200),
+      wuziqiRank: EloService.getRank(wuziqiData.rating || 1200),
     });
   };
 
@@ -85,12 +90,13 @@ class Leaderboard extends Component {
   };
 
   render() {
-    const { leaderboard, activeTab, historyFilter, chessRatingData, xiangqiRatingData, chessRank, xiangqiRank } = this.state;
+    const { leaderboard, activeTab, historyFilter, chessRatingData, xiangqiRatingData, wuziqiRatingData, chessRank, xiangqiRank, wuziqiRank } = this.state;
     const filteredGames = this.getFilteredGames();
     
     // Extract rating numbers for display
     const chessRating = chessRatingData?.rating || 1200;
     const xiangqiRating = xiangqiRatingData?.rating || 1200;
+    const wuziqiRating = wuziqiRatingData?.rating || 1200;
 
     return (
       <div className="leaderboard-container">
@@ -167,6 +173,29 @@ class Leaderboard extends Component {
                   history={xiangqiRatingData?.history || []}
                   currentRating={xiangqiRating}
                   label="Xiangqi"
+                />
+              </div>
+              {/* Wuziqi Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">⚫</div>
+                <div className="rating-game-name">Gomoku / 五子棋</div>
+                <div className="rating-value">
+                  {wuziqiRating}
+                  {' '}
+                  <RatingTrend history={wuziqiRatingData?.history || []} currentRating={wuziqiRating} />
+                </div>
+                <div className="rating-rank" style={{ color: wuziqiRank.color }}>
+                  <span className="rank-icon">{wuziqiRank.icon}</span>
+                  <span className="rank-name">{wuziqiRank.name}</span>
+                </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {wuziqiRatingData?.gamesPlayed || 0} games · 
+                  {wuziqiRatingData?.wins || 0}W / {wuziqiRatingData?.losses || 0}L / {wuziqiRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={wuziqiRatingData?.history || []}
+                  currentRating={wuziqiRating}
+                  label="Gomoku"
                 />
               </div>
             </div>

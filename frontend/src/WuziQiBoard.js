@@ -60,7 +60,7 @@ class WuziQiBoard extends Component {
   };
 
   render() {
-    const { board, lastMove, winLine, disabled } = this.props;
+    const { board, lastMove, winLine, hintMove, disabled } = this.props;
     const winSet = new Set((winLine || []).map(p => `${p.row},${p.col}`));
 
     // Build SVG elements
@@ -68,6 +68,7 @@ class WuziQiBoard extends Component {
     const stones = [];
     const labels = [];
     const starPoints = [];
+    const hints = [];
 
     // Grid lines
     for (let i = 0; i < BOARD_SIZE; i++) {
@@ -182,6 +183,26 @@ class WuziQiBoard extends Component {
       }
     }
 
+    // Hint marker
+    if (hintMove && board[hintMove.row][hintMove.col] === EMPTY) {
+      const hx = PADDING + hintMove.col * CELL_SIZE;
+      const hy = PADDING + hintMove.row * CELL_SIZE;
+      hints.push(
+        <g key="hint">
+          <circle
+            cx={hx} cy={hy} r={STONE_RADIUS - 2}
+            fill="rgba(46, 204, 113, 0.35)"
+            stroke="#2ecc71"
+            strokeWidth={2.5}
+            strokeDasharray="4 3"
+          >
+            <animate attributeName="opacity" values="0.4;1;0.4" dur="1.5s" repeatCount="indefinite" />
+          </circle>
+          <text x={hx} y={hy + 4} textAnchor="middle" fontSize="12" fill="#2ecc71" fontWeight="bold">💡</text>
+        </g>
+      );
+    }
+
     return (
       <div className="wuziqi-board-wrapper">
         <svg
@@ -200,6 +221,7 @@ class WuziQiBoard extends Component {
           {starPoints}
           {labels}
           {stones}
+          {hints}
         </svg>
       </div>
     );
