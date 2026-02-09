@@ -1,0 +1,259 @@
+/* ─── WuziQi (Gomoku) Game Styles ──────────────────────── */
+
+.wuziqi-game {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
+}
+
+.wuziqi-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.wuziqi-header h2 {
+  font-size: 1.6rem;
+  margin: 0;
+  color: #f0d060;
+}
+
+.wuziqi-subtitle {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin: 2px 0 0;
+}
+
+/* Layout: 3-column on desktop, stacked on mobile */
+.wuziqi-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* Side panels */
+.wuziqi-panel {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.wuziqi-section {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.wuziqi-section h4 {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #ccc;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Button groups */
+.wuziqi-btn-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.wuziqi-btn-group.vertical {
+  flex-direction: column;
+}
+
+.wuziqi-btn {
+  padding: 6px 10px;
+  border: 1px solid #555;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #ddd;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.wuziqi-btn:hover {
+  border-color: #888;
+  background: #3a3a3a;
+}
+
+.wuziqi-btn.active {
+  background: #4a90d9;
+  border-color: #4a90d9;
+  color: #fff;
+}
+
+.wuziqi-btn.action {
+  background: #333;
+}
+
+.wuziqi-btn.action:hover {
+  background: #444;
+}
+
+.wuziqi-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Board container */
+.wuziqi-board-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wuziqi-status {
+  text-align: center;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  min-width: 260px;
+}
+
+.status-text {
+  font-size: 0.9rem;
+  color: #eee;
+}
+
+.status-text.thinking {
+  color: #f0d060;
+  animation: pulse 1.5s infinite;
+}
+
+.status-text.game-over {
+  color: #f0d060;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Board */
+.wuziqi-board-wrapper {
+  touch-action: manipulation;
+}
+
+.wuziqi-board-svg {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Move list */
+.wuziqi-move-list {
+  max-height: 250px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  font-size: 0.7rem;
+}
+
+.move-entry {
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.move-entry.black-move {
+  color: #ccc;
+}
+
+.move-entry.white-move {
+  color: #aaa;
+}
+
+.move-entry.empty {
+  color: #666;
+  font-style: italic;
+}
+
+/* Analysis */
+.analysis-section p {
+  margin: 4px 0;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.score-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  color: #aaa;
+}
+
+/* Rules */
+.rules-section ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.75rem;
+  color: #999;
+  line-height: 1.6;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .wuziqi-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .wuziqi-panel {
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .wuziqi-left-panel {
+    order: 2;
+  }
+
+  .wuziqi-board-container {
+    order: 1;
+  }
+
+  .wuziqi-right-panel {
+    order: 3;
+  }
+
+  .wuziqi-left-panel .wuziqi-section:not(:first-child) {
+    display: inline-block;
+    width: auto;
+    margin-right: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .wuziqi-game {
+    padding: 6px;
+  }
+
+  .wuziqi-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .wuziqi-board-svg {
+    max-width: 95vw;
+  }
+
+  .wuziqi-btn {
+    font-size: 0.7rem;
+    padding: 5px 8px;
+  }
+}

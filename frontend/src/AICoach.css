@@ -1,12 +1,12 @@
 /**
- * AI Coach Chat Styles
+ * AI Coach Styles — Phase 4 Enhanced
  */
 
 .ai-coach {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-height: 600px;
+  max-height: 720px;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 16px;
   overflow: hidden;
@@ -240,4 +240,262 @@
 
 .messages-container::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* ── New Chat Button ─────────────────────────────────── */
+.new-chat-btn {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #fff;
+}
+.new-chat-btn:hover { background: rgba(255, 255, 255, 0.2); }
+
+/* ── Tab Bar ─────────────────────────────────────────── */
+.coach-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.15);
+}
+.coach-tab {
+  flex: 1;
+  padding: 10px 6px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.coach-tab:hover { color: rgba(255, 255, 255, 0.8); }
+.coach-tab.active {
+  color: #f39c12;
+  border-bottom-color: #f39c12;
+}
+.coach-tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* ── Training Tab ────────────────────────────────────── */
+.training-tab,
+.progress-tab,
+.settings-tab {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+.training-section {
+  margin-bottom: 20px;
+}
+.training-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  color: #f39c12;
+}
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.exercise-card {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.exercise-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.exercise-info strong { font-size: 0.95rem; }
+.exercise-title-cn { font-size: 0.82rem; color: rgba(255,255,255,0.6); }
+.exercise-meta { font-size: 0.78rem; color: rgba(255,255,255,0.5); }
+.exercise-reason { font-size: 0.8rem; color: rgba(255,255,255,0.5); font-style: italic; }
+
+/* Plan Days */
+.plan-days {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.plan-day {
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 12px;
+}
+.plan-day h5 {
+  margin: 0 0 8px 0;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.day-time { font-size: 0.78rem; color: rgba(255,255,255,0.4); font-weight: normal; }
+.day-activities {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  transition: background 0.2s;
+}
+.activity-item:hover { background: rgba(255,255,255,0.05); }
+.activity-item.done { text-decoration: line-through; opacity: 0.5; }
+.activity-item input[type="checkbox"] { accent-color: #2ecc71; }
+.activity-cn { font-size: 0.78rem; color: rgba(255,255,255,0.4); margin-left: auto; }
+
+.gen-plan-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #f39c12, #e74c3c);
+  border: none;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: transform 0.2s;
+}
+.gen-plan-btn:hover { transform: scale(1.05); }
+
+.empty-plan { text-align: center; padding: 20px; }
+.empty-text { color: rgba(255,255,255,0.4); font-style: italic; text-align: center; }
+
+/* ── Progress Tab ────────────────────────────────────── */
+.progress-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.07);
+  border-radius: 12px;
+  padding: 14px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-icon { font-size: 1.4rem; }
+.stat-value { font-size: 1.3rem; font-weight: bold; color: #f39c12; }
+.stat-label-sm { font-size: 0.72rem; color: rgba(255,255,255,0.5); }
+
+.rating-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+.rating-row > span:first-child { width: 80px; flex-shrink: 0; }
+.rating-bar-bg {
+  flex: 1;
+  height: 10px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rating-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+.rating-bar-fill.xiangqi-bar { background: linear-gradient(90deg, #e74c3c, #f39c12); }
+.rating-bar-fill.wuziqi-bar { background: linear-gradient(90deg, #9b59b6, #8e44ad); }
+.rating-num { width: 40px; text-align: right; font-weight: bold; font-size: 0.82rem; color: #f39c12; }
+
+.plan-progress-bar { display: flex; align-items: center; gap: 10px; }
+.plan-bar-bg {
+  flex: 1;
+  height: 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.plan-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f39c12, #2ecc71);
+  border-radius: 6px;
+  transition: width 0.4s;
+}
+.plan-progress-bar span { font-size: 0.82rem; color: rgba(255,255,255,0.6); white-space: nowrap; }
+
+/* ── Settings Tab ────────────────────────────────────── */
+.game-selector {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.game-sel-btn {
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+.game-sel-btn:hover { background: rgba(255,255,255,0.15); }
+.game-sel-btn.active {
+  background: rgba(243,156,18,0.2);
+  border-color: #f39c12;
+  color: #f39c12;
+}
+.settings-note { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin-top: 8px; }
+
+.session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.session-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: #fff;
+  transition: background 0.2s;
+}
+.session-item:hover { background: rgba(255,255,255,0.12); }
+.session-preview { font-size: 0.88rem; }
+.session-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 600px) {
+  .ai-coach { max-height: none; height: auto; min-height: 500px; }
+  .progress-stats { grid-template-columns: repeat(2, 1fr); }
+  .coach-tab { font-size: 0.75rem; padding: 8px 4px; }
+  .game-selector { flex-direction: column; }
 }

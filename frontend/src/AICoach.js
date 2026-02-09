@@ -1,258 +1,80 @@
 /**
- * AI Coach Chat Component
- * Interactive chess coaching powered by AI
+ * AI Coach — Enhanced Conversational Coach with LLM integration,
+ * personalized training, and multi-turn context-aware responses.
+ *
+ * Supports Chess, Xiangqi, and Wuziqi coaching.
+ * Phase 4: AI Coach Agent
  */
 
 import React, { Component } from 'react';
 import './AICoach.css';
+import { chat as llmChat, analyzePosition as llmAnalyze, suggestPlan } from './services/LLMService';
+import { getProvider, setProvider } from './services/LLMService';
+import {
+  getTrainingProgress,
+  generateTrainingPlan,
+  getCurrentPlan,
+  getRecommendedExercises,
+  completeActivity,
+} from './services/TrainingPlanService';
+import { getRatings } from './services/UserRatingService';
+import { GAME_TYPE } from './constants';
 
-// ============================================
-// Position Analysis Engine (FEN-aware)
-// ============================================
-const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+// Session storage key
+const SESSION_KEY = 'qi_arena_coach_sessions';
 
-function parseFEN(fen) {
-  const parts = fen.split(' ');
-  const boardStr = parts[0];
-  const turn = parts[1] || 'w';
-  const castling = parts[2] || '-';
-  const rows = boardStr.split('/');
-  const pieces = { w: [], b: [] };
-  const pawns = { w: [], b: [] };
-  const board = [];
-
-  for (let r = 0; r < 8; r++) {
-    const row = [];
-    let col = 0;
-    for (const ch of rows[r]) {
-      if (/\d/.test(ch)) {
-        for (let i = 0; i < parseInt(ch); i++) { row.push(null); col++; }
-      } else {
-        const color = ch === ch.toUpperCase() ? 'w' : 'b';
-        const type = ch.toLowerCase();
-        const pos = String.fromCharCode(97 + col) + (8 - r);
-        row.push({ type, color, pos });
-        pieces[color].push({ type, pos });
-        if (type === 'p') pawns[color].push({ col, row: r, pos });
-        col++;
-      }
-    }
-    board.push(row);
-  }
-  return { board, pieces, pawns, turn, castling };
+function loadSessions() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return [];
 }
 
-function analyzeMaterial(pieces) {
-  const count = (color) => pieces[color].reduce((sum, p) => sum + (PIECE_VALUES[p.type] || 0), 0);
-  const w = count('w'), b = count('b');
-  const diff = w - b;
-  const pieceCounts = {};
-  ['w', 'b'].forEach(c => {
-    pieceCounts[c] = {};
-    pieces[c].forEach(p => { pieceCounts[c][p.type] = (pieceCounts[c][p.type] || 0) + 1; });
-  });
-  return { white: w, black: b, diff, pieceCounts };
+function saveSessions(sessions) {
+  const trimmed = sessions.slice(-20);
+  localStorage.setItem(SESSION_KEY, JSON.stringify(trimmed));
 }
 
-function analyzePawnStructure(pawns) {
-  const result = { w: { doubled: [], isolated: [], passed: [], islands: 0 }, b: { doubled: [], isolated: [], passed: [], islands: 0 } };
-
-  ['w', 'b'].forEach(color => {
-    const opp = color === 'w' ? 'b' : 'w';
-    const cols = {};
-    pawns[color].forEach(p => { cols[p.col] = (cols[p.col] || []).concat(p); });
-
-    // Doubled
-    Object.entries(cols).forEach(([col, ps]) => {
-      if (ps.length > 1) result[color].doubled.push(...ps.map(p => p.pos));
-    });
-
-    // Isolated
-    Object.keys(cols).forEach(col => {
-      const c = parseInt(col);
-      if (!cols[c - 1] && !cols[c + 1]) {
-        result[color].isolated.push(...cols[c].map(p => p.pos));
-      }
-    });
-
-    // Passed
-    pawns[color].forEach(p => {
-      const oppPawns = pawns[opp];
-      const isBlocked = oppPawns.some(op => {
-        if (Math.abs(op.col - p.col) > 1) return false;
-        return color === 'w' ? op.row < p.row : op.row > p.row;
-      });
-      if (!isBlocked) result[color].passed.push(p.pos);
-    });
-
-    // Islands
-    const sortedCols = Object.keys(cols).map(Number).sort((a, b) => a - b);
-    let islands = 0;
-    for (let i = 0; i < sortedCols.length; i++) {
-      if (i === 0 || sortedCols[i] - sortedCols[i - 1] > 1) islands++;
-    }
-    result[color].islands = islands;
-  });
-
-  return result;
-}
-
-function explainPosition(fen) {
-  const { pieces, pawns, turn, castling } = parseFEN(fen);
-  const material = analyzeMaterial(pieces);
-  const pawnStruct = analyzePawnStructure(pawns);
-
-  const insights = [];
-  const insightsCn = [];
-
-  // Material
-  if (material.diff > 0) {
-    insights.push(`White is up ${material.diff} point${material.diff > 1 ? 's' : ''} of material (${material.white} vs ${material.black}).`);
-    insightsCn.push(`白方多${material.diff}分子力（${material.white} 对 ${material.black}）。`);
-  } else if (material.diff < 0) {
-    insights.push(`Black is up ${-material.diff} point${material.diff < -1 ? 's' : ''} of material (${material.black} vs ${material.white}).`);
-    insightsCn.push(`黑方多${-material.diff}分子力（${material.black} 对 ${material.white}）。`);
-  } else {
-    insights.push(`Material is equal (${material.white} each).`);
-    insightsCn.push(`子力相等（各${material.white}分）。`);
-  }
-
-  // Turn
-  insights.push(`It's ${turn === 'w' ? "White" : "Black"}'s turn to move.`);
-  insightsCn.push(`轮到${turn === 'w' ? '白' : '黑'}方走棋。`);
-
-  // Castling rights
-  if (castling !== '-') {
-    const rights = [];
-    if (castling.includes('K')) rights.push('White O-O');
-    if (castling.includes('Q')) rights.push('White O-O-O');
-    if (castling.includes('k')) rights.push('Black O-O');
-    if (castling.includes('q')) rights.push('Black O-O-O');
-    insights.push(`Castling available: ${rights.join(', ')}.`);
-  } else {
-    insights.push('No castling rights remain.');
-    insightsCn.push('双方都不能王车易位了。');
-  }
-
-  // Pawn structure
-  ['w', 'b'].forEach(color => {
-    const name = color === 'w' ? 'White' : 'Black';
-    const nameCn = color === 'w' ? '白方' : '黑方';
-    const ps = pawnStruct[color];
-    if (ps.doubled.length > 0) {
-      insights.push(`${name} has doubled pawns on ${ps.doubled.join(', ')}.`);
-      insightsCn.push(`${nameCn}有叠兵在${ps.doubled.join(', ')}。`);
-    }
-    if (ps.isolated.length > 0) {
-      insights.push(`${name} has isolated pawns on ${ps.isolated.join(', ')}.`);
-      insightsCn.push(`${nameCn}有孤兵在${ps.isolated.join(', ')}。`);
-    }
-    if (ps.passed.length > 0) {
-      insights.push(`${name} has passed pawns on ${ps.passed.join(', ')} — potential promotion threats!`);
-      insightsCn.push(`${nameCn}有通路兵在${ps.passed.join(', ')}——潜在升变威胁！`);
-    }
-  });
-
-  // Piece presence
-  const totalPieces = pieces.w.length + pieces.b.length;
-  if (totalPieces <= 10) {
-    insights.push('This is an endgame position — activate your king!');
-    insightsCn.push('这是残局局面——要积极使用国王！');
-  } else if (totalPieces <= 20) {
-    insights.push('This is a middlegame position with some pieces exchanged.');
-    insightsCn.push('中局局面，已有部分子力交换。');
-  }
-
-  return { cn: insightsCn.join('\n'), en: insights.join('\n') };
-}
-
-function getStudySuggestions() {
-  // Read user stats from localStorage
-  const chessRating = JSON.parse(localStorage.getItem('puzzle_rating_chess') || '{"rating":1200}');
-  const puzzlesSolved = JSON.parse(localStorage.getItem('puzzles_solved') || '[]');
-  const suggestions = [];
-  const suggestionsCn = [];
-
-  if (chessRating.rating < 1000) {
-    suggestions.push('📚 Focus on basic tactics (forks, pins, skewers) — try the Puzzle section!');
-    suggestionsCn.push('📚 重点练习基本战术（双攻、牵制、串打）——去做题吧！');
-  } else if (chessRating.rating < 1300) {
-    suggestions.push('🧩 Work on intermediate patterns and start studying openings.');
-    suggestionsCn.push('🧩 练习中级模式，开始学习开局。');
-  } else {
-    suggestions.push('🏆 Study positional play and endgame technique to break through.');
-    suggestionsCn.push('🏆 学习位置型棋艺和残局技巧来突破瓶颈。');
-  }
-
-  if (puzzlesSolved.length < 20) {
-    suggestions.push('🎯 Try solving more puzzles daily — consistency is key!');
-    suggestionsCn.push('🎯 每天多做一些题目——持之以恒是关键！');
-  }
-
-  suggestions.push('📺 Watch the video tutorials in the Video Library for visual learning.');
-  suggestionsCn.push('📺 去视频教程区观看教学视频，可视化学习更高效。');
-
-  suggestions.push('📖 Practice openings in the Opening Explorer to build your repertoire.');
-  suggestionsCn.push('📖 在开局库中练习开局，建立自己的开局体系。');
-
-  return { cn: suggestionsCn.join('\n'), en: suggestions.join('\n') };
-}
-
-// Predefined coaching responses (will be replaced with LLM API later)
-const COACHING_TIPS = {
-  opening: [
-    { cn: '开局时要控制中心，尤其是e4、d4、e5、d5这四个格子', en: 'Control the center in the opening, especially e4, d4, e5, d5' },
-    { cn: '开局前三步尽量出动轻子（马和象），不要过早出后', en: 'Develop minor pieces (knights and bishops) in the first moves, avoid early queen moves' },
-    { cn: '尽早完成王车易位，保护好国王', en: 'Castle early to protect your king' },
-  ],
-  tactics: [
-    { cn: '每走一步前先检查对方是否有将军、吃子、威胁', en: 'Before each move, check for checks, captures, and threats' },
-    { cn: '双攻是最常见的战术，同时攻击两个目标', en: 'Forks are the most common tactic - attacking two targets at once' },
-    { cn: '牵制可以限制对方棋子的行动自由', en: 'Pins restrict the movement of enemy pieces' },
-  ],
-  endgame: [
-    { cn: '残局中国王是战斗力量，要积极使用', en: 'In the endgame, the king is a fighting piece - use it actively' },
-    { cn: '兵的升变是残局的关键，护送兵升变', en: 'Pawn promotion is key in endgames - escort your pawns' },
-    { cn: '车残局中，车要活跃，占据开放线', en: 'In rook endgames, keep your rook active on open files' },
-  ],
-  general: [
-    { cn: '下棋时要有计划，不要只是随便走', en: 'Play with a plan, don\'t just make random moves' },
-    { cn: '每一步都要问自己：对方刚才那步想干什么？', en: 'After each opponent move, ask: what is their idea?' },
-    { cn: '时间管理很重要，不要在一步棋上花太多时间', en: 'Time management is crucial - don\'t spend too long on one move' },
-  ],
-};
-
-// Sample coaching conversations
-const SAMPLE_RESPONSES = {
-  'how to improve': {
-    cn: '提高棋力的最佳方法是：1) 每天做战术题 2) 分析自己的对局 3) 学习经典开局 4) 研究大师对局。建议从每天10道战术题开始！',
-    en: 'The best way to improve: 1) Solve tactics daily 2) Analyze your games 3) Learn classical openings 4) Study master games. Start with 10 puzzles a day!',
-  },
-  'best opening': {
-    cn: '对于初学者，我推荐意大利开局(1.e4 e5 2.Nf3 Nc6 3.Bc4)或伦敦系统(1.d4 d5 2.Nf3 Nf6 3.Bf4)。它们容易学习，计划清晰。',
-    en: 'For beginners, I recommend the Italian Game (1.e4 e5 2.Nf3 Nc6 3.Bc4) or London System (1.d4 d5 2.Nf3 Nf6 3.Bf4). They are easy to learn with clear plans.',
-  },
-  'why did i lose': {
-    cn: '输棋的常见原因：1) 漏掉了对方的战术 2) 开局走入不熟悉的变化 3) 残局技术不足。让我帮你分析具体对局，找出问题！',
-    en: 'Common reasons for losing: 1) Missing opponent\'s tactics 2) Unfamiliar opening lines 3) Weak endgame technique. Let me analyze your game to find the issues!',
-  },
+// ── Tab Views ─────────────────────────────────────────────
+const TAB = {
+  CHAT: 'chat',
+  TRAINING: 'training',
+  PROGRESS: 'progress',
+  SETTINGS: 'settings',
 };
 
 class AICoach extends Component {
   state = {
+    // Chat
     messages: [],
     inputText: '',
     isTyping: false,
-    currentTopic: 'general',
+    conversationContext: [],
+    activeGame: GAME_TYPE.CHESS,
+    // Tabs
+    activeTab: TAB.CHAT,
+    // Training
+    trainingPlan: getCurrentPlan(),
+    exercises: [],
+    // Progress
+    progress: null,
+    // Settings
+    llmProvider: getProvider(),
+    // Session
+    savedSessions: loadSessions(),
   };
 
   messagesEndRef = React.createRef();
 
   componentDidMount() {
-    // Send welcome message
     this.addBotMessage({
-      cn: '你好！我是你的AI象棋教练 🎯 有什么我可以帮助你的吗？你可以问我关于开局、战术、残局的问题，或者让我分析你的对局。',
-      en: 'Hello! I\'m your AI Chess Coach 🎯 How can I help you today? You can ask me about openings, tactics, endgames, or request game analysis.',
+      cn: '你好！我是你的AI教练 🎯\n我可以帮你学习国际象棋♟、象棋🀄和五子棋⚫。\n\n试试问我关于战术、开局、策略的问题，或者让我帮你制定训练计划！',
+      en: 'Hello! I\'m your AI Coach 🎯\nI can help you with Chess ♟, Xiangqi 🀄, and Gomoku ⚫.\n\nAsk me about tactics, openings, strategy, or let me create a training plan for you!',
+    });
+    this.setState({
+      exercises: getRecommendedExercises(this.state.activeGame),
+      progress: getTrainingProgress(),
     });
   }
 
@@ -268,14 +90,9 @@ class AICoach extends Component {
 
   addBotMessage = (content, delay = 500) => {
     this.setState({ isTyping: true });
-    
     setTimeout(() => {
       this.setState(state => ({
-        messages: [...state.messages, {
-          type: 'bot',
-          content,
-          timestamp: new Date(),
-        }],
+        messages: [...state.messages, { type: 'bot', content, timestamp: new Date() }],
         isTyping: false,
       }));
     }, delay);
@@ -283,11 +100,11 @@ class AICoach extends Component {
 
   addUserMessage = (text) => {
     this.setState(state => ({
-      messages: [...state.messages, {
-        type: 'user',
-        content: text,
-        timestamp: new Date(),
-      }],
+      messages: [...state.messages, { type: 'user', content: text, timestamp: new Date() }],
+      conversationContext: [
+        ...state.conversationContext,
+        { role: 'user', content: text },
+      ],
     }));
   };
 
@@ -295,186 +112,306 @@ class AICoach extends Component {
     e.preventDefault();
     const { inputText } = this.state;
     if (!inputText.trim()) return;
-
     this.addUserMessage(inputText);
     this.setState({ inputText: '' });
-
-    // Generate response
-    this.generateResponse(inputText.toLowerCase());
+    this.generateResponse(inputText);
   };
 
-  generateResponse = (input) => {
-    // Check if input is a FEN string
-    const fenMatch = input.match(/^([rnbqkpRNBQKP1-8/]+)\s+([wb])\s+([KQkq-]+)\s+([a-h1-8-]+)/);
+  generateResponse = async (input) => {
+    const lowerInput = input.toLowerCase();
+    const { activeGame, conversationContext } = this.state;
+
+    // FEN detection for chess
+    const fenMatch = lowerInput.match(/^([rnbqkpRNBQKP1-8/]+)\s+([wb])\s+([KQkq-]+)\s+([a-h1-8-]+)/);
     if (fenMatch) {
-      const analysis = explainPosition(input.trim());
+      this.setState({ isTyping: true });
+      const analysis = await llmAnalyze(input.trim(), GAME_TYPE.CHESS);
       this.addBotMessage({
-        cn: `📊 局面分析：\n${analysis.cn}`,
-        en: `📊 Position Analysis:\n${analysis.en}`,
-      }, 800);
+        cn: '📊 局面分析：\n' + analysis.cn,
+        en: '📊 Position Analysis:\n' + analysis.en,
+      }, 300);
+      this.updateContext('assistant', analysis.en);
       return;
     }
 
-    // Check for position/explain keywords
-    if (input.includes('explain') || input.includes('position') || input.includes('分析') || input.includes('局面')) {
-      this.addBotMessage({
-        cn: '请粘贴一个FEN字符串，我来帮你分析局面！\n例如：rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-        en: 'Paste a FEN string and I\'ll analyze the position!\nExample: rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
-      }, 600);
+    // Training plan request
+    if (lowerInput.includes('training plan') || lowerInput.includes('训练计划') || lowerInput.includes('practice plan')) {
+      this.handleGenerateTrainingPlan();
       return;
     }
 
-    // Check for pawn structure keywords
-    if (input.includes('pawn') || input.includes('兵') || input.includes('structure') || input.includes('结构')) {
-      this.addBotMessage({
-        cn: '兵型分析要点：\n1️⃣ 避免叠兵（同一列两个兵）\n2️⃣ 保护孤兵或用子力支援\n3️⃣ 创建通路兵是获胜关键\n4️⃣ 兵链的基底是攻击目标\n\n粘贴FEN可以分析具体局面的兵型！',
-        en: 'Pawn structure tips:\n1️⃣ Avoid doubled pawns (two pawns on same file)\n2️⃣ Support isolated pawns with pieces\n3️⃣ Creating passed pawns is key to winning\n4️⃣ The base of a pawn chain is the target\n\nPaste a FEN to analyze a specific position\'s structure!',
-      }, 800);
+    // Progress request
+    if (lowerInput.includes('progress') || lowerInput.includes('进度') || lowerInput.includes('stats') || lowerInput.includes('统计')) {
+      this.handleShowProgress();
       return;
     }
 
-    // Check for study/weakness suggestions
-    if (input.includes('study') || input.includes('weak') || input.includes('学习') || input.includes('建议') || input.includes('suggest')) {
-      const suggestions = getStudySuggestions();
-      this.addBotMessage({
-        cn: `📋 个性化学习建议：\n${suggestions.cn}`,
-        en: `📋 Personalized Study Suggestions:\n${suggestions.en}`,
-      }, 800);
+    // Weakness request
+    if (lowerInput.includes('weakness') || lowerInput.includes('弱点') || lowerInput.includes('improve') || lowerInput.includes('提高')) {
+      this.handleShowWeaknesses();
       return;
     }
 
-    // Check for opening keywords - try to detect and recommend
-    if (input.includes('opening') || input.includes('开局')) {
-      const openingTip = COACHING_TIPS.opening[Math.floor(Math.random() * COACHING_TIPS.opening.length)];
+    // Position/explain
+    if (lowerInput.includes('explain') || lowerInput.includes('position') || lowerInput.includes('分析') || lowerInput.includes('局面')) {
       this.addBotMessage({
-        cn: `关于开局：${openingTip.cn}\n\n💡 去开局库可以学习和练习各种开局！`,
-        en: `About openings: ${openingTip.en}\n\n💡 Visit the Opening Explorer to learn and practice!`,
-      }, 800);
+        cn: '请粘贴一个 FEN 字符串来分析国际象棋局面！\n对于象棋和五子棋，请描述你的局面或问题。',
+        en: 'Paste a FEN string to analyze a chess position!\nFor Xiangqi and Gomoku, describe your position or question.',
+      }, 400);
       return;
     }
 
-    // Check for keyword matches
-    for (const [key, response] of Object.entries(SAMPLE_RESPONSES)) {
-      if (input.includes(key)) {
-        this.addBotMessage(response, 800);
-        return;
-      }
+    // Game switching
+    if (lowerInput.includes('xiangqi') || lowerInput.includes('象棋') || lowerInput.includes('chinese chess')) {
+      this.setState({ activeGame: GAME_TYPE.XIANGQI });
+      this.addBotMessage({
+        cn: '🀄 已切换到象棋教练模式！我可以帮你学习车、马、炮的战术，或讨论象棋开局策略。',
+        en: '🀄 Switched to Xiangqi coaching mode! I can help with chariot, horse, cannon tactics, or discuss opening strategies.',
+      }, 400);
+      return;
+    }
+    if (lowerInput.includes('gomoku') || lowerInput.includes('wuziqi') || lowerInput.includes('五子棋')) {
+      this.setState({ activeGame: GAME_TYPE.WUZIQI });
+      this.addBotMessage({
+        cn: '⚫ 已切换到五子棋教练模式！我可以帮你学习活三、四三做杀等策略。',
+        en: '⚫ Switched to Gomoku coaching mode! I can help with open threes, four-three patterns, and winning strategies.',
+      }, 400);
+      return;
+    }
+    if (lowerInput.includes('chess') && !lowerInput.includes('chinese')) {
+      this.setState({ activeGame: GAME_TYPE.CHESS });
+      this.addBotMessage({
+        cn: '♟ 已切换到国际象棋教练模式！',
+        en: '♟ Switched to Chess coaching mode!',
+      }, 400);
+      return;
     }
 
-    // Topic detection
-    let topic = 'general';
-    if (input.includes('tactic') || input.includes('战术') || input.includes('fork') || input.includes('pin')) {
-      topic = 'tactics';
-    } else if (input.includes('endgame') || input.includes('残局')) {
-      topic = 'endgame';
+    // Use LLM service for general chat
+    this.setState({ isTyping: true });
+    try {
+      const context = {
+        currentGame: activeGame,
+        ...this.getPlayerContext(),
+      };
+      const response = await llmChat(conversationContext, context);
+      this.addBotMessage(response, 300);
+      this.updateContext('assistant', typeof response === 'string' ? response : response.en);
+    } catch (err) {
+      this.addBotMessage({
+        cn: '抱歉，我遇到了一些问题。请重试！',
+        en: 'Sorry, I encountered an issue. Please try again!',
+      }, 300);
     }
-
-    // Get random tip from topic
-    const tips = COACHING_TIPS[topic];
-    const tip = tips[Math.floor(Math.random() * tips.length)];
-
-    const responses = [
-      { cn: `好问题！这里有一个建议：${tip.cn}`, en: `Great question! Here's a tip: ${tip.en}` },
-      { cn: `让我分享一个技巧：${tip.cn}`, en: `Let me share a technique: ${tip.en}` },
-      { cn: `这是我的建议：${tip.cn}`, en: `Here's my advice: ${tip.en}` },
-    ];
-
-    const response = responses[Math.floor(Math.random() * responses.length)];
-    this.addBotMessage(response, 1000);
   };
 
-  handleQuickAction = (action) => {
-    if (action === 'explain') {
-      this.addUserMessage('Explain position');
-      this.addBotMessage({
-        cn: '📊 粘贴FEN字符串来分析局面。\n你可以从对局中复制FEN，也可以使用初始局面：\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        en: '📊 Paste a FEN string to analyze. You can copy FEN from your game.\nOr try the starting position:\nrnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-      }, 600);
-      return;
-    }
+  updateContext = (role, content) => {
+    this.setState(state => ({
+      conversationContext: [
+        ...state.conversationContext,
+        { role, content },
+      ].slice(-20),
+    }));
+  };
 
-    if (action === 'study') {
-      this.addUserMessage('Study suggestions');
-      const suggestions = getStudySuggestions();
-      this.addBotMessage({
-        cn: `📋 个性化学习建议：\n${suggestions.cn}`,
-        en: `📋 Personalized Study Suggestions:\n${suggestions.en}`,
-      }, 600);
-      return;
-    }
+  getPlayerContext = () => {
+    const ratings = getRatings();
+    return {
+      chessRating: ratings.chess?.rating || 1200,
+      xiangqiRating: ratings.xiangqi?.rating || 1200,
+      wuziqiRating: ratings.wuziqi?.rating || 1200,
+    };
+  };
 
-    const actions = {
-      analyze: {
-        cn: '要分析对局，请在下完棋后点击"复盘"按钮。我会帮你找出失误，给出最佳走法建议！',
-        en: 'To analyze a game, click the "Review" button after playing. I\'ll help identify mistakes and suggest best moves!',
-      },
-      tips: {
-        cn: '每日小贴士：' + COACHING_TIPS.general[Math.floor(Math.random() * COACHING_TIPS.general.length)].cn,
-        en: 'Daily tip: ' + COACHING_TIPS.general[Math.floor(Math.random() * COACHING_TIPS.general.length)].en,
-      },
-      videos: {
-        cn: '推荐视频教程：\n📺 GothamChess - 适合初中级\n📺 Agadmator - 大师对局讲解\n📺 ChessBase India - 印度大师课程',
-        en: 'Recommended videos:\n📺 GothamChess - Beginner to Intermediate\n📺 Agadmator - Master game analysis\n📺 ChessBase India - Indian master lessons',
-      },
+  // ── Training Plan ───────────────────────────────────────
+
+  handleGenerateTrainingPlan = () => {
+    const { activeGame } = this.state;
+    const plan = generateTrainingPlan(activeGame);
+
+    const gameLabel = {
+      [GAME_TYPE.CHESS]: 'Chess / 国际象棋',
+      [GAME_TYPE.XIANGQI]: 'Xiangqi / 象棋',
+      [GAME_TYPE.WUZIQI]: 'Gomoku / 五子棋',
+    }[activeGame];
+
+    const daysSummary = plan.days.map(d => {
+      const acts = d.activities.map(a => a.title.en).join(', ');
+      return 'Day ' + d.day + ': ' + acts + ' (~' + d.estimatedMinutes + ' min)';
+    }).join('\n');
+
+    this.addBotMessage({
+      cn: '📋 为你生成了' + gameLabel + '的7天训练计划！\n切换到"训练"标签查看详情。\n\n每天坚持训练，你一定会进步！💪',
+      en: '📋 Generated a 7-day training plan for ' + gameLabel + '!\nSwitch to the "Training" tab for details.\n\n' + daysSummary,
+    }, 600);
+
+    this.setState({ trainingPlan: plan });
+  };
+
+  handleShowProgress = () => {
+    const progress = getTrainingProgress();
+    this.setState({ progress });
+
+    this.addBotMessage({
+      cn: '📊 你的训练进度：\n🔥 连续训练：' + progress.streak + ' 天\n📝 今日练习：' + progress.todayExercises + '\n📅 本周练习：' + progress.weekExercises + '\n♟ 棋力：国棋 ' + progress.ratings.chess + ' | 象棋 ' + progress.ratings.xiangqi + ' | 五子棋 ' + progress.ratings.wuziqi,
+      en: '📊 Your training progress:\n🔥 Training streak: ' + progress.streak + ' days\n📝 Today: ' + progress.todayExercises + '\n📅 This week: ' + progress.weekExercises + '\n♟ Ratings: Chess ' + progress.ratings.chess + ' | Xiangqi ' + progress.ratings.xiangqi + ' | Gomoku ' + progress.ratings.wuziqi,
+    }, 600);
+  };
+
+  handleShowWeaknesses = async () => {
+    const { activeGame } = this.state;
+    const ratings = getRatings();
+    const rating = ratings[activeGame]?.rating || 1200;
+    const gamesPlayed = ratings[activeGame]?.gamesPlayed || 0;
+    const wins = ratings[activeGame]?.wins || 0;
+    const winRate = gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0;
+
+    const context = {
+      rating,
+      gamesPlayed,
+      winRate,
+      weaknesses: ['tactics', 'opening'],
+      preferredGame: activeGame,
     };
 
-    this.addUserMessage(action === 'analyze' ? 'Analyze my game' : 
-                        action === 'tips' ? 'Give me a tip' : 'Video recommendations');
-    this.addBotMessage(actions[action], 600);
+    this.setState({ isTyping: true });
+    const plan = await suggestPlan(context);
+    this.addBotMessage(plan, 300);
   };
 
-  render() {
+  // ── Quick Actions ───────────────────────────────────────
+
+  handleQuickAction = (action) => {
+    switch (action) {
+      case 'explain':
+        this.addUserMessage('Explain position / 分析局面');
+        this.generateResponse('explain position');
+        break;
+      case 'plan':
+        this.addUserMessage('Create training plan / 制定训练计划');
+        this.handleGenerateTrainingPlan();
+        break;
+      case 'progress':
+        this.addUserMessage('Show my progress / 查看进度');
+        this.handleShowProgress();
+        break;
+      case 'tips':
+        this.addUserMessage('Give me tips / 给我建议');
+        this.generateResponse('give me tips for ' + this.state.activeGame);
+        break;
+      case 'weakness':
+        this.addUserMessage('Analyze my weaknesses / 分析弱点');
+        this.handleShowWeaknesses();
+        break;
+      default:
+        break;
+    }
+  };
+
+  // ── Session Management ──────────────────────────────────
+
+  handleSaveSession = () => {
+    const { messages, activeGame } = this.state;
+    if (messages.length < 2) return;
+
+    const session = {
+      id: Date.now(),
+      game: activeGame,
+      date: new Date().toISOString(),
+      messageCount: messages.length,
+      preview: (messages.find(m => m.type === 'user')?.content || 'Session').slice(0, 50),
+      messages: messages.slice(0, 50),
+    };
+
+    const sessions = loadSessions();
+    sessions.push(session);
+    saveSessions(sessions);
+    this.setState({ savedSessions: sessions });
+
+    this.addBotMessage({
+      cn: '💾 对话已保存！你可以在设置标签中查看历史对话。',
+      en: '💾 Session saved! You can view past sessions in the Settings tab.',
+    }, 300);
+  };
+
+  handleLoadSession = (session) => {
+    this.setState({
+      messages: session.messages || [],
+      activeGame: session.game || GAME_TYPE.CHESS,
+      activeTab: TAB.CHAT,
+    });
+  };
+
+  handleNewChat = () => {
+    this.setState({
+      messages: [],
+      conversationContext: [],
+      isTyping: false,
+    }, () => {
+      this.addBotMessage({
+        cn: '🆕 新对话开始！有什么我可以帮助你的？',
+        en: '🆕 New conversation! How can I help you?',
+      });
+    });
+  };
+
+  // ── Training Tab Activities ─────────────────────────────
+
+  handleCompleteActivity = (dayIdx, actIdx) => {
+    completeActivity(dayIdx, actIdx);
+    this.setState({ trainingPlan: getCurrentPlan() });
+  };
+
+  // ── Settings ────────────────────────────────────────────
+
+  handleProviderChange = (type) => {
+    setProvider({ ...this.state.llmProvider, type });
+    this.setState({ llmProvider: getProvider() });
+  };
+
+  // ── Render ──────────────────────────────────────────────
+
+  renderChatTab() {
     const { messages, inputText, isTyping } = this.state;
 
     return (
-      <div className="ai-coach">
-        {/* Header */}
-        <div className="coach-header">
-          <div className="coach-avatar">🤖</div>
-          <div className="coach-info">
-            <h3>AI Coach / AI教练</h3>
-            <span className="status">● Online</span>
-          </div>
-        </div>
-
+      <React.Fragment>
         {/* Messages */}
         <div className="messages-container">
           {messages.map((msg, index) => (
-            <div key={index} className={`message ${msg.type}`}>
+            <div key={index} className={'message ' + msg.type}>
               {msg.type === 'bot' && <span className="avatar">🤖</span>}
               <div className="content">
                 {typeof msg.content === 'object' ? (
-                  <>
+                  <React.Fragment>
                     <p className="cn">{msg.content.cn}</p>
                     <p className="en">{msg.content.en}</p>
-                  </>
+                  </React.Fragment>
                 ) : (
                   <p>{msg.content}</p>
                 )}
               </div>
             </div>
           ))}
-          
           {isTyping && (
             <div className="message bot">
               <span className="avatar">🤖</span>
               <div className="typing-indicator">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span></span><span></span><span></span>
               </div>
             </div>
           )}
-          
           <div ref={this.messagesEndRef} />
         </div>
 
         {/* Quick Actions */}
         <div className="quick-actions">
-          <button onClick={() => this.handleQuickAction('explain')}>📊 Explain Position</button>
-          <button onClick={() => this.handleQuickAction('analyze')}>🔍 Analyze Game</button>
-          <button onClick={() => this.handleQuickAction('tips')}>💡 Get Tips</button>
-          <button onClick={() => this.handleQuickAction('study')}>📚 Study Plan</button>
+          <button onClick={() => this.handleQuickAction('explain')}>📊 Analyze</button>
+          <button onClick={() => this.handleQuickAction('tips')}>💡 Tips</button>
+          <button onClick={() => this.handleQuickAction('plan')}>📋 Plan</button>
+          <button onClick={() => this.handleQuickAction('progress')}>📈 Progress</button>
+          <button onClick={() => this.handleQuickAction('weakness')}>🎯 Weakness</button>
+          <button onClick={this.handleSaveSession}>💾 Save</button>
         </div>
 
         {/* Input */}
@@ -490,6 +427,284 @@ class AICoach extends Component {
             Send
           </button>
         </form>
+      </React.Fragment>
+    );
+  }
+
+  renderTrainingTab() {
+    const { trainingPlan, exercises, activeGame } = this.state;
+
+    return (
+      <div className="training-tab">
+        {/* Recommended Exercises */}
+        <div className="training-section">
+          <h4>🎯 Recommended Exercises 推荐练习</h4>
+          {exercises.length === 0 ? (
+            <p className="empty-text">No exercises available. Generate a training plan first!</p>
+          ) : (
+            <div className="exercise-list">
+              {exercises.map(ex => (
+                <div key={ex.id} className="exercise-card">
+                  <div className="exercise-info">
+                    <strong>{ex.title}</strong>
+                    <span className="exercise-title-cn">{ex.titleCn}</span>
+                    <span className="exercise-meta">
+                      {'⏱ ' + ex.duration + ' min · ' + '⭐'.repeat(ex.difficulty)}
+                    </span>
+                  </div>
+                  <span className="exercise-reason">{ex.reason}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Training Plan */}
+        <div className="training-section">
+          <h4>📋 Training Plan 训练计划</h4>
+          {!trainingPlan ? (
+            <div className="empty-plan">
+              <p>No plan yet. Create one!</p>
+              <button className="gen-plan-btn" onClick={this.handleGenerateTrainingPlan}>
+                Generate Plan for {activeGame}
+              </button>
+            </div>
+          ) : (
+            <div className="plan-days">
+              {trainingPlan.days.map((day, dayIdx) => (
+                <div key={day.day} className="plan-day">
+                  <h5>Day {day.day} <span className="day-time">~{day.estimatedMinutes} min</span></h5>
+                  <div className="day-activities">
+                    {day.activities.map((act, actIdx) => (
+                      <label key={actIdx} className={'activity-item ' + (act.completed ? 'done' : '')}>
+                        <input
+                          type="checkbox"
+                          checked={act.completed}
+                          onChange={() => this.handleCompleteActivity(dayIdx, actIdx)}
+                        />
+                        <span>{act.title.en}</span>
+                        <span className="activity-cn">{act.title.cn}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  renderProgressTab() {
+    const { progress } = this.state;
+    if (!progress) return <p className="empty-text">Loading progress...</p>;
+
+    return (
+      <div className="progress-tab">
+        {/* Stats Grid */}
+        <div className="progress-stats">
+          <div className="stat-card">
+            <span className="stat-icon">🔥</span>
+            <span className="stat-value">{progress.streak}</span>
+            <span className="stat-label-sm">Day Streak</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">📝</span>
+            <span className="stat-value">{progress.todayExercises}</span>
+            <span className="stat-label-sm">Today</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">📅</span>
+            <span className="stat-value">{progress.weekExercises}</span>
+            <span className="stat-label-sm">This Week</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">✅</span>
+            <span className="stat-value">{progress.totalExercises}</span>
+            <span className="stat-label-sm">Total</span>
+          </div>
+        </div>
+
+        {/* Ratings */}
+        <div className="training-section">
+          <h4>📊 Ratings 棋力</h4>
+          <div className="rating-bars">
+            <div className="rating-row">
+              <span>♟ Chess</span>
+              <div className="rating-bar-bg">
+                <div className="rating-bar-fill" style={{ width: Math.min(100, (progress.ratings.chess / 2400) * 100) + '%' }} />
+              </div>
+              <span className="rating-num">{progress.ratings.chess}</span>
+            </div>
+            <div className="rating-row">
+              <span>🀄 Xiangqi</span>
+              <div className="rating-bar-bg">
+                <div className="rating-bar-fill xiangqi-bar" style={{ width: Math.min(100, (progress.ratings.xiangqi / 2400) * 100) + '%' }} />
+              </div>
+              <span className="rating-num">{progress.ratings.xiangqi}</span>
+            </div>
+            <div className="rating-row">
+              <span>⚫ Gomoku</span>
+              <div className="rating-bar-bg">
+                <div className="rating-bar-fill wuziqi-bar" style={{ width: Math.min(100, (progress.ratings.wuziqi / 2400) * 100) + '%' }} />
+              </div>
+              <span className="rating-num">{progress.ratings.wuziqi}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Plan Progress */}
+        {progress.planProgress && (
+          <div className="training-section">
+            <h4>📋 Plan Progress</h4>
+            <div className="plan-progress-bar">
+              <div className="plan-bar-bg">
+                <div className="plan-bar-fill" style={{ width: progress.planProgress.percent + '%' }} />
+              </div>
+              <span>{progress.planProgress.completed}/{progress.planProgress.total} ({progress.planProgress.percent}%)</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  renderSettingsTab() {
+    const { llmProvider, savedSessions } = this.state;
+
+    return (
+      <div className="settings-tab">
+        {/* Game Mode */}
+        <div className="training-section">
+          <h4>🎮 Active Game 当前游戏</h4>
+          <div className="game-selector">
+            {[
+              { key: GAME_TYPE.CHESS, label: '♟ Chess', labelCn: '国际象棋' },
+              { key: GAME_TYPE.XIANGQI, label: '🀄 Xiangqi', labelCn: '象棋' },
+              { key: GAME_TYPE.WUZIQI, label: '⚫ Gomoku', labelCn: '五子棋' },
+            ].map(g => (
+              <button
+                key={g.key}
+                className={'game-sel-btn ' + (this.state.activeGame === g.key ? 'active' : '')}
+                onClick={() => this.setState({ activeGame: g.key, exercises: getRecommendedExercises(g.key) })}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Provider */}
+        <div className="training-section">
+          <h4>🧠 AI Provider</h4>
+          <div className="game-selector">
+            <button
+              className={'game-sel-btn ' + (llmProvider.type === 'local' ? 'active' : '')}
+              onClick={() => this.handleProviderChange('local')}
+            >
+              Local (Offline)
+            </button>
+            <button
+              className={'game-sel-btn ' + (llmProvider.type === 'openai' ? 'active' : '')}
+              onClick={() => this.handleProviderChange('openai')}
+            >
+              OpenAI
+            </button>
+            <button
+              className={'game-sel-btn ' + (llmProvider.type === 'custom' ? 'active' : '')}
+              onClick={() => this.handleProviderChange('custom')}
+            >
+              Custom API
+            </button>
+          </div>
+          {llmProvider.type === 'local' && (
+            <p className="settings-note">Using built-in rule engine. Works offline!</p>
+          )}
+          {llmProvider.type !== 'local' && (
+            <p className="settings-note">API key configuration needed in LLMService.js</p>
+          )}
+        </div>
+
+        {/* Saved Sessions */}
+        <div className="training-section">
+          <h4>💾 Saved Sessions 已保存对话</h4>
+          {savedSessions.length === 0 ? (
+            <p className="empty-text">No saved sessions yet</p>
+          ) : (
+            <div className="session-list">
+              {savedSessions.slice().reverse().map(s => (
+                <button
+                  key={s.id}
+                  className="session-item"
+                  onClick={() => this.handleLoadSession(s)}
+                >
+                  <span className="session-preview">{s.preview}</span>
+                  <span className="session-meta">
+                    {s.game} · {s.messageCount} msgs · {new Date(s.date).toLocaleDateString()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  render() {
+    const { activeTab, activeGame } = this.state;
+    const gameBadge = {
+      [GAME_TYPE.CHESS]: '♟',
+      [GAME_TYPE.XIANGQI]: '🀄',
+      [GAME_TYPE.WUZIQI]: '⚫',
+    }[activeGame] || '♟';
+
+    return (
+      <div className="ai-coach">
+        {/* Header */}
+        <div className="coach-header">
+          <div className="coach-avatar">🤖</div>
+          <div className="coach-info">
+            <h3>AI Coach / AI教练 {gameBadge}</h3>
+            <span className="status">● Online · {activeGame}</span>
+          </div>
+          <button className="new-chat-btn" onClick={this.handleNewChat} title="New Chat">🆕</button>
+        </div>
+
+        {/* Tab Bar */}
+        <div className="coach-tabs">
+          {[
+            { key: TAB.CHAT, label: '💬 Chat' },
+            { key: TAB.TRAINING, label: '📋 Training' },
+            { key: TAB.PROGRESS, label: '📈 Progress' },
+            { key: TAB.SETTINGS, label: '⚙️ Settings' },
+          ].map(t => (
+            <button
+              key={t.key}
+              className={'coach-tab ' + (activeTab === t.key ? 'active' : '')}
+              onClick={() => {
+                this.setState({ activeTab: t.key });
+                if (t.key === TAB.PROGRESS) {
+                  this.setState({ progress: getTrainingProgress() });
+                }
+                if (t.key === TAB.TRAINING) {
+                  this.setState({ exercises: getRecommendedExercises(this.state.activeGame) });
+                }
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        <div className="coach-tab-content">
+          {activeTab === TAB.CHAT && this.renderChatTab()}
+          {activeTab === TAB.TRAINING && this.renderTrainingTab()}
+          {activeTab === TAB.PROGRESS && this.renderProgressTab()}
+          {activeTab === TAB.SETTINGS && this.renderSettingsTab()}
+        </div>
       </div>
     );
   }

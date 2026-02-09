@@ -15,7 +15,7 @@ class HomePage extends Component {
         <div className="home-hero">
           <h2 className="home-tagline">Master Two Ancient Games of Strategy</h2>
           <p className="home-description">
-            Play, learn, and compete in both International Chess and Chinese Chess — 
+            Play, learn, and compete in Chess, Chinese Chess, and Gomoku — 
             powered by grandmaster-level AI coaching
           </p>
         </div>
@@ -81,6 +81,36 @@ class HomePage extends Component {
               Play 象棋 →
             </button>
           </div>
+
+          {/* WuziQi Card */}
+          <div 
+            className="game-card wuziqi-card"
+            onClick={() => onNavigate('wuziqi')}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && onNavigate('wuziqi')}
+          >
+            <div className="card-icon">
+              <div className="wuziqi-piece-display">
+                <span className="piece-symbol">⚫</span>
+                <span className="piece-symbol">⚪</span>
+              </div>
+            </div>
+            <h3 className="card-title">五子棋</h3>
+            <p className="card-subtitle">Gomoku · Five in a Row</p>
+            <p className="card-desc">
+              Connect five stones in a row on a 15×15 board. Simple to learn, deeply strategic.
+            </p>
+            <div className="card-features">
+              <span className="feature-tag">🤖 AI Opponent</span>
+              <span className="feature-tag">🎯 4 Levels</span>
+              <span className="feature-tag">📊 Analysis</span>
+              <span className="feature-tag">🏆 ELO Rating</span>
+            </div>
+            <button className="card-play-btn wuziqi-play-btn">
+              Play 五子棋 →
+            </button>
+          </div>
         </div>
 
         {/* Quick Access Section */}
@@ -115,14 +145,18 @@ class HomePage extends Component {
               <span className="quick-icon">👤</span>
               <span className="quick-label">Social</span>
             </button>
+            <button className="quick-link-btn" onClick={() => onNavigate('wuziqi')}>
+              <span className="quick-icon">⚫</span>
+              <span className="quick-label">Gomoku</span>
+            </button>
           </div>
         </div>
 
         {/* Stats / About Section */}
         <div className="home-stats">
           <div className="stat-item">
-            <span className="stat-number">2</span>
-            <span className="stat-label">Chess Variants</span>
+            <span className="stat-number">3</span>
+            <span className="stat-label">Board Games</span>
           </div>
           <div className="stat-item">
             <span className="stat-number">14+</span>

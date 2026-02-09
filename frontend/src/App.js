@@ -3,6 +3,7 @@ import "./App.css";
 import Chat from "./Chat";
 import ChessGame from "./ChessGame";
 import XiangqiGame from "./XiangqiGame";
+import WuziQiGame from "./WuziQiGame";
 import HomePage from "./HomePage";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
@@ -20,6 +21,7 @@ const ROUTES = {
   '/': 'home',
   '/chess': 'game',
   '/xiangqi': 'xiangqi',
+  '/wuziqi': 'wuziqi',
   '/puzzles': 'puzzles',
   '/openings': 'openings',
   '/multiplayer': 'multiplayer',
@@ -153,7 +155,7 @@ class AppContent extends Component {
 
         <header className="App-header">
           <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
-          <p className="App-subtitle">Chess & Xiangqi — Two Games, One Arena</p>
+          <p className="App-subtitle">Chess, Xiangqi & Gomoku — Three Games, One Arena</p>
           <nav className="App-nav">
             <button
               className={`nav-btn ${currentPage === "home" ? "active" : ""}`}
@@ -172,6 +174,12 @@ class AppContent extends Component {
               onClick={() => this.navigateTo("xiangqi")}
             >
               象棋
+            </button>
+            <button
+              className={`nav-btn ${currentPage === "wuziqi" ? "active" : ""}`}
+              onClick={() => this.navigateTo("wuziqi")}
+            >
+              五子棋
             </button>
             <button
               className={`nav-btn ${currentPage === "puzzles" ? "active" : ""}`}
@@ -254,6 +262,12 @@ class AppContent extends Component {
         {currentPage === "xiangqi" && (
           <div className="App-content xiangqi-page">
             <XiangqiGame />
+          </div>
+        )}
+
+        {currentPage === "wuziqi" && (
+          <div className="App-content wuziqi-page">
+            <WuziQiGame />
           </div>
         )}
 

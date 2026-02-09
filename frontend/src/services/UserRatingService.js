@@ -48,6 +48,14 @@ function getDefaults() {
       draws: 0,
       history: [],
     },
+    wuziqi: {
+      rating: config.elo.defaultRating,
+      gamesPlayed: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      history: [],
+    },
   };
 }
 

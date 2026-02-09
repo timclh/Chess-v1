@@ -6,6 +6,7 @@
 export const GAME_TYPE = {
   CHESS: 'chess',
   XIANGQI: 'xiangqi',
+  WUZIQI: 'wuziqi',
 };
 
 // ── Difficulty Levels ─────────────────────────────────────
@@ -77,6 +78,7 @@ export const ROUTES = {
   '/': 'home',
   '/chess': 'game',
   '/xiangqi': 'xiangqi',
+  '/wuziqi': 'wuziqi',
   '/puzzles': 'puzzles',
   '/openings': 'openings',
   '/multiplayer': 'multiplayer',
