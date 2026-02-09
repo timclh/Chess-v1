@@ -1221,6 +1221,9 @@ class ChessGame extends Component {
               message={pendingResult.status}
               oldRating={this.state.oldRating}
               newRating={this.state.newRating}
+              gameType="chess"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Human'}
+              moves={history.length}
               onRematch={this.newGame}
               onHome={() => this.setState({ isFullscreen: false })}
               onClose={() => this.setState({ showResultDialog: false })}
@@ -1451,6 +1454,9 @@ class ChessGame extends Component {
               message={pendingResult.status}
               oldRating={this.state.oldRating}
               newRating={this.state.newRating}
+              gameType="chess"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+              moves={history.length}
               onRematch={this.handleRematch}
               onReview={() => { this.closeResultDialog(); this.enterRetrospect(); }}
               onHome={this.closeResultDialog}

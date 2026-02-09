@@ -1201,6 +1201,9 @@ class XiangqiGame extends Component {
               message={pendingResult?.status}
               oldRating={oldRating}
               newRating={newRating}
+              gameType="xiangqi"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+              moves={this.state.history.length}
               onRematch={this.handleRematch}
               onClose={this.closeResultDialog}
             />
@@ -1218,6 +1221,9 @@ class XiangqiGame extends Component {
           message={pendingResult?.status}
           oldRating={oldRating}
           newRating={newRating}
+          gameType="xiangqi"
+          opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+          moves={this.state.history.length}
           onRematch={this.handleRematch}
           onClose={this.closeResultDialog}
         />

@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { RatingChangeDisplay } from './RatingDisplay';
+import { shareGameResult, recordGameActivity } from '../services/SocialService';
 
 const overlayStyle = {
   position: 'fixed',
@@ -69,6 +70,9 @@ const secondaryButtonStyle = {
  * @param {string} props.message - e.g. "Checkmate! White wins!"
  * @param {number} props.oldRating
  * @param {number} props.newRating
+ * @param {string} [props.gameType] - 'chess' | 'xiangqi'
+ * @param {string} [props.opponent] - opponent name
+ * @param {number} [props.moves] - number of moves
  * @param {Function} props.onRematch
  * @param {Function} props.onReview - Open game review
  * @param {Function} props.onHome - Return to home
@@ -80,12 +84,39 @@ export function GameResultDialog({
   message,
   oldRating,
   newRating,
+  gameType,
+  opponent,
+  moves,
   onRematch,
   onReview,
   onHome,
   onClose,
 }) {
   if (!isOpen) return null;
+
+  const ratingDelta = (newRating != null && oldRating != null) ? newRating - oldRating : undefined;
+
+  const handleShare = async () => {
+    // Record activity when sharing
+    if (result && gameType) {
+      recordGameActivity({ result, opponent: opponent || 'AI', gameType, moves: moves || 0, ratingDelta });
+    }
+    const { method } = await shareGameResult({
+      result,
+      opponent: opponent || 'AI',
+      gameType: gameType || 'chess',
+      moves: moves || 0,
+      ratingDelta,
+    });
+    if (method === 'clipboard' || method === 'clipboard-fallback') {
+      // Brief visual feedback
+      const btn = document.getElementById('share-result-btn');
+      if (btn) {
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => { btn.textContent = '📤 Share Result'; }, 2000);
+      }
+    }
+  };
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget && onClose) {
@@ -127,6 +158,9 @@ export function GameResultDialog({
               🏠 Back to Home
             </button>
           )}
+          <button id="share-result-btn" style={secondaryButtonStyle} onClick={handleShare}>
+            📤 Share Result
+          </button>
           {onClose && !onHome && (
             <button style={secondaryButtonStyle} onClick={onClose}>
               Close

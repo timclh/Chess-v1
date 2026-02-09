@@ -1,5 +1,6 @@
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -10,6 +11,20 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Touch feedback for interactive elements */
+button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:active {
+  transform: scale(0.96);
+  transition: transform 0.05s;
+}
+
+/* Safe area insets for notched devices */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
 }
 
 .App {

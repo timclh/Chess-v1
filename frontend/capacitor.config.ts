@@ -9,17 +9,25 @@ const config: CapacitorConfig = {
     allowsLinkPreview: false,
     scrollEnabled: false,
     contentInset: 'automatic',
+    // Enable modern WKWebView features for WASM
+    preferredContentMode: 'mobile',
   },
   server: {
     // Allow loading local WASM files
     androidScheme: 'https',
     iosScheme: 'capacitor',
+    // Add COEP/COOP headers for SharedArrayBuffer (WASM threading)
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+      'Cross-Origin-Resource-Policy': 'cross-origin',
+    },
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#f5e6c8', // Match our board color
+      backgroundColor: '#1a1a2e', // Match our dark theme
       showSpinner: false,
     },
     Keyboard: {
@@ -28,7 +36,7 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#d4a574',
+      backgroundColor: '#1a1a2e',
     },
   },
 };

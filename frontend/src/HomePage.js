@@ -111,6 +111,10 @@ class HomePage extends Component {
               <span className="quick-icon">🏆</span>
               <span className="quick-label">Leaderboard</span>
             </button>
+            <button className="quick-link-btn" onClick={() => onNavigate('profile')}>
+              <span className="quick-icon">👤</span>
+              <span className="quick-label">Social</span>
+            </button>
           </div>
         </div>
 

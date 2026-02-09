@@ -11,6 +11,7 @@ import Puzzles from "./Puzzles";
 import OpeningExplorer from "./OpeningExplorer";
 import AICoach from "./AICoach";
 import VideoLearning from "./VideoLearning";
+import ProfilePage from "./ProfilePage";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
@@ -25,6 +26,7 @@ const ROUTES = {
   '/leaderboard': 'leaderboard',
   '/coach': 'coach',
   '/learn': 'learn',
+  '/profile': 'profile',
 };
 
 // Get page from URL hash
@@ -207,6 +209,12 @@ class AppContent extends Component {
             >
               Leaderboard
             </button>
+            <button
+              className={`nav-btn ${currentPage === "profile" ? "active" : ""}`}
+              onClick={() => this.navigateTo("profile")}
+            >
+              👤 Social
+            </button>
             <div className="nav-spacer" />
             {user ? (
               <div className="user-menu">
@@ -282,6 +290,12 @@ class AppContent extends Component {
         {currentPage === "learn" && (
           <div className="App-content learn-page">
             <VideoLearning />
+          </div>
+        )}
+
+        {currentPage === "profile" && (
+          <div className="App-content profile-page-container">
+            <ProfilePage />
           </div>
         )}
 
