@@ -408,6 +408,14 @@ class WuziQiGame extends Component {
                   {mode === MODE.VS_AI && isPlayerTurn && ' (Your turn)'}
                 </span>
               )}
+              <button
+                className="hint-float-btn"
+                onClick={this.handleHint}
+                disabled={aiThinking || gameOver}
+                title="Get AI hint"
+              >
+                💡 Hint
+              </button>
             </div>
 
             <WuziQiBoard
