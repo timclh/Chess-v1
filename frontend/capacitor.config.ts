@@ -4,6 +4,12 @@ const config: CapacitorConfig = {
   appId: 'com.chessarena.xiangqi',
   appName: 'Chess Arena',
   webDir: 'build',
+  android: {
+    // Allow mixed content for WASM loading
+    allowMixedContent: true,
+    // Override user agent for proper web feature detection
+    appendUserAgent: 'ChessArena/1.0',
+  },
   ios: {
     // Allow WASM and SharedArrayBuffer in WKWebView
     allowsLinkPreview: false,

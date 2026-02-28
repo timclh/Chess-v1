@@ -27,6 +27,7 @@ import {
   updateNotificationPrefs,
 } from './services/NotificationService';
 import { getRating } from './services/UserRatingService';
+import { deleteAccount, isFirebaseConfigured } from './firebase';
 import { GAME_TYPE } from './constants';
 
 class ProfilePage extends Component {
@@ -44,6 +45,11 @@ class ProfilePage extends Component {
     // Challenge
     challengeUrl: null,
     challengeGameType: 'chess',
+    // Account
+    showDeleteConfirm: false,
+    deletePassword: '',
+    deleteError: '',
+    deleteLoading: false,
     // Stats
     chessRating: 1200,
     xiangqiRating: 1200,
@@ -120,6 +126,28 @@ class ProfilePage extends Component {
 
     // Copy to clipboard
     navigator.clipboard.writeText(url).catch(() => {});
+  };
+
+  // ─── Account ──────────────────────────────────────────────
+
+  handleDeleteAccount = async () => {
+    const { deletePassword } = this.state;
+    this.setState({ deleteError: '', deleteLoading: true });
+    try {
+      await deleteAccount(deletePassword || null);
+      // Clear all local data
+      localStorage.clear();
+      window.location.hash = '/';
+      window.location.reload();
+    } catch (error) {
+      let msg = error.message;
+      if (error.code === 'auth/wrong-password') {
+        msg = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/requires-recent-login') {
+        msg = 'Please log out and log back in, then try again.';
+      }
+      this.setState({ deleteError: msg, deleteLoading: false });
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────
@@ -275,6 +303,105 @@ class ProfilePage extends Component {
     );
   }
 
+  renderAccount() {
+    const { showDeleteConfirm, deletePassword, deleteError, deleteLoading } = this.state;
+    const { user } = this.props;
+    const configured = isFirebaseConfigured();
+    const isEmailUser = user?.providerData?.[0]?.providerId === 'password';
+
+    return (
+      <div className="account-settings">
+        {user && configured ? (
+          <>
+            <div className="account-action-btn" style={{ cursor: 'default' }}>
+              <span>📧</span>
+              <span>{user.email}</span>
+            </div>
+
+            <button
+              className="account-action-btn"
+              onClick={() => window.location.hash = '/privacy'}
+            >
+              <span>🔒</span>
+              <span>Privacy Policy</span>
+            </button>
+
+            <button
+              className="account-action-btn"
+              onClick={() => window.location.hash = '/terms'}
+            >
+              <span>📄</span>
+              <span>Terms of Service</span>
+            </button>
+
+            <button
+              className="account-action-btn danger"
+              onClick={() => this.setState({ showDeleteConfirm: !showDeleteConfirm })}
+            >
+              <span>🗑️</span>
+              <span>Delete Account</span>
+            </button>
+
+            {showDeleteConfirm && (
+              <div className="delete-confirm-dialog">
+                <p>⚠️ This will permanently delete your account and all data. This cannot be undone.</p>
+                {isEmailUser && (
+                  <div className="form-group">
+                    <label>Confirm your password</label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => this.setState({ deletePassword: e.target.value })}
+                      placeholder="Enter your password"
+                    />
+                  </div>
+                )}
+                {deleteError && <div className="login-error">{deleteError}</div>}
+                <div className="delete-confirm-actions">
+                  <button
+                    className="btn-danger"
+                    onClick={this.handleDeleteAccount}
+                    disabled={deleteLoading || (isEmailUser && !deletePassword)}
+                  >
+                    {deleteLoading ? 'Deleting...' : 'Yes, Delete My Account'}
+                  </button>
+                  <button
+                    className="btn-cancel"
+                    onClick={() => this.setState({ showDeleteConfirm: false, deleteError: '' })}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="social-empty">
+              {configured ? 'Log in to manage your account.' : 'Account management requires Firebase configuration.'}
+            </p>
+
+            <button
+              className="account-action-btn"
+              onClick={() => window.location.hash = '/privacy'}
+            >
+              <span>🔒</span>
+              <span>Privacy Policy</span>
+            </button>
+
+            <button
+              className="account-action-btn"
+              onClick={() => window.location.hash = '/terms'}
+            >
+              <span>📄</span>
+              <span>Terms of Service</span>
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   render() {
     const { activeTab, chessRating, xiangqiRating, wuziqiRating } = this.state;
 
@@ -290,7 +417,7 @@ class ProfilePage extends Component {
         </div>
 
         <div className="profile-tabs">
-          {['activity', 'friends', 'notifications', 'challenge'].map((tab) => (
+          {['activity', 'friends', 'notifications', 'challenge', 'account'].map((tab) => (
             <button
               key={tab}
               className={`profile-tab ${activeTab === tab ? 'active' : ''}`}
@@ -300,6 +427,7 @@ class ProfilePage extends Component {
               {tab === 'friends' && '👥 Friends'}
               {tab === 'notifications' && '🔔 Notifications'}
               {tab === 'challenge' && '⚔️ Challenge'}
+              {tab === 'account' && '⚙️ Account'}
             </button>
           ))}
         </div>
@@ -309,6 +437,7 @@ class ProfilePage extends Component {
           {activeTab === 'friends' && this.renderFriends()}
           {activeTab === 'notifications' && this.renderNotifications()}
           {activeTab === 'challenge' && this.renderChallenge()}
+          {activeTab === 'account' && this.renderAccount()}
         </div>
       </div>
     );

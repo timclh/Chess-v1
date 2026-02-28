@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>棋 Arena Icon Generator</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #1a1a2e; color: white; }
+    h1 { color: #e94560; }
+    .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin: 20px 0; }
+    .icon-item { background: #16213e; border-radius: 12px; padding: 16px; text-align: center; }
+    .icon-item canvas { border-radius: 20%; margin-bottom: 8px; }
+    .icon-item p { font-size: 13px; color: #94a3b8; margin: 4px 0; }
+    .icon-item a { color: #e94560; font-size: 13px; }
+    button { background: linear-gradient(135deg, #e94560, #f39422); border: none; color: white; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px 0; }
+    button:hover { opacity: 0.9; }
+    .note { background: #0f3460; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <h1>棋 Arena — Icon Generator</h1>
+  <p>Click "Generate All Icons" to create PNG icons for App Store and PWA.</p>
+  <button onclick="generateAll()">Generate All Icons</button>
+  <div class="note">
+    <strong>Required sizes:</strong><br>
+    • App Store: 1024x1024 (mandatory)<br>
+    • iOS: 180x180, 120x120, 87x87, 80x80, 60x60, 40x40, 29x29, 20x20<br>
+    • PWA: 512x512, 192x192<br>
+    • Apple Touch Icon: 180x180<br>
+    • Favicon: 32x32, 16x16
+  </div>
+  <div id="icons" class="icon-grid"></div>
+
+  <script>
+    const SIZES = [1024, 512, 192, 180, 120, 87, 80, 60, 40, 32, 29, 20, 16];
+    const LABELS = {
+      1024: 'App Store',
+      512: 'PWA (512)',
+      192: 'PWA (192)',
+      180: 'Apple Touch',
+      120: 'iPhone @3x',
+      87: 'iPhone @3x sm',
+      80: 'Spotlight @2x',
+      60: 'iPhone @2x',
+      40: 'Spotlight',
+      32: 'Favicon 32',
+      29: 'Settings',
+      20: 'Notification',
+      16: 'Favicon 16',
+    };
+
+    function drawIcon(ctx, size) {
+      const s = size;
+      const r = s * 0.2; // corner radius ratio
+
+      // Background gradient
+      const bgGrad = ctx.createLinearGradient(0, 0, s, s);
+      bgGrad.addColorStop(0, '#1a1a2e');
+      bgGrad.addColorStop(1, '#16213e');
+
+      // Rounded rect background
+      ctx.beginPath();
+      ctx.roundRect(0, 0, s, s, r);
+      ctx.fillStyle = bgGrad;
+      ctx.fill();
+
+      // Accent gradient
+      const accentGrad = ctx.createLinearGradient(0, 0, s, s);
+      accentGrad.addColorStop(0, '#e94560');
+      accentGrad.addColorStop(1, '#f39422');
+
+      // Draw chess queen crown
+      const cx = s / 2;
+      const cy = s * 0.42;
+      const scale = s / 512;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+
+      // Crown points
+      ctx.beginPath();
+      ctx.moveTo(-90, 60);
+      ctx.lineTo(-110, -20);
+      ctx.lineTo(-70, 10);
+      ctx.lineTo(-40, -50);
+      ctx.lineTo(-10, 10);
+      ctx.lineTo(0, -70);
+      ctx.lineTo(10, 10);
+      ctx.lineTo(40, -50);
+      ctx.lineTo(70, 10);
+      ctx.lineTo(110, -20);
+      ctx.lineTo(90, 60);
+      ctx.closePath();
+      ctx.fillStyle = accentGrad;
+      ctx.fill();
+
+      // Crown base
+      ctx.beginPath();
+      ctx.roundRect(-95, 60, 190, 25, 5);
+      ctx.fill();
+
+      // Crown bottom
+      ctx.beginPath();
+      ctx.roundRect(-85, 90, 170, 20, 5);
+      ctx.fill();
+
+      // Jewels on crown
+      ctx.fillStyle = 'white';
+      [-40, 0, 40].forEach(x => {
+        ctx.beginPath();
+        ctx.arc(x, -30, 8, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.restore();
+
+      // Text: 棋 Arena
+      if (s >= 60) {
+        const fontSize = Math.max(s * 0.14, 10);
+        ctx.font = `700 ${fontSize}px -apple-system, "Segoe UI", Arial, sans-serif`;
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('棋 Arena', cx, s * 0.78);
+      }
+    }
+
+    function generateAll() {
+      const container = document.getElementById('icons');
+      container.innerHTML = '';
+
+      SIZES.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        drawIcon(ctx, size);
+
+        const item = document.createElement('div');
+        item.className = 'icon-item';
+
+        // Display scaled version
+        const displayCanvas = document.createElement('canvas');
+        const displaySize = Math.min(size, 150);
+        displayCanvas.width = displaySize;
+        displayCanvas.height = displaySize;
+        displayCanvas.style.width = displaySize + 'px';
+        displayCanvas.style.height = displaySize + 'px';
+        const dCtx = displayCanvas.getContext('2d');
+        dCtx.drawImage(canvas, 0, 0, displaySize, displaySize);
+
+        const label = document.createElement('p');
+        label.textContent = `${LABELS[size]} — ${size}x${size}`;
+
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `icon-${size}x${size}.png`;
+        link.textContent = '⬇ Download PNG';
+
+        item.appendChild(displayCanvas);
+        item.appendChild(label);
+        item.appendChild(link);
+        container.appendChild(item);
+      });
+    }
+  </script>
+</body>
+</html>

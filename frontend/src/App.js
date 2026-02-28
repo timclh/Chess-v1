@@ -13,6 +13,7 @@ import OpeningExplorer from "./OpeningExplorer";
 import AICoach from "./AICoach";
 import VideoLearning from "./VideoLearning";
 import ProfilePage from "./ProfilePage";
+import { PrivacyPolicy, TermsOfService } from "./LegalPages";
 import { AuthProvider } from "./AuthContext";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
@@ -29,6 +30,8 @@ const ROUTES = {
   '/coach': 'coach',
   '/learn': 'learn',
   '/profile': 'profile',
+  '/privacy': 'privacy',
+  '/terms': 'terms',
 };
 
 // Get page from URL hash
@@ -309,7 +312,19 @@ class AppContent extends Component {
 
         {currentPage === "profile" && (
           <div className="App-content profile-page-container">
-            <ProfilePage />
+            <ProfilePage user={user} />
+          </div>
+        )}
+
+        {currentPage === "privacy" && (
+          <div className="App-content legal-page-container">
+            <PrivacyPolicy />
+          </div>
+        )}
+
+        {currentPage === "terms" && (
+          <div className="App-content legal-page-container">
+            <TermsOfService />
           </div>
         )}
 

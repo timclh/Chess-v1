@@ -1125,14 +1125,6 @@ class Puzzles extends Component {
                 <li>考虑对手想要做什么</li>
               </ul>
             </div>
-
-            {/* VIP Promo (future) */}
-            <div className="vip-promo">
-              <div className="vip-badge">💎 VIP</div>
-              <p>Unlock unlimited puzzles, themed training, and more!</p>
-              <p>解锁无限谜题、主题训练等更多功能！</p>
-              <button className="btn btn-vip" disabled>Coming Soon</button>
-            </div>
           </div>
         )}
       </div>

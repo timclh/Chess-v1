@@ -1614,6 +1614,189 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   color: #e94560;
 }
 
+/* Forgot password & account extras */
+.login-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  text-align: center;
+  margin: 0 0 16px;
+}
+
+.login-success {
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.forgot-password-link {
+  text-align: right;
+  margin: -8px 0 8px;
+}
+
+.forgot-password-link button {
+  background: none;
+  border: none;
+  color: #e94560;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.forgot-password-link button:hover {
+  text-decoration: underline;
+}
+
+.legal-notice {
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+  margin: 16px 0 0;
+  line-height: 1.5;
+}
+
+.legal-notice button {
+  background: none;
+  border: none;
+  color: #e94560;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+/* Account Settings in Profile */
+.account-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.account-action-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.account-action-btn.danger {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.account-action-btn.danger:hover {
+  background: #fef2f2;
+  border-color: #f87171;
+}
+
+.delete-confirm-dialog {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.delete-confirm-dialog p {
+  font-size: 14px;
+  color: #dc2626;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.delete-confirm-dialog .form-group {
+  margin-bottom: 12px;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.delete-confirm-actions .btn-danger {
+  flex: 1;
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-confirm-actions .btn-danger:hover {
+  background: #b91c1c;
+}
+
+.delete-confirm-actions .btn-cancel {
+  flex: 1;
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete-confirm-actions .btn-cancel:hover {
+  background: #e2e8f0;
+}
+
+/* Legal pages */
+.legal-page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 30px 20px;
+}
+
+.legal-page h2 {
+  font-size: 1.6em;
+  color: #e94560;
+  margin-bottom: 8px;
+}
+
+.legal-page .legal-updated {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+.legal-page h3 {
+  font-size: 1.1em;
+  color: #e2e8f0;
+  margin: 24px 0 8px;
+}
+
+.legal-page p,
+.legal-page li {
+  font-size: 14px;
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.legal-page ul {
+  padding-left: 20px;
+}
+
+.legal-page a {
+  color: #e94560;
+}
+
 @media (max-width: 480px) {
   .user-menu {
     flex-direction: column;

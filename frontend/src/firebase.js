@@ -15,13 +15,18 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import {
   getFirestore,
   doc,
   setDoc,
   getDoc,
+  deleteDoc,
   collection,
   query,
   orderBy,
@@ -146,6 +151,36 @@ export const getLeaderboardFromCloud = async (limitCount = 50) => {
   const q = query(usersRef, orderBy('stats.score', 'desc'), limit(limitCount));
   const snapshot = await getDocs(q);
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Password reset
+export const resetPassword = async (email) => {
+  if (!auth) throw new Error("Firebase not configured");
+  return sendPasswordResetEmail(auth, email);
+};
+
+// Delete user account and all data
+export const deleteAccount = async (password) => {
+  if (!auth || !auth.currentUser) throw new Error("Not logged in");
+  const user = auth.currentUser;
+
+  // Re-authenticate if email/password user
+  if (password && user.providerData[0]?.providerId === 'password') {
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+  }
+
+  // Delete user data from Firestore
+  if (db) {
+    try {
+      await deleteDoc(doc(db, 'users', user.uid));
+    } catch (e) {
+      // Firestore data may not exist, continue
+    }
+  }
+
+  // Delete Firebase auth account
+  await deleteUser(user);
 };
 
 export { auth, db, isFirebaseConfigured };
