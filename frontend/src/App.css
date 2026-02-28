@@ -4499,7 +4499,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 10px 12px 70px;
   display: flex;
   flex-direction: column;
-  /* gap is set dynamically by JS via ViewportService */
+  gap: 16px;
 }
 
 /* ── Game Cards Row ── */

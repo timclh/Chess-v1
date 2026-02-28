@@ -6,43 +6,18 @@
 import React, { Component } from 'react';
 import { getStreak, isTodayCompleted } from './services/DailyPuzzleService';
 import { getRating } from './services/UserRatingService';
-import { getAvailable } from './services/ViewportService';
 import { GAME_TYPE } from './constants';
 
 class HomePage extends Component {
-  state = { gap: 14 };
-
-  componentDidMount() {
-    this._recalc();
-    this._onResize = () => this._recalc();
-    window.addEventListener('resize', this._onResize);
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('resize', this._onResize);
-  }
-
-  _recalc() {
-    // Measure available height, subtract fixed content heights, distribute as gaps
-    const { height } = getAvailable();
-    // Fixed content heights (approximate):
-    // game cards row: 110, daily banner: 56, feature grid: 170, stats: 50
-    const contentHeight = 110 + 56 + 170 + 50;
-    const sections = 4; // number of gaps between sections
-    const gap = Math.max(8, Math.floor((height - contentHeight) / sections));
-    this.setState({ gap: Math.min(gap, 40) }); // cap at 40px max
-  }
-
   render() {
     const { onNavigate } = this.props;
-    const { gap } = this.state;
     const streak = getStreak();
     const todayDone = isTodayCompleted();
     const chessRating = getRating(GAME_TYPE.CHESS).rating || 1200;
     const xiangqiRating = getRating(GAME_TYPE.XIANGQI).rating || 1200;
 
     return (
-      <div className="home-page" style={{ gap: `${gap}px` }}>
+      <div className="home-page">
         {/* Game Selection - big tappable cards */}
         <div className="home-games">
           <div className="home-game-card hgc-chess" onClick={() => onNavigate('game')}>
