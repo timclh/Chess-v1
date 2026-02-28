@@ -125,3 +125,40 @@ Server→Client: `room_created`, `room_joined`, `opponent_joined`, `game_start`,
 - The `ROUTES` map exists in both `App.js` and `constants/index.js` — update both when adding routes.
 - Legal pages (`/privacy`, `/terms`) are in `LegalPages.js` and routed via hash like all other pages.
 - `ProfilePage` receives `user` prop from `App.js` for account management features.
+
+## Auto-Fit Layout (ViewportService)
+
+When building or modifying any page/component, use `ViewportService.js` to auto-optimize for the viewport:
+
+```js
+import { fitSquare, autoResize, pageMinHeight, getAvailable, fitColumns } from './services/ViewportService';
+```
+
+**App chrome constants** (stored in ViewportService CHROME object):
+- Header: 40px, Sub-nav: 36px, Tab bar: 56px, Padding: 16px
+
+**Key functions:**
+- `fitSquare({ hasSubNav, extraChrome })` — largest square board that fits (chess/xiangqi/gomoku)
+- `autoResize(callback, opts)` — auto-recalculates on window resize, returns cleanup function
+- `pageMinHeight(opts)` — CSS `calc(100vh - chrome)` string for full-height pages
+- `getAvailable(opts)` — returns `{ width, height }` of usable content area
+- `fitColumns(n, gap)` — width per column for grid layouts
+
+**Pattern for board components:**
+```js
+state = { boardWidth: fitSquare({ hasSubNav: true, extraChrome: 30 }) };
+componentDidMount() {
+  this._cleanup = autoResize(
+    (size) => this.setState({ boardWidth: size }),
+    { hasSubNav: true, extraChrome: 30 }
+  );
+}
+componentWillUnmount() { this._cleanup?.(); }
+```
+
+**Pattern for full-height pages:**
+```jsx
+<div className="my-page" style={{ minHeight: pageMinHeight() }}>
+```
+
+Always use ViewportService instead of hardcoding `window.innerWidth - 30` or `calc(100vh - 200px)`. Update CHROME constants if header/tab bar height changes.

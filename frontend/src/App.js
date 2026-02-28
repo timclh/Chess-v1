@@ -136,8 +136,12 @@ class AppContent extends Component {
     const { currentPage, user, showLogin, showInstallPrompt, isOffline } = this.state;
     const configured = isFirebaseConfigured();
 
+    // Pages that show in bottom tab bar (primary nav)
+    const isGamePage = ['game', 'xiangqi', 'wuziqi'].includes(currentPage);
+    const isLearnPage = ['puzzles', 'openings', 'learn', 'coach'].includes(currentPage);
+
     return (
-      <div className="App">
+      <div className="App has-bottom-nav">
         {/* Offline Indicator */}
         {isOffline && (
           <div className="offline-banner">
@@ -156,98 +160,43 @@ class AppContent extends Component {
           </div>
         )}
 
+        {/* Compact Top Header */}
         <header className="App-header">
-          <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
-          <p className="App-subtitle">Chess, Xiangqi & Gomoku — Three Games, One Arena</p>
-          <nav className="App-nav">
-            <button
-              className={`nav-btn ${currentPage === "home" ? "active" : ""}`}
-              onClick={() => this.navigateTo("home")}
-            >
-              🏠 Home
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "game" ? "active" : ""}`}
-              onClick={() => this.navigateTo("game")}
-            >
-              ♟ Chess
-            </button>
-            <button
-              className={`nav-btn xiangqi-nav ${currentPage === "xiangqi" ? "active" : ""}`}
-              onClick={() => this.navigateTo("xiangqi")}
-            >
-              象棋
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "wuziqi" ? "active" : ""}`}
-              onClick={() => this.navigateTo("wuziqi")}
-            >
-              五子棋
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "puzzles" ? "active" : ""}`}
-              onClick={() => this.navigateTo("puzzles")}
-            >
-              🧩 Puzzles
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "openings" ? "active" : ""}`}
-              onClick={() => this.navigateTo("openings")}
-            >
-              📖 Openings
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "learn" ? "active" : ""}`}
-              onClick={() => this.navigateTo("learn")}
-            >
-              📺 Learn
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "coach" ? "active" : ""}`}
-              onClick={() => this.navigateTo("coach")}
-            >
-              🤖 Coach
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "multiplayer" ? "active" : ""}`}
-              onClick={() => this.navigateTo("multiplayer")}
-            >
-              Online
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "leaderboard" ? "active" : ""}`}
-              onClick={() => this.navigateTo("leaderboard")}
-            >
-              Leaderboard
-            </button>
-            <button
-              className={`nav-btn ${currentPage === "profile" ? "active" : ""}`}
-              onClick={() => this.navigateTo("profile")}
-            >
-              👤 Social
-            </button>
-            <div className="nav-spacer" />
-            {user ? (
-              <div className="user-menu">
-                <span className="user-name">{user.displayName || user.email}</span>
-                <button className="nav-btn logout-btn" onClick={this.handleLogout}>
-                  Logout
+          <div className="header-row">
+            <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
+            <div className="header-right">
+              {user ? (
+                <div className="user-menu">
+                  <span className="user-name">{user.displayName || user.email}</span>
+                  <button className="nav-btn logout-btn" onClick={this.handleLogout}>
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="nav-btn login-nav-btn"
+                  onClick={() => this.setState({ showLogin: true })}
+                >
+                  {configured ? "Login" : "Login"}
                 </button>
-              </div>
-            ) : (
-              <button
-                className="nav-btn login-nav-btn"
-                onClick={() => this.setState({ showLogin: true })}
-              >
-                {configured ? "Login" : "Login (Local)"}
-              </button>
-            )}
-          </nav>
+              )}
+            </div>
+          </div>
         </header>
+
+        {/* Main Content Area */}
 
         {currentPage === "home" && (
           <div className="App-content home-content">
             <HomePage onNavigate={this.navigateTo} />
+          </div>
+        )}
+
+        {isGamePage && (
+          <div className="sub-nav-bar">
+            <button className={`sub-nav-btn ${currentPage === 'game' ? 'active' : ''}`} onClick={() => this.navigateTo('game')}>♟ Chess</button>
+            <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')}>象棋 Xiangqi</button>
+            <button className={`sub-nav-btn ${currentPage === 'wuziqi' ? 'active' : ''}`} onClick={() => this.navigateTo('wuziqi')}>⚫ Gomoku</button>
           </div>
         )}
 
@@ -271,6 +220,16 @@ class AppContent extends Component {
         {currentPage === "wuziqi" && (
           <div className="App-content wuziqi-page">
             <WuziQiGame />
+          </div>
+        )}
+
+        {/* Learn section sub-navigation */}
+        {isLearnPage && (
+          <div className="sub-nav-bar">
+            <button className={`sub-nav-btn ${currentPage === 'puzzles' ? 'active' : ''}`} onClick={() => this.navigateTo('puzzles')}>🧩 Puzzles</button>
+            <button className={`sub-nav-btn ${currentPage === 'openings' ? 'active' : ''}`} onClick={() => this.navigateTo('openings')}>📖 Openings</button>
+            <button className={`sub-nav-btn ${currentPage === 'learn' ? 'active' : ''}`} onClick={() => this.navigateTo('learn')}>📺 Videos</button>
+            <button className={`sub-nav-btn ${currentPage === 'coach' ? 'active' : ''}`} onClick={() => this.navigateTo('coach')}>🤖 Coach</button>
           </div>
         )}
 
@@ -334,6 +293,45 @@ class AppContent extends Component {
             onSuccess={() => this.setState({ showLogin: false })}
           />
         )}
+
+        {/* Bottom Tab Bar */}
+        <nav className="bottom-tab-bar">
+          <button
+            className={`btab-btn ${currentPage === 'home' ? 'active' : ''}`}
+            onClick={() => this.navigateTo('home')}
+          >
+            <span className="btab-icon">🏠</span>
+            <span className="btab-label">Home</span>
+          </button>
+          <button
+            className={`btab-btn ${isGamePage ? 'active' : ''}`}
+            onClick={() => this.navigateTo(isGamePage ? currentPage : 'game')}
+          >
+            <span className="btab-icon">♟</span>
+            <span className="btab-label">Play</span>
+          </button>
+          <button
+            className={`btab-btn ${isLearnPage ? 'active' : ''}`}
+            onClick={() => this.navigateTo(isLearnPage ? currentPage : 'puzzles')}
+          >
+            <span className="btab-icon">🧩</span>
+            <span className="btab-label">Learn</span>
+          </button>
+          <button
+            className={`btab-btn ${currentPage === 'multiplayer' ? 'active' : ''}`}
+            onClick={() => this.navigateTo('multiplayer')}
+          >
+            <span className="btab-icon">🌐</span>
+            <span className="btab-label">Online</span>
+          </button>
+          <button
+            className={`btab-btn ${['profile', 'leaderboard'].includes(currentPage) ? 'active' : ''}`}
+            onClick={() => this.navigateTo('profile')}
+          >
+            <span className="btab-icon">👤</span>
+            <span className="btab-label">Me</span>
+          </button>
+        </nav>
       </div>
     );
   }

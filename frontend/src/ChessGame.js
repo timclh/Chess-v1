@@ -10,6 +10,7 @@ import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSaved
 import { getRating, recordResult } from "./services/UserRatingService";
 import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
 import { GAME_TYPE, RESULT } from "./constants";
+import { fitSquare, autoResize } from "./services/ViewportService";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
 
@@ -201,7 +202,7 @@ class ChessGame extends Component {
     // Mobile fullscreen mode
     isFullscreen: true,
     showFullscreenCoach: false,
-    boardWidth: Math.min(520, window.innerWidth - 30),
+    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 30 }),
   };
 
   game = null;
@@ -214,20 +215,17 @@ class ChessGame extends Component {
     });
     this.updateGameStatus();
     this.updateAnalysis();
-    // Responsive board sizing
-    this._handleResize = () => {
-      const newWidth = Math.min(520, window.innerWidth - 30);
-      if (newWidth !== this.state.boardWidth) {
-        this.setState({ boardWidth: newWidth });
-      }
-    };
-    window.addEventListener('resize', this._handleResize);
+    // Responsive board sizing — auto-fit to available viewport
+    this._cleanupResize = autoResize(
+      (size) => { if (size !== this.state.boardWidth) this.setState({ boardWidth: size }); },
+      { hasSubNav: true, extraChrome: 30 }
+    );
   }
 
   componentWillUnmount() {
     this.game = null;
-    if (this._handleResize) {
-      window.removeEventListener('resize', this._handleResize);
+    if (this._cleanupResize) {
+      this._cleanupResize();
     }
   }
 
@@ -1101,7 +1099,7 @@ class ChessGame extends Component {
             <Chessboard
               id="chessboard-fullscreen"
               position={fen}
-              width={Math.min(boardWidth, window.innerHeight - 180)}
+              width={boardWidth}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
