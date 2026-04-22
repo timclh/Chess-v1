@@ -1048,53 +1048,58 @@ class ChessGame extends Component {
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
 
-    // Fullscreen mode — board fills screen, corner menu for controls
+    // Fullscreen mode — board fills screen, professional game layout
     if (isFullscreen) {
       const { showFullscreenCoach } = this.state;
       const hasCoachContent = gameMode === 'coach' || (analysis || lastAIExplanation || suggestedMoves.length > 0);
+      const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Master' };
+      const modeLabels = { ai: '🤖 vs AI', coach: '💡 Coach', tutorial: '📚 Tutorial', human: '👤 vs Human' };
+      const modeColors = { ai: '#e94560', coach: '#facc15', tutorial: '#22c55e', human: '#3b82f6' };
       return (
         <div className="chess-fullscreen-mode">
-          {/* Corner menu */}
-          <div className="fullscreen-corner-menu">
-            <button
-              className="corner-menu-btn"
-              onClick={() => this.setState({ isFullscreen: false })}
-              title="Exit fullscreen"
-            >
-              ✕
-            </button>
-            <button
-              className="corner-menu-btn"
-              onClick={this.newGame}
-              title="New Game"
-            >
-              🔄
-            </button>
-            <button
-              className="corner-menu-btn"
-              onClick={this.undoMove}
-              disabled={history.length === 0 || aiThinking}
-              title="Undo"
-            >
-              ↩️
-            </button>
-            {hasCoachContent && (
-              <button
-                className={`corner-menu-btn ${showFullscreenCoach ? 'active' : ''}`}
-                onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
-                title="Coach"
-              >
-                💡
-              </button>
+          {/* Top Bar — Mode + Difficulty + Settings */}
+          <div className="fs-top-bar">
+            <div className="fs-mode-badge" style={{ background: modeColors[gameMode] || '#e94560' }}>
+              {modeLabels[gameMode] || 'Play'}
+            </div>
+            {gameMode !== 'tutorial' && (
+              <div className="fs-difficulty">
+                {diffLabels[aiDifficulty] || `Level ${aiDifficulty}`}
+              </div>
             )}
+            <div className="fs-top-right">
+              {hasCoachContent && (
+                <button
+                  className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
+                  onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
+                >
+                  💡
+                </button>
+              )}
+              <button
+                className="fs-icon-btn"
+                onClick={() => this.setState({ isFullscreen: false })}
+              >
+                ⚙️
+              </button>
+            </div>
           </div>
 
-          {/* Status bar */}
-          <div className={`fullscreen-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
-            {aiThinking ? '🤔 AI thinking...' : gameStatus}
+          {/* Opponent info bar */}
+          <div className="fs-player-bar opponent">
+            <span className="fs-player-icon">🤖</span>
+            <span className="fs-player-name">
+              {gameMode === 'tutorial' ? 'Tutorial' : `AI · ${diffLabels[aiDifficulty] || 'Medium'}`}
+            </span>
+            <span className="fs-player-side">{playerColor === 'w' ? '⚫ Black' : '⚪ White'}</span>
           </div>
 
-          {/* Board — fills available space */}
+          {/* Status text */}
+          <div className={`fs-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
+            {aiThinking ? '🤔 Thinking...' : gameStatus}
+          </div>
+
+          {/* Board */}
           <div className="fullscreen-board-area">
             <Chessboard
               id="chessboard-fullscreen"
@@ -1112,36 +1117,32 @@ class ChessGame extends Component {
             />
           </div>
 
-          {/* Bottom toolbar */}
-          <div className="fullscreen-bottom-bar">
-            <div className="fullscreen-bottom-rating">
-              <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
-            </div>
-            <div className="fullscreen-bottom-actions">
-              <button
-                className="bottom-action-btn hint-btn"
-                onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
-                disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
-                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
-              >
-                💡 Hint
-              </button>
-              <button
-                className="bottom-action-btn"
-                onClick={this.undoMove}
-                disabled={history.length === 0 || aiThinking}
-                title="Undo"
-              >
-                ↩️ Undo
-              </button>
-              <button
-                className="bottom-action-btn"
-                onClick={this.newGame}
-                title="New Game"
-              >
-                🔄 New
-              </button>
-            </div>
+          {/* Player info bar */}
+          <div className="fs-player-bar self">
+            <span className="fs-player-icon">👤</span>
+            <span className="fs-player-name">You</span>
+            <span className="fs-player-side">{playerColor === 'w' ? '⚪ White' : '⚫ Black'}</span>
+            <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+          </div>
+
+          {/* Bottom Action Bar */}
+          <div className="fs-action-bar">
+            <button className="fs-action-btn" onClick={this.undoMove} disabled={history.length === 0 || aiThinking}>
+              <span className="fs-act-icon">↩️</span>
+              <span className="fs-act-label">Undo</span>
+            </button>
+            <button className="fs-action-btn hint" onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)} disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}>
+              <span className="fs-act-icon">💡</span>
+              <span className="fs-act-label">Hint</span>
+            </button>
+            <button className="fs-action-btn" onClick={this.newGame}>
+              <span className="fs-act-icon">🔄</span>
+              <span className="fs-act-label">New</span>
+            </button>
+            <button className="fs-action-btn" onClick={() => this.setState({ isFullscreen: false })}>
+              <span className="fs-act-icon">⚙️</span>
+              <span className="fs-act-label">Settings</span>
+            </button>
           </div>
 
           {/* Slide-in Coach Panel */}
