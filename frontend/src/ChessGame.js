@@ -1445,6 +1445,45 @@ class ChessGame extends Component {
             </button>
           </div>
 
+          {/* Inline toolbar — primary actions */}
+          {gameMode !== "tutorial" && !showRetrospect && (
+            <div className="chess-board-toolbar">
+              <button
+                className="tb-btn primary"
+                onClick={this.resetGame}
+                title="New Game"
+              >
+                🔄 New
+              </button>
+              <button
+                className="tb-btn"
+                onClick={this.undoMove}
+                disabled={history.length === 0 || aiThinking}
+                title="Undo"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                className="tb-btn hint"
+                onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
+                disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
+              >
+                💡 Hint
+              </button>
+              {(gameOver || history.length >= 4) && (
+                <button
+                  className="tb-btn"
+                  onClick={this.enterRetrospect}
+                  disabled={history.length < 4}
+                  title="Analyze Game"
+                >
+                  📈 Analyze
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Game Result Dialog */}
           {showResultDialog && pendingResult && (
             <GameResultDialog

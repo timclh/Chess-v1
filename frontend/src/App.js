@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import "./App.css";
-import Chat from "./Chat";
 import ChessGame from "./ChessGame";
 import XiangqiGame from "./XiangqiGame";
 import WuziQiGame from "./WuziQiGame";
@@ -201,13 +200,8 @@ class AppContent extends Component {
         )}
 
         {currentPage === "game" && (
-          <div className="App-content">
-            <div className="chat-section">
-              <Chat />
-            </div>
-            <div className="game-section">
-              <ChessGame user={user} />
-            </div>
+          <div className="App-content chess-app-content">
+            <ChessGame user={user} />
           </div>
         )}
 
