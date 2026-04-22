@@ -5437,9 +5437,11 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .fs-player-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 8px 14px;
   font-size: 13px;
+  border-left: 3px solid transparent;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .fs-player-bar.opponent {
@@ -5450,6 +5452,22 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   background: rgba(255, 255, 255, 0.06);
 }
 
+.fs-player-bar.active-turn {
+  border-left-color: #facc15;
+  background: rgba(250, 204, 21, 0.08);
+}
+
+/* color dot ⚪ / ⚫ */
+.fs-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.fs-color-dot.white { background: #f8fafc; }
+.fs-color-dot.black { background: #0f172a; }
+
 .fs-player-icon {
   font-size: 1.1em;
 }
@@ -5459,10 +5477,25 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 600;
 }
 
-.fs-player-side {
-  color: #64748b;
-  font-size: 11px;
+.fs-thinking-dot {
+  color: #facc15;
+  font-weight: 700;
+  animation: fs-thinking-pulse 1.2s ease-in-out infinite;
+}
+@keyframes fs-thinking-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.fs-last-move {
   margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
 }
 
 .fs-player-bar .rating-display {
@@ -5470,18 +5503,20 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 0 !important;
   font-size: 12px !important;
   color: #94a3b8 !important;
+  margin-left: auto;
 }
 
 /* ── Status Text ── */
 .fs-status {
   text-align: center;
-  padding: 4px 12px;
+  padding: 6px 12px 2px;
   color: #e2e8f0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
-.fs-status.game-over { color: #e94560; font-weight: 800; }
+.fs-status.game-over { color: #e94560; font-weight: 800; font-size: 16px; }
 .fs-status.thinking { color: #facc15; }
 
 /* ── Board Area ── */
@@ -5515,40 +5550,46 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 /* ── Action Bar (bottom of game screen) ── */
 .fs-action-bar {
   display: flex;
-  justify-content: space-around;
-  padding: 8px 12px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 12px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 10px);
   background: rgba(15, 23, 42, 0.9);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .fs-action-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 14px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #94a3b8;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd5e1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: all 0.15s;
 }
 
-.fs-action-btn:active:not(:disabled) {
+.fs-action-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.fs-action-btn:active:not(:disabled) {
   transform: scale(0.93);
 }
 
 .fs-action-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
   cursor: default;
 }
 
 .fs-action-btn.hint {
   color: #facc15;
+  border-color: rgba(250, 204, 21, 0.3);
 }
 
 .fs-act-icon {
@@ -5556,12 +5597,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   line-height: 1;
 }
 
-.fs-act-label {
-  font-size: 0.6em;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
+.fs-act-label { display: none; }
 
 /* Toggle button (shown in normal mode to enter fullscreen) */
 .fullscreen-toggle-btn {
@@ -5937,6 +5973,11 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   max-width: none;
 }
 
+/* Collapse to 2 columns when no right panel is rendered (e.g. plain AI mode) */
+.chess-app-content .chess-game-layout:not(:has(.analysis-panel-right)):not(:has(.tutorial-panel-right)):not(:has(.retrospect-panel-right)) {
+  grid-template-columns: 240px minmax(480px, 900px);
+}
+
 /* ── Shared panel surfaces ── */
 .chess-app-content .settings-panel,
 .chess-app-content .board-panel,
@@ -6186,16 +6227,19 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 /* ── Inline toolbar under board ── */
 .chess-board-toolbar {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   padding: 8px;
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .chess-board-toolbar .tb-btn {
-  flex: 1;
-  padding: 8px 10px;
+  flex: 0 0 auto;
+  min-width: 96px;
+  padding: 8px 16px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   color: #cbd5e1;
@@ -6203,10 +6247,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 600;
   border-radius: 6px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 6px;
   transition: all 0.15s;
 }
 

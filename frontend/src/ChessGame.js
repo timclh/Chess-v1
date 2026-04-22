@@ -199,8 +199,8 @@ class ChessGame extends Component {
     // Best move comparison
     retrospectBestMove: null, // { san, score, winProb } best move at current position
     retrospectAnalyzing: false, // loading state for analysis
-    // Mobile fullscreen mode
-    isFullscreen: true,
+    // Mobile fullscreen mode — only default on small screens
+    isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
     boardWidth: fitSquare({ hasSubNav: true, extraChrome: 30 }),
   };
@@ -1053,25 +1053,34 @@ class ChessGame extends Component {
       const { showFullscreenCoach } = this.state;
       const hasCoachContent = gameMode === 'coach' || (analysis || lastAIExplanation || suggestedMoves.length > 0);
       const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Master' };
-      const modeLabels = { ai: '🤖 vs AI', coach: '💡 Coach', tutorial: '📚 Tutorial', human: '👤 vs Human' };
-      const modeColors = { ai: '#e94560', coach: '#facc15', tutorial: '#22c55e', human: '#3b82f6' };
+      const modeShort = { ai: 'AI', coach: 'Coach', tutorial: 'Tutorial', human: 'Human' };
+      // opponent color/avatar
+      const oppColor = playerColor === 'w' ? 'b' : 'w';
+      const oppIcon = gameMode === 'tutorial' ? '📚' : (gameMode === 'human' ? '👤' : '🤖');
+      const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `${modeShort[gameMode] || 'AI'} · ${diffLabels[aiDifficulty] || 'Medium'}`;
+      const turn = this.game ? this.game.turn() : 'w';
+      const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
+      const lastMove = history.length > 0 ? history[history.length - 1] : null;
+      const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '...'} ${lastMove.san}` : '';
       return (
         <div className="chess-fullscreen-mode">
-          {/* Top Bar — Mode + Difficulty + Settings */}
+          {/* Top Bar — icon actions only; mode info lives on player bars */}
           <div className="fs-top-bar">
-            <div className="fs-mode-badge" style={{ background: modeColors[gameMode] || '#e94560' }}>
-              {modeLabels[gameMode] || 'Play'}
-            </div>
-            {gameMode !== 'tutorial' && (
-              <div className="fs-difficulty">
-                {diffLabels[aiDifficulty] || `Level ${aiDifficulty}`}
-              </div>
-            )}
+            <button
+              className="fs-icon-btn"
+              onClick={() => this.setState({ isFullscreen: false })}
+              title="Exit fullscreen"
+              aria-label="Exit fullscreen"
+            >
+              ✕
+            </button>
             <div className="fs-top-right">
               {hasCoachContent && (
                 <button
                   className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
                   onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
+                  title="Coach"
+                  aria-label="Toggle coach"
                 >
                   💡
                 </button>
@@ -1079,24 +1088,32 @@ class ChessGame extends Component {
               <button
                 className="fs-icon-btn"
                 onClick={() => this.setState({ isFullscreen: false })}
+                title="Settings"
+                aria-label="Settings"
               >
                 ⚙️
               </button>
             </div>
           </div>
 
-          {/* Opponent info bar */}
-          <div className="fs-player-bar opponent">
-            <span className="fs-player-icon">🤖</span>
-            <span className="fs-player-name">
-              {gameMode === 'tutorial' ? 'Tutorial' : `AI · ${diffLabels[aiDifficulty] || 'Medium'}`}
-            </span>
-            <span className="fs-player-side">{playerColor === 'w' ? '⚫ Black' : '⚪ White'}</span>
+          {/* Opponent info bar (with turn indicator) */}
+          <div className={`fs-player-bar opponent ${turn === oppColor ? 'active-turn' : ''}`}>
+            <span className={`fs-color-dot ${oppColor === 'w' ? 'white' : 'black'}`} />
+            <span className="fs-player-icon">{oppIcon}</span>
+            <span className="fs-player-name">{oppName}</span>
+            {aiThinking && <span className="fs-thinking-dot" aria-label="thinking">…</span>}
+            {lastMove && turn === playerColor && (
+              <span className="fs-last-move">{lastMoveText}</span>
+            )}
           </div>
 
-          {/* Status text */}
+          {/* Status text (directly above board, very compact) */}
           <div className={`fs-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
-            {aiThinking ? '🤔 Thinking...' : gameStatus}
+            {aiThinking
+              ? 'Thinking…'
+              : gameOver
+                ? gameStatus
+                : `${turn === 'w' ? 'White' : 'Black'} to move${isPlayerTurn ? ' — your turn' : ''}`}
           </div>
 
           {/* Board */}
@@ -1117,31 +1134,41 @@ class ChessGame extends Component {
             />
           </div>
 
-          {/* Player info bar */}
-          <div className="fs-player-bar self">
+          {/* Self player bar (with turn indicator + rating) */}
+          <div className={`fs-player-bar self ${turn === playerColor ? 'active-turn' : ''}`}>
+            <span className={`fs-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} />
             <span className="fs-player-icon">👤</span>
             <span className="fs-player-name">You</span>
-            <span className="fs-player-side">{playerColor === 'w' ? '⚪ White' : '⚫ Black'}</span>
             <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
           </div>
 
-          {/* Bottom Action Bar */}
+          {/* Bottom Action Bar — icons only (labels in tooltips) */}
           <div className="fs-action-bar">
-            <button className="fs-action-btn" onClick={this.undoMove} disabled={history.length === 0 || aiThinking}>
+            <button
+              className="fs-action-btn"
+              onClick={this.undoMove}
+              disabled={history.length === 0 || aiThinking}
+              title="Undo last move"
+              aria-label="Undo"
+            >
               <span className="fs-act-icon">↩️</span>
-              <span className="fs-act-label">Undo</span>
             </button>
-            <button className="fs-action-btn hint" onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)} disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}>
+            <button
+              className="fs-action-btn hint"
+              onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
+              disabled={suggestedMoves.length === 0 || aiThinking || !isPlayerTurn}
+              title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'Hint'}
+              aria-label="Hint"
+            >
               <span className="fs-act-icon">💡</span>
-              <span className="fs-act-label">Hint</span>
             </button>
-            <button className="fs-action-btn" onClick={this.newGame}>
+            <button
+              className="fs-action-btn"
+              onClick={this.newGame}
+              title="New game"
+              aria-label="New game"
+            >
               <span className="fs-act-icon">🔄</span>
-              <span className="fs-act-label">New</span>
-            </button>
-            <button className="fs-action-btn" onClick={() => this.setState({ isFullscreen: false })}>
-              <span className="fs-act-icon">⚙️</span>
-              <span className="fs-act-label">Settings</span>
             </button>
           </div>
 
