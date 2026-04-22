@@ -6276,6 +6276,108 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   color: #facc15;
 }
 
+/* ── Desktop player bars (opponent above board, self below) ── */
+.chess-app-content .desk-player-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 0 0 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.2s ease-out;
+}
+.chess-app-content .desk-player-bar.self {
+  margin: 10px 0 0;
+}
+.chess-app-content .desk-player-bar.active-turn {
+  border-left-color: #facc15;
+  background: rgba(250, 204, 21, 0.08);
+}
+.chess-app-content .desk-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.chess-app-content .desk-color-dot.white { background: #f8fafc; }
+.chess-app-content .desk-color-dot.black { background: #0f172a; }
+.chess-app-content .desk-player-icon { font-size: 1.1em; }
+.chess-app-content .desk-player-name {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+.chess-app-content .desk-thinking {
+  color: #facc15;
+  font-weight: 600;
+  font-size: 12px;
+  animation: desk-pulse 1.2s ease-in-out infinite;
+}
+@keyframes desk-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+.chess-app-content .desk-last-move {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.chess-app-content .desk-player-bar.self .rating-display {
+  margin-left: auto;
+  background: none !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  color: #94a3b8 !important;
+}
+
+/* ── Status: centered, meaningful, animated ── */
+.chess-app-content .game-status {
+  padding: 8px 14px;
+  margin: 0 0 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: color 0.2s, background 0.2s;
+}
+.chess-app-content .game-status.your-turn {
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.1);
+}
+.chess-app-content .game-status.thinking { color: #facc15; }
+.chess-app-content .game-status.game-over {
+  color: #e94560;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* ── Touch-target upsize (≥36 desktop, ≥44 mobile) ── */
+.chess-app-content .mode-btn,
+.chess-app-content .color-btn,
+.chess-app-content .diff-btn,
+.chess-app-content .toggle-btn {
+  min-height: 38px;
+}
+.sub-nav-btn {
+  min-height: 36px;
+}
+@media (max-width: 820px) {
+  .sub-nav-btn { min-height: 40px; padding: 8px 14px; }
+  .chess-app-content .mode-btn,
+  .chess-app-content .color-btn,
+  .chess-app-content .diff-btn,
+  .chess-app-content .toggle-btn { min-height: 44px; }
+}
+
 /* ── Move history — horizontal pill strip ── */
 .chess-app-content .move-history {
   width: auto;

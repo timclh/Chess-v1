@@ -202,7 +202,7 @@ class ChessGame extends Component {
     // Mobile fullscreen mode — only default on small screens
     isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
-    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 30 }),
+    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 280 }),
   };
 
   game = null;
@@ -218,7 +218,7 @@ class ChessGame extends Component {
     // Responsive board sizing — auto-fit to available viewport
     this._cleanupResize = autoResize(
       (size) => { if (size !== this.state.boardWidth) this.setState({ boardWidth: size }); },
-      { hasSubNav: true, extraChrome: 30 }
+      { hasSubNav: true, extraChrome: 280 }
     );
   }
 
@@ -1265,18 +1265,6 @@ class ChessGame extends Component {
         <div className="settings-panel">
           <div className="panel-title">Game Settings</div>
 
-          {/* Player Name */}
-          <div className="settings-section">
-            <div className="section-label">Player Name</div>
-            <input
-              type="text"
-              className="player-name-input"
-              placeholder="Enter your name"
-              value={this.state.playerName}
-              onChange={(e) => this.setPlayerName(e.target.value)}
-            />
-          </div>
-
           {/* Player Rating */}
           <RatingDisplay gameType={GAME_TYPE.CHESS} />
 
@@ -1436,10 +1424,45 @@ class ChessGame extends Component {
 
         {/* Center Panel - Board */}
         <div className="board-panel">
-          {/* Game Status */}
-          <div className={`game-status ${gameOver ? "game-over" : ""} ${aiThinking ? "thinking" : ""}`}>
-            {aiThinking ? "🤔 AI is thinking..." : gameStatus}
-          </div>
+          {(() => {
+            const turn = this.game ? this.game.turn() : 'w';
+            const oppColor = playerColor === 'w' ? 'b' : 'w';
+            const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Expert' };
+            const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `AI · ${diffLabels[aiDifficulty] || 'Medium'}`;
+            const oppIcon = gameMode === 'tutorial' ? '📚' : gameMode === 'human' ? '👤' : '🤖';
+            const lastMove = history.length > 0 ? history[history.length - 1] : null;
+            const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '…'} ${lastMove.san}` : '';
+            const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
+            return (
+              <>
+                {/* Opponent bar */}
+                <div className={`desk-player-bar opponent ${turn === oppColor && !gameOver ? 'active-turn' : ''}`}>
+                  <span className={`desk-color-dot ${oppColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
+                  <span className="desk-player-icon" aria-hidden="true">{oppIcon}</span>
+                  <span className="desk-player-name">{oppName}</span>
+                  {aiThinking && <span className="desk-thinking">thinking…</span>}
+                  {lastMove && turn === playerColor && !aiThinking && (
+                    <span className="desk-last-move" title={`Last move: ${lastMove.san}`}>{lastMoveText}</span>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div
+                  className={`game-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''} ${isPlayerTurn ? 'your-turn' : ''}`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {aiThinking
+                    ? '🤔 AI is thinking…'
+                    : gameOver
+                      ? gameStatus
+                      : isPlayerTurn
+                        ? '✋ Your turn'
+                        : gameStatus}
+                </div>
+              </>
+            );
+          })()}
 
           {/* Chess Board */}
           <div className="board-container" style={{ touchAction: 'none' }}>
@@ -1467,10 +1490,24 @@ class ChessGame extends Component {
               className="fullscreen-toggle-btn"
               onClick={() => this.setState({ isFullscreen: true })}
               title="Enter fullscreen mode"
+              aria-label="Enter fullscreen mode"
             >
               ⛶ Fullscreen
             </button>
           </div>
+
+          {/* Self bar (below board) */}
+          {(() => {
+            const turn = this.game ? this.game.turn() : 'w';
+            return (
+              <div className={`desk-player-bar self ${turn === playerColor && !gameOver ? 'active-turn' : ''}`}>
+                <span className={`desk-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
+                <span className="desk-player-icon" aria-hidden="true">👤</span>
+                <span className="desk-player-name">You</span>
+                <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+              </div>
+            );
+          })()}
 
           {/* Inline toolbar — primary actions */}
           {gameMode !== "tutorial" && !showRetrospect && (
