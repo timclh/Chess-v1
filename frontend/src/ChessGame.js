@@ -202,7 +202,7 @@ class ChessGame extends Component {
     // Mobile fullscreen mode — only default on small screens
     isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
-    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 280 }),
+    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 260 }),
   };
 
   game = null;
@@ -218,7 +218,7 @@ class ChessGame extends Component {
     // Responsive board sizing — auto-fit to available viewport
     this._cleanupResize = autoResize(
       (size) => { if (size !== this.state.boardWidth) this.setState({ boardWidth: size }); },
-      { hasSubNav: true, extraChrome: 280 }
+      { hasSubNav: true, extraChrome: 260 }
     );
   }
 
@@ -1062,6 +1062,10 @@ class ChessGame extends Component {
       const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
       const lastMove = history.length > 0 ? history[history.length - 1] : null;
       const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '...'} ${lastMove.san}` : '';
+      // Fullscreen has no sub-nav/tab-bar chrome; recompute so board fills screen
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 844;
+      const fsBoardWidth = Math.min(vw - 16, vh - 220);
       return (
         <div className="chess-fullscreen-mode">
           {/* Top Bar — icon actions only; mode info lives on player bars */}
@@ -1113,7 +1117,9 @@ class ChessGame extends Component {
               ? 'Thinking…'
               : gameOver
                 ? gameStatus
-                : `${turn === 'w' ? 'White' : 'Black'} to move${isPlayerTurn ? ' — your turn' : ''}`}
+                : isPlayerTurn
+                  ? '✋ Your turn'
+                  : `${turn === 'w' ? 'White' : 'Black'} to move`}
           </div>
 
           {/* Board */}
@@ -1121,7 +1127,7 @@ class ChessGame extends Component {
             <Chessboard
               id="chessboard-fullscreen"
               position={fen}
-              width={boardWidth}
+              width={fsBoardWidth}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
@@ -1264,9 +1270,6 @@ class ChessGame extends Component {
         {/* Left Panel - Settings */}
         <div className="settings-panel">
           <div className="panel-title">Game Settings</div>
-
-          {/* Player Rating */}
-          <RatingDisplay gameType={GAME_TYPE.CHESS} />
 
           {/* Game Mode Selector */}
           <div className="settings-section">
@@ -1435,30 +1438,20 @@ class ChessGame extends Component {
             const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
             return (
               <>
-                {/* Opponent bar */}
+                {/* Opponent bar — shows name + status inline */}
                 <div className={`desk-player-bar opponent ${turn === oppColor && !gameOver ? 'active-turn' : ''}`}>
                   <span className={`desk-color-dot ${oppColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
                   <span className="desk-player-icon" aria-hidden="true">{oppIcon}</span>
                   <span className="desk-player-name">{oppName}</span>
-                  {aiThinking && <span className="desk-thinking">thinking…</span>}
-                  {lastMove && turn === playerColor && !aiThinking && (
-                    <span className="desk-last-move" title={`Last move: ${lastMove.san}`}>{lastMoveText}</span>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div
-                  className={`game-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''} ${isPlayerTurn ? 'your-turn' : ''}`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  {aiThinking
-                    ? '🤔 AI is thinking…'
-                    : gameOver
-                      ? gameStatus
-                      : isPlayerTurn
-                        ? '✋ Your turn'
-                        : gameStatus}
+                  <span className="desk-bar-status" role="status" aria-live="polite">
+                    {aiThinking
+                      ? <span className="desk-thinking">thinking…</span>
+                      : gameOver
+                        ? <span className="desk-status-over">{gameStatus}</span>
+                        : lastMove && turn === playerColor
+                          ? <span className="desk-last-move" title={`Last move: ${lastMove.san}`}>{lastMoveText}</span>
+                          : null}
+                  </span>
                 </div>
               </>
             );
@@ -1496,14 +1489,18 @@ class ChessGame extends Component {
             </button>
           </div>
 
-          {/* Self bar (below board) */}
+          {/* Self bar — shows rating + 'Your turn' status inline */}
           {(() => {
             const turn = this.game ? this.game.turn() : 'w';
+            const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
             return (
               <div className={`desk-player-bar self ${turn === playerColor && !gameOver ? 'active-turn' : ''}`}>
                 <span className={`desk-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
                 <span className="desk-player-icon" aria-hidden="true">👤</span>
                 <span className="desk-player-name">You</span>
+                {isPlayerTurn && (
+                  <span className="desk-your-turn" role="status" aria-live="polite">✋ Your turn</span>
+                )}
                 <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
               </div>
             );
