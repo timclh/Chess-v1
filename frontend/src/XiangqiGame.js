@@ -13,7 +13,21 @@ import {
   getStrategicAdvice,
   explainAIMove,
   clearCache,
+  resetPositionHistory,
 } from './XiangqiAI';
+import {
+  initCoachEngine,
+  isEngineReady,
+  getTopMovesEngine,
+  analyzePositionEngine,
+  stopAnalysis,
+  destroyEngine,
+  clearAnalysisCache,
+} from './services/XiangqiCoachService';
+import { getRating, recordResult } from './services/UserRatingService';
+import { GAME_TYPE, RESULT } from './constants';
+import { RatingDisplay } from './components/RatingDisplay';
+import { GameResultDialog } from './components/GameResultDialog';
 
 // Tutorial lessons for Chinese Chess
 const XIANGQI_LESSONS = [
@@ -23,7 +37,7 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: Chariot (Rook)',
     description: '车是最强的棋子，可以横向或纵向移动任意格数，不能跳过其他棋子。',
     descriptionEn: 'The Chariot is the most powerful piece. It moves horizontally or vertically any number of squares, but cannot jump over pieces.',
-    fen: '4k4/9/9/9/9/9/9/9/9/R3K4',
+    fen: '4k4/9/9/9/9/9/9/9/9/R4K3',
     objective: '用车将军黑方的将',
     objectiveEn: 'Check the black general with the chariot',
     correctMoves: ['a0-a9'],
@@ -36,9 +50,9 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: Horse (Knight)',
     description: '马走"日"字，即先横（或竖）一格，再斜向走一格。注意：马的行进路线上如有其他棋子挡住，则不能走，称为"蹩马腿"。',
     descriptionEn: 'The Horse moves in an L-shape: one square orthogonally then one square diagonally. It can be blocked if a piece is adjacent to it in the direction it wants to move.',
-    fen: '4k4/9/9/9/9/9/9/9/4N4/4K4',
-    objective: '将马移动到f2位置',
-    objectiveEn: 'Move the horse to f2',
+    fen: '3k5/9/9/9/9/9/9/9/4H4/4K4',
+    objective: '走两步马: 先到f3，再到d2',
+    objectiveEn: 'Move the horse in 2 steps: first to f3, then to d2',
     correctMoves: ['e1-f3', 'f3-d2'],
     hint: '马走日字形',
     hintEn: 'The horse moves in an L-shape',
@@ -49,12 +63,12 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: Cannon',
     description: '炮的移动方式与车相同，但吃子时必须隔着一个棋子（称为"炮架"）才能吃掉目标。',
     descriptionEn: 'The Cannon moves like a Chariot, but captures by jumping over exactly one piece (the "screen") to capture the target.',
-    fen: '4k4/4r4/9/9/9/9/9/4C4/9/4K4',
+    fen: '3k5/4r4/9/9/4S4/9/9/4C4/9/4K4',
     objective: '用炮吃掉黑方的车',
     objectiveEn: 'Capture the black chariot with the cannon',
     correctMoves: ['e2-e8'],
-    hint: '炮需要一个炮架才能吃子',
-    hintEn: 'The cannon needs a screen piece to capture',
+    hint: '炮需要一个炮架才能吃子，这里兵就是炮架',
+    hintEn: 'The cannon needs a screen piece to capture — the soldier is the screen',
   },
   {
     id: 4,
@@ -62,9 +76,9 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: Elephant/Minister',
     description: '象走"田"字，即斜向移动两格。象不能过河，只能在己方半边活动。如果"田"字中心有棋子，象不能走，称为"塞象眼"。',
     descriptionEn: 'The Elephant moves exactly two squares diagonally. It cannot cross the river and can be blocked if a piece is in the center of its path.',
-    fen: '4k4/9/9/9/9/9/9/9/9/2E1K1E2',
-    objective: '将左边的象移动到c7位置',
-    objectiveEn: 'Move the left elephant to c7',
+    fen: '4k4/9/9/9/9/9/9/9/9/2EK2E2',
+    objective: '走两步象: 先到a2，再到c4',
+    objectiveEn: 'Move the elephant in 2 steps: first to a2, then to c4',
     correctMoves: ['c0-a2', 'a2-c4'],
     hint: '象走田字，不能过河',
     hintEn: 'Elephant moves diagonally two squares, cannot cross river',
@@ -75,10 +89,10 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: Advisor/Guard',
     description: '士只能在九宫格内斜向移动一格。',
     descriptionEn: 'The Advisor moves one square diagonally and must stay within the palace.',
-    fen: '4k4/9/9/9/9/9/9/9/9/3AKA3',
-    objective: '将仕移动到d1位置',
-    objectiveEn: 'Move an advisor to d1',
-    correctMoves: ['d0-e1'],
+    fen: '4k4/9/9/9/9/9/9/9/9/3KAA3',
+    objective: '将仕移动到e1位置',
+    objectiveEn: 'Move an advisor to e1',
+    correctMoves: ['f0-e1'],
     hint: '仕只能在九宫格内斜走一步',
     hintEn: 'Advisor moves one square diagonally within the palace',
   },
@@ -88,7 +102,7 @@ const XIANGQI_LESSONS = [
     titleEn: 'Piece Movement: General/King',
     description: '帅（将）只能在九宫格内移动，每次走一格，可横走或竖走。注意：两个帅将不能直接面对面（中间没有棋子）。',
     descriptionEn: 'The General moves one square orthogonally and must stay within the palace. The two generals cannot face each other directly on the same file.',
-    fen: '4k4/9/9/9/9/9/9/9/9/4K4',
+    fen: '3k5/9/9/9/9/9/9/9/9/4K4',
     objective: '将帅移动到f0位置',
     objectiveEn: 'Move the general to f0',
     correctMoves: ['e0-f0'],
@@ -104,7 +118,7 @@ const XIANGQI_LESSONS = [
     fen: '4k4/9/9/9/4S4/9/9/9/9/4K4',
     objective: '将兵向前移动一格',
     objectiveEn: 'Move the soldier forward one square',
-    correctMoves: ['e5-e4'],
+    correctMoves: ['e5-e6'],
     hint: '过河前的兵只能向前走',
     hintEn: 'Soldiers can only move forward before crossing the river',
   },
@@ -114,10 +128,10 @@ const XIANGQI_LESSONS = [
     titleEn: 'Check and Responding to Check',
     description: '当对方的将/帅被攻击时，称为"将军"。被将军时必须立即应对，否则就输了。',
     descriptionEn: 'When the General is under attack, it is called "check". You must respond to check immediately or lose the game.',
-    fen: '3k5/9/9/9/9/9/9/3r5/9/4K4',
+    fen: '5k3/9/9/9/9/9/9/3r5/9/3K5',
     objective: '红方被将军了！移动帅躲避',
     objectiveEn: 'Red is in check! Move the general to safety',
-    correctMoves: ['e0-f0', 'e0-d0'],
+    correctMoves: ['d0-e0'],
     hint: '帅必须移动到不被攻击的位置',
     hintEn: 'The general must move to a safe square',
   },
@@ -127,12 +141,12 @@ const XIANGQI_LESSONS = [
     titleEn: 'Basic Checkmate: Facing Generals',
     description: '两个将帅不能在同一条竖线上直接面对面（中间无子）。利用这个规则可以形成杀招。',
     descriptionEn: 'The two generals cannot face each other directly on the same file. This rule can be used to achieve checkmate.',
-    fen: '4k4/9/9/9/9/4R4/9/9/9/4K4',
-    objective: '用车将死黑方',
-    objectiveEn: 'Checkmate black with the chariot',
-    correctMoves: ['e4-e9'],
-    hint: '利用帅的威胁让车将死对方',
-    hintEn: 'Use the general\'s threat to checkmate with the chariot',
+    fen: '3aka3/9/9/9/9/9/9/9/4R4/4K4',
+    objective: '用车将死黑方（利用白脸将）',
+    objectiveEn: 'Checkmate black with the chariot (using facing generals)',
+    correctMoves: ['e1-e9'],
+    hint: '车移到底线将军，将无处可逃',
+    hintEn: 'Move the chariot to the back rank — the king has nowhere to run',
   },
   {
     id: 10,
@@ -140,10 +154,10 @@ const XIANGQI_LESSONS = [
     titleEn: 'Basic Checkmate: Double Chariots',
     description: '双车配合是最基本的杀法之一。',
     descriptionEn: 'Coordinating two chariots is one of the most basic checkmate patterns.',
-    fen: '4k4/9/9/9/9/9/R8/8R/9/4K4',
+    fen: '4k4/R8/9/9/9/9/9/9/8R/3K5',
     objective: '用双车将死黑方',
     objectiveEn: 'Checkmate black with the two chariots',
-    correctMoves: ['i2-i9'],
+    correctMoves: ['i1-i9'],
     hint: '一车将军，另一车堵住退路',
     hintEn: 'One chariot gives check, the other blocks escape',
   },
@@ -165,8 +179,12 @@ class XiangqiGame extends Component {
     strategicAdvice: [],
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
+    coachAnalyzing: false, // Coach is computing suggestions
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
+    // Fairy-Stockfish engine state
+    engineReady: false,
+    engineLoading: false,
     // Tutorial state
     currentLesson: 0,
     lessonComplete: false,
@@ -176,6 +194,18 @@ class XiangqiGame extends Component {
     validMoves: [],
     // Last move for highlighting
     lastMove: null,
+    // Responsive board width
+    boardWidth: Math.min(450, window.innerWidth - 40),
+    // Fullscreen mode
+    isFullscreen: true,
+    showFullscreenCoach: false,
+    // Rating system state
+    showResultDialog: false,
+    pendingResult: null,        // { result: 'win'|'loss'|'draw', status: string }
+    oldRating: null,
+    newRating: null,
+    ratingDelta: null,
+    ratingProcessed: false,     // Prevent double-processing
   };
 
   game = null;
@@ -183,9 +213,22 @@ class XiangqiGame extends Component {
   componentDidMount() {
     this.game = new Xiangqi();
 
+    // Listen for window resize to adjust board size
+    this._handleResize = () => {
+      const newWidth = Math.min(450, window.innerWidth - 40);
+      if (newWidth !== this.state.boardWidth) {
+        this.setState({ boardWidth: newWidth });
+      }
+    };
+    window.addEventListener('resize', this._handleResize);
+
+    // Start loading Fairy-Stockfish engine in background
+    this._initEngine();
+
     // Try to load saved game state
     const savedState = this.loadGameState();
-    if (savedState && savedState.fen) {
+    // Don't restore tutorial mode from saved state - it has specific FENs
+    if (savedState && savedState.fen && savedState.gameMode !== 'tutorial') {
       this.game.loadFEN(savedState.fen);
       this.game.turn = savedState.turn || 'r';
       this.setState({
@@ -213,10 +256,67 @@ class XiangqiGame extends Component {
   }
 
   componentWillUnmount() {
+    // Remove resize listener
+    if (this._handleResize) {
+      window.removeEventListener('resize', this._handleResize);
+    }
     // Save state before unmount
     this.saveGameState();
+    stopAnalysis();
+    destroyEngine();
     this.game = null;
   }
+
+  // Initialize Fairy-Stockfish WASM engine (non-blocking)
+  _initEngine = async () => {
+    this.setState({ engineLoading: true });
+
+    // SharedArrayBuffer requires crossOriginIsolated.
+    // If COI service worker just registered, wait for it to activate.
+    if (!window.crossOriginIsolated) {
+
+      const isolated = await this._waitForCrossOriginIsolation(5000);
+      if (!isolated) {
+        console.warn('[XiangqiGame] Not cross-origin isolated — SharedArrayBuffer unavailable. Using built-in AI.');
+        this.setState({ engineReady: false, engineLoading: false });
+        return;
+      }
+    }
+
+    try {
+      const ok = await initCoachEngine();
+      this.setState({ engineReady: ok, engineLoading: false });
+      if (ok) {
+
+      } else {
+        console.warn('[XiangqiGame] Engine init failed, using built-in AI');
+      }
+    } catch (err) {
+      console.warn('[XiangqiGame] Engine init error, using built-in AI:', err);
+      this.setState({ engineReady: false, engineLoading: false });
+    }
+  };
+
+  // Wait for crossOriginIsolated to become true (COI SW activation)
+  _waitForCrossOriginIsolation = (timeoutMs) => {
+    return new Promise((resolve) => {
+      if (window.crossOriginIsolated) {
+        resolve(true);
+        return;
+      }
+      const start = Date.now();
+      const check = () => {
+        if (window.crossOriginIsolated) {
+          resolve(true);
+        } else if (Date.now() - start > timeoutMs) {
+          resolve(false);
+        } else {
+          setTimeout(check, 200);
+        }
+      };
+      check();
+    });
+  };
 
   // Save game state to localStorage
   saveGameState = () => {
@@ -274,16 +374,28 @@ class XiangqiGame extends Component {
     const turnEn = this.game.turn === 'r' ? 'Red' : 'Black';
 
     if (this.game.game_over()) {
+      // In Xiangqi, having no legal moves is a LOSS (not a draw like in Western chess)
+      // Whether in check (checkmate/将死) or not (困毙/trapped), the side to move loses
+      const winner = this.game.turn === 'r' ? '黑方' : '红方';
+      const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+      const winnerColor = this.game.turn === 'r' ? 'b' : 'r';
+
       if (this.game.in_checkmate()) {
-        const winner = this.game.turn === 'r' ? '黑方' : '红方';
-        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
-      } else if (this.game.in_stalemate()) {
-        status = '和棋（无子可动）/ Stalemate';
       } else {
-        status = '游戏结束 / Game Over';
+        // No legal moves but not in check = 困毙 (kùn bì) = trapped, still a loss
+        status = `困毙！${winner}获胜！/ No moves! ${winnerEn} wins!`;
       }
-      this.setState({ gameOver: true, gameStatus: status });
+
+      // Calculate game result for rating
+      const result = winnerColor === this.state.playerColor ? RESULT.WIN : RESULT.LOSS;
+
+      // Only process rating once per game and only in AI mode
+      if (!this.state.ratingProcessed && (this.state.gameMode === 'ai' || this.state.gameMode === 'coach')) {
+        this.processGameResult(result, status);
+      } else {
+        this.setState({ gameOver: true, gameStatus: status });
+      }
     } else {
       if (this.game.in_check()) {
         status = `${turn}被将军！/ ${turnEn} is in check!`;
@@ -294,15 +406,149 @@ class XiangqiGame extends Component {
     }
   };
 
+  /**
+   * Process game result and update ELO rating.
+   */
+  processGameResult = async (result, status) => {
+    const oldRatingData = getRating(GAME_TYPE.XIANGQI);
+    const oldRating = oldRatingData.rating;
+
+    try {
+      const { newRating, delta } = await recordResult({
+        gameType: GAME_TYPE.XIANGQI,
+        result,
+        difficulty: this.state.aiDifficulty,
+      });
+
+      this.setState({
+        gameOver: true,
+        gameStatus: status,
+        pendingResult: { result, status },
+        showResultDialog: true,
+        oldRating,
+        newRating,
+        ratingDelta: delta,
+        ratingProcessed: true,
+      });
+    } catch (err) {
+      console.error('Failed to record game result:', err);
+      this.setState({
+        gameOver: true,
+        gameStatus: status,
+        ratingProcessed: true,
+      });
+    }
+  };
+
+  /**
+   * Close the result dialog and reset for new game.
+   */
+  closeResultDialog = () => {
+    this.setState({ showResultDialog: false });
+  };
+
+  /**
+   * Handle rematch from result dialog.
+   */
+  handleRematch = () => {
+    this.setState({ showResultDialog: false }, () => {
+      this.resetGame();
+    });
+  };
+
   updateAnalysis = () => {
     if (!this.game || this.state.gameMode !== 'coach') return;
 
+    // Show fast built-in analysis immediately
     const analysis = analyzePosition(this.game);
-    // Always use high depth for coach suggestions so advice is top quality
-    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
     const strategicAdvice = getStrategicAdvice(this.game);
+    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    this.setState({ analysis, suggestedMoves, strategicAdvice });
+    // Use Fairy-Stockfish engine if available, else fall back to built-in AI
+    if (this.state.engineReady && isEngineReady()) {
+      this._updateAnalysisWithEngine('coach');
+    } else {
+      // Fallback: built-in AI (synchronous, in next tick)
+      setTimeout(() => {
+        if (!this.game) return;
+        const history = this.game.history_moves();
+        const suggestedMoves = getTopMoves(this.game, 3, history);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }, 0);
+    }
+  };
+
+  // Async engine-powered analysis (non-blocking via WASM worker)
+  _updateAnalysisWithEngine = async (mode) => {
+    if (!this.game) return;
+
+    try {
+      // Run engine analysis - get moves first (this also gives us the score)
+      // DON'T run in parallel - they share singleton state and would race!
+      const engineMoves = await getTopMovesEngine(this.game, 3);
+
+      if (!this.game) return; // Component may have unmounted
+
+      if (engineMoves && engineMoves.length > 0) {
+        // Extract analysis from the top move's score
+        // The engine score is from side-to-move's perspective
+        // Convert to Red's perspective for display
+        const topMove = engineMoves[0];
+        const turn = this.game.turn;
+        const rawScore = topMove.score || 0;
+        // If it's Red's turn, positive score = good for Red
+        // If it's Black's turn, positive score = good for Black, so negate for Red's perspective
+        const scoreFromRed = turn === 'r' ? rawScore : -rawScore;
+        const winProb = 1 / (1 + Math.exp(-scoreFromRed / 200));
+
+        // Build evaluation text based on score from Red's perspective
+        let evaluation = '';
+        const absScore = Math.abs(scoreFromRed);
+        if (absScore < 30) {
+          evaluation = '局面均势 / Equal position';
+        } else if (absScore < 100) {
+          evaluation = scoreFromRed > 0 ? '红方略优 / Red edge' : '黑方略优 / Black edge';
+        } else if (absScore < 300) {
+          evaluation = scoreFromRed > 0 ? '红方稍优 / Red slightly better' : '黑方稍优 / Black slightly better';
+        } else if (absScore < 700) {
+          evaluation = scoreFromRed > 0 ? '红方优势 / Red advantage' : '黑方优势 / Black advantage';
+        } else if (absScore < 2000) {
+          evaluation = scoreFromRed > 0 ? '红方大优 / Red winning' : '黑方大优 / Black winning';
+        } else {
+          evaluation = scoreFromRed > 0 ? '红方必胜 / Red decisive' : '黑方必胜 / Black decisive';
+        }
+
+        const engineAnalysis = {
+          score: scoreFromRed,
+          evaluation,
+          winProbability: {
+            red: winProb,
+            black: 1 - winProb,
+          },
+          depth: topMove.engineDepth || 20,
+          enginePowered: true,
+        };
+
+
+        this.setState({ 
+          analysis: engineAnalysis,
+          suggestedMoves: engineMoves, 
+          coachAnalyzing: false 
+        });
+      } else {
+        // Engine returned no moves — fall back to built-in
+        const history = this.game.history_moves();
+        const suggestedMoves = getTopMoves(this.game, 3, history);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }
+    } catch (err) {
+      console.error('[XiangqiGame] Engine analysis error:', err);
+      // Fallback to built-in AI
+      if (!this.game) return;
+      const history = this.game.history_moves();
+      const suggestedMoves = getTopMoves(this.game, 3, history);
+      this.setState({ suggestedMoves, coachAnalyzing: false });
+    }
   };
 
   // Check for threats after AI moves (for coach mode)
@@ -337,57 +583,88 @@ class XiangqiGame extends Component {
     this.setState({ threatWarning: threats.length > 0 ? threats : null });
   };
 
-  makeAIMove = () => {
-    if (!this.game || this.state.gameOver) return;
+  makeAIMove = async () => {
+    if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn === this.state.playerColor) return;
 
     this.setState({ aiThinking: true });
 
-    setTimeout(() => {
-      const bestMove = findBestMove(this.game, this.state.aiDifficulty);
+    let bestMove = null;
+    let explanation = '';
 
-      if (bestMove && this.game) {
-        // Get explanation for coach mode
-        let explanation = '';
-        if (this.state.gameMode === 'coach') {
-          explanation = explainAIMove(this.game, bestMove);
+    // Try to use Fairy-Stockfish engine for AI opponent
+    if (this.state.engineReady && isEngineReady()) {
+      try {
+        // Skill level mapping (0-20 scale):
+        // - Coach mode: skill 20 (100%) - GM level, full strength
+        // - AI opponent: lower skill for beatable gameplay
+        const skillByDifficulty = {
+          1: 1,   // Beginner: skill 1 (5%)
+          2: 3,   // Easy: skill 3 (15%)
+          3: 5,   // Medium: skill 5 (25%)
+          4: 7,   // Hard: skill 7 (35%)
+        };
+        const skillLevel = skillByDifficulty[this.state.aiDifficulty] || 3;
+        
+
+        
+        const engineMoves = await getTopMovesEngine(this.game, 1, [], { skillLevel });
+        
+        if (engineMoves && engineMoves.length > 0) {
+          bestMove = engineMoves[0].move;
+          explanation = engineMoves[0].explanation || '';
+
         }
-
-        // Parse move positions for highlighting
-        const fromPos = this.parsePosition(bestMove.from);
-        const toPos = this.parsePosition(bestMove.to);
-
-        this.game.move(bestMove);
-        this.setState({
-          fen: this.game.toFEN(),
-          history: this.game.history_moves(),
-          aiThinking: false,
-          lastAIExplanation: explanation,
-          validMoves: [],
-          lastMove: fromPos && toPos ? {
-            fromRow: fromPos.row,
-            fromCol: fromPos.col,
-            toRow: toPos.row,
-            toCol: toPos.col,
-          } : null,
-        }, () => {
-          // Save game state after AI move
-          this.saveGameState();
-        });
-        this.updateGameStatus();
-
-        // Update analysis based on mode
-        if (this.state.gameMode === 'coach') {
-          this.updateAnalysis();
-          // Check for threats to warn the player
-          setTimeout(() => this.checkThreats(), 50);
-        } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
-          this.updateAnalysisForAI();
-        }
-      } else {
-        this.setState({ aiThinking: false });
+      } catch (err) {
+        console.warn('[XiangqiGame] Engine AI failed, falling back to built-in:', err);
       }
-    }, 100);
+    }
+
+    // Fallback to built-in AI if engine didn't return a move
+    if (!bestMove) {
+
+      bestMove = findBestMove(this.game, this.state.aiDifficulty);
+      if (this.state.gameMode === 'coach') {
+        explanation = explainAIMove(this.game, bestMove);
+      }
+    }
+
+    if (bestMove && this.game) {
+      // Parse move positions for highlighting
+      const fromPos = this.parsePosition(bestMove.from);
+      const toPos = this.parsePosition(bestMove.to);
+
+      this.game.move(bestMove);
+      this.setState({
+        fen: this.game.toFEN(),
+        history: this.game.history_moves(),
+        aiThinking: false,
+        lastAIExplanation: explanation,
+        validMoves: [],
+        lastMove: fromPos && toPos ? {
+          fromRow: fromPos.row,
+          fromCol: fromPos.col,
+          toRow: toPos.row,
+          toCol: toPos.col,
+        } : null,
+      }, () => {
+        // Save game state after AI move
+        this.saveGameState();
+      });
+      this.updateGameStatus();
+
+      // Update analysis based on mode (use setTimeout to avoid blocking UI)
+      if (this.state.gameMode === 'coach') {
+        setTimeout(() => {
+          this.updateAnalysis();
+          this.checkThreats();
+        }, 50);
+      } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
+        this.updateAnalysisForAI();
+      }
+    } else {
+      this.setState({ aiThinking: false });
+    }
   };
 
   parsePosition = (pos) => {
@@ -474,7 +751,13 @@ class XiangqiGame extends Component {
       setTimeout(() => this.makeAIMove(), 300);
     }
 
-    // Coach analysis updates after AI move (inside makeAIMove), not here
+    // Update coach analysis after player move (position eval + strategic advice)
+    if (this.state.gameMode === 'coach') {
+      // Clear stale suggestions immediately, show fresh analysis after AI responds
+      const analysis = analyzePosition(this.game);
+      const strategicAdvice = getStrategicAdvice(this.game);
+      this.setState({ analysis, strategicAdvice, suggestedMoves: [], coachAnalyzing: true });
+    }
 
     // Update analysis for AI mode with coach hints
     if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
@@ -486,6 +769,8 @@ class XiangqiGame extends Component {
     if (!this.game) return;
     this.game.reset();
     clearCache();
+    resetPositionHistory();
+    clearAnalysisCache();
 
     // Clear saved state when starting new game
     this.clearSavedState();
@@ -501,6 +786,13 @@ class XiangqiGame extends Component {
       analysis: null,
       suggestedMoves: [],
       threatWarning: null,
+      // Reset rating state for new game
+      showResultDialog: false,
+      pendingResult: null,
+      oldRating: null,
+      newRating: null,
+      ratingDelta: null,
+      ratingProcessed: false,
     });
     this.updateGameStatus();
 
@@ -516,12 +808,45 @@ class XiangqiGame extends Component {
   undoMove = () => {
     if (!this.game || this.state.history.length === 0 || this.state.aiThinking) return;
 
-    // Undo two moves in AI mode (player's and AI's)
-    if ((this.state.gameMode === 'ai' || this.state.gameMode === 'coach') && this.state.history.length >= 2) {
-      this.game.undo();
-      this.game.undo();
+    const isAIMode = this.state.gameMode === 'ai' || this.state.gameMode === 'coach';
+
+    // In AI mode, we want to land on the player's turn after undo.
+    // Check the last move color to decide how many moves to undo.
+    if (isAIMode) {
+      const lastMoveColor = this.game.moveHistory[this.game.moveHistory.length - 1]?.color;
+
+      if (lastMoveColor === this.state.playerColor) {
+        // Last move was by the player (e.g. game ended on player's winning move,
+        // or player just moved and AI hasn't replied yet) — undo 1 move
+        this.game.undo();
+      } else if (this.state.history.length >= 2) {
+        // Last move was by AI — undo AI's move and the player's move before it
+        this.game.undo();
+        this.game.undo();
+      } else {
+        this.game.undo();
+      }
     } else {
       this.game.undo();
+    }
+
+    // Determine new game status directly from the engine (avoid race conditions)
+    const isGameOver = this.game.game_over();
+    let newStatus = '';
+    const turn = this.game.turn === 'r' ? '红方' : '黑方';
+    const turnEn = this.game.turn === 'r' ? 'Red' : 'Black';
+    if (isGameOver) {
+      if (this.game.in_checkmate()) {
+        const winner = this.game.turn === 'r' ? '黑方' : '红方';
+        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+        newStatus = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
+      } else {
+        newStatus = '游戏结束 / Game Over';
+      }
+    } else if (this.game.in_check()) {
+      newStatus = `${turn}被将军！/ ${turnEn} is in check!`;
+    } else {
+      newStatus = `${turn}走棋 / ${turnEn} to move`;
     }
 
     this.setState({
@@ -529,16 +854,21 @@ class XiangqiGame extends Component {
       history: this.game.history_moves(),
       validMoves: [],
       lastMove: null,
-      gameOver: false,
+      gameOver: isGameOver,
+      gameStatus: newStatus,
     }, () => {
       // Save game state after undo
       this.saveGameState();
-    });
-    this.updateGameStatus();
 
-    if (this.state.gameMode === 'coach') {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+      // After undo, if it's the AI's turn, trigger AI move
+      if (isAIMode && !isGameOver && this.game.turn !== this.state.playerColor) {
+        setTimeout(() => this.makeAIMove(), 300);
+      }
+
+      if (this.state.gameMode === 'coach' && !isGameOver) {
+        setTimeout(() => this.updateAnalysis(), 100);
+      }
+    });
   };
 
   // Tutorial methods
@@ -546,21 +876,39 @@ class XiangqiGame extends Component {
     const lesson = XIANGQI_LESSONS[lessonIndex];
     if (!lesson || !this.game) return;
 
-    this.game.loadFEN(lesson.fen);
-    this.game.turn = 'r'; // Red always starts in tutorials
+    try {
+      this.game.loadFEN(lesson.fen);
+      this.game.turn = 'r'; // Red always starts in tutorials
 
-    this.setState({
-      gameMode: 'tutorial',
-      currentLesson: lessonIndex,
-      fen: this.game.toFEN(),
-      history: [],
-      gameOver: false,
-      lessonComplete: false,
-      showTutorialHint: false,
-      validMoves: [],
-      lastMove: null,
-      gameStatus: lesson.objective,
-    });
+      this.setState({
+        gameMode: 'tutorial',
+        currentLesson: lessonIndex,
+        fen: this.game.toFEN(),
+        history: [],
+        gameOver: false,
+        lessonComplete: false,
+        showTutorialHint: false,
+        validMoves: [],
+        lastMove: null,
+        gameStatus: lesson.objective,
+      });
+    } catch (err) {
+      console.error('startTutorial error:', err, 'lesson:', lessonIndex);
+      // Recover by resetting to a known good state
+      this.game.reset();
+      this.setState({
+        gameMode: 'tutorial',
+        currentLesson: 0,
+        fen: this.game.toFEN(),
+        history: [],
+        gameOver: false,
+        lessonComplete: false,
+        showTutorialHint: false,
+        validMoves: [],
+        lastMove: null,
+        gameStatus: '加载出错，已重置 / Error, reset',
+      });
+    }
   };
 
   nextLesson = () => {
@@ -596,7 +944,12 @@ class XiangqiGame extends Component {
         gameStatus: '正确！/ Correct!',
       });
     } else {
-      this.game.undo();
+      const undone = this.game.undo();
+      if (!undone) {
+        // undo failed — reload the lesson FEN to recover
+        this.game.loadFEN(lesson.fen);
+        this.game.turn = 'r';
+      }
       this.setState({
         fen: this.game.toFEN(),
         gameStatus: '再试一次 / Try again',
@@ -615,8 +968,8 @@ class XiangqiGame extends Component {
       this.startTutorial(0);
       return;
     }
-    // Coach mode uses highest AI difficulty by default for best guidance
-    const newDifficulty = mode === 'coach' ? 4 : this.state.aiDifficulty;
+    // Coach mode defaults to level 2 (初级) for a good learning experience
+    const newDifficulty = mode === 'coach' ? 2 : this.state.aiDifficulty;
     this.setState({ gameMode: mode, aiDifficulty: newDifficulty }, () => {
       this.resetGame();
     });
@@ -629,7 +982,14 @@ class XiangqiGame extends Component {
   };
 
   setDifficulty = (level) => {
-    this.setState({ aiDifficulty: level });
+    this.setState({ aiDifficulty: level }, () => {
+      // Save immediately so difficulty persists
+      this.saveGameState();
+      // Re-run coach analysis with new difficulty
+      if (this.state.gameMode === 'coach') {
+        this.updateAnalysis();
+      }
+    });
   };
 
   toggleHints = () => {
@@ -654,10 +1014,19 @@ class XiangqiGame extends Component {
     if (!this.game) return;
 
     const analysis = analyzePosition(this.game);
-    const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, 3));
     const strategicAdvice = getStrategicAdvice(this.game);
+    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
 
-    this.setState({ analysis, suggestedMoves, strategicAdvice });
+    // Use Fairy-Stockfish engine if available
+    if (this.state.engineReady && isEngineReady()) {
+      this._updateAnalysisWithEngine('ai');
+    } else {
+      setTimeout(() => {
+        if (!this.game) return;
+        const suggestedMoves = getTopMoves(this.game, 3);
+        this.setState({ suggestedMoves, coachAnalyzing: false });
+      }, 0);
+    }
   };
 
   render() {
@@ -668,16 +1037,207 @@ class XiangqiGame extends Component {
       threatWarning,
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       validMoves, lastMove,
+      showResultDialog, pendingResult, oldRating, newRating,
     } = this.state;
 
     const currentTutorialLesson = XIANGQI_LESSONS[currentLesson];
     const boardOrientation = (gameMode === 'ai' || gameMode === 'coach') && playerColor === 'b' ? 'black' : 'red';
 
+    // ── Fullscreen mode ──
+    if (this.state.isFullscreen) {
+      const fsBoard = Math.min(this.state.boardWidth, window.innerHeight - 120);
+      const { showFullscreenCoach } = this.state;
+      const hasCoachContent = gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI) || analysis || lastAIExplanation || suggestedMoves.length > 0;
+      return (
+        <div className="chess-fullscreen-mode">
+          <div className="fullscreen-corner-menu">
+            <button className="corner-menu-btn" onClick={() => this.setState({ isFullscreen: false })} title="Exit fullscreen">✕</button>
+            <button className="corner-menu-btn" onClick={this.resetGame} title="New game">🔄</button>
+            <button className="corner-menu-btn" onClick={this.undoMove} disabled={history.length === 0 || aiThinking} title="Undo">↩️</button>
+            {hasCoachContent && (
+              <button
+                className={`corner-menu-btn ${showFullscreenCoach ? 'active' : ''}`}
+                onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
+                title="Coach"
+              >
+                💡
+              </button>
+            )}
+          </div>
+          <div className="fullscreen-status">
+            <span>{aiThinking ? 'AI 思考中...' : gameStatus}</span>
+          </div>
+          <div className="fullscreen-board-area" style={{ touchAction: 'none' }}>
+            {this.game && (
+              <XiangqiBoard
+                board={this.game.board}
+                width={Math.min(fsBoard, window.innerHeight - 180)}
+                orientation={boardOrientation}
+                turn={this.game.turn}
+                playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
+                validMoves={validMoves}
+                lastMove={lastMove}
+                onMove={this.handleMove}
+                onSquareSelect={this.handleSquareSelect}
+                disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
+              />
+            )}
+          </div>
+
+          {/* Bottom toolbar */}
+          <div className="fullscreen-bottom-bar">
+            <div className="fullscreen-bottom-rating">
+              <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+            </div>
+            <div className="fullscreen-bottom-actions">
+              <button
+                className="bottom-action-btn hint-btn"
+                onClick={() => suggestedMoves.length > 0 && this.handleMove(suggestedMoves[0].move)}
+                disabled={suggestedMoves.length === 0 || aiThinking || !(this.game && this.game.turn === playerColor)}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint'}
+              >
+                💡 Hint
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.undoMove}
+                disabled={history.length === 0 || aiThinking}
+                title="Undo"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                className="bottom-action-btn"
+                onClick={this.resetGame}
+                title="New Game"
+              >
+                🔄 New
+              </button>
+            </div>
+          </div>
+
+          {/* Slide-in Coach Panel */}
+          {showFullscreenCoach && (
+            <div className="fullscreen-coach-panel">
+              <div className="fullscreen-coach-header">
+                <span>💡 教练 / Coach</span>
+                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}>✕</button>
+              </div>
+              <div className="fullscreen-coach-body">
+                {analysis && (
+                  <div className="analysis-section">
+                    <div className="section-label">胜率 / Win Probability</div>
+                    <div className="win-probability">
+                      <div className="prob-bar">
+                        <div className="prob-red" style={{ width: `${analysis.winProbability.red * 100}%` }}>
+                          {analysis.winProbability.red >= 0.15 && <span>{Math.round(analysis.winProbability.red * 100)}%</span>}
+                        </div>
+                        <div className="prob-black-xiangqi" style={{ width: `${analysis.winProbability.black * 100}%` }}>
+                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
+                        </div>
+                      </div>
+                      <div className="evaluation-text">{analysis.evaluation}</div>
+                    </div>
+                  </div>
+                )}
+                {threatWarning && threatWarning.length > 0 && !aiThinking && (
+                  <div className="analysis-section threat-section">
+                    <div className="section-label">⚠️ Watch Out</div>
+                    {threatWarning.map((t, i) => (
+                      <div key={i} className="threat-item">
+                        <p>{t.cn}</p>
+                        <p className="threat-en">{t.en}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {lastAIExplanation && (
+                  <div className="analysis-section">
+                    <div className="section-label">AI 走法说明</div>
+                    <div className="ai-explanation-box">{lastAIExplanation}</div>
+                  </div>
+                )}
+                {suggestedMoves.length > 0 && !aiThinking && this.game && this.game.turn === playerColor && (
+                  <div className="analysis-section">
+                    <div className="section-label">推荐走法 / Suggested</div>
+                    <div className="suggested-moves-list">
+                      {suggestedMoves.map((item, index) => (
+                        <div key={index} className={`suggestion ${index === 0 ? 'best' : ''}`} onClick={() => this.handleMove(item.move)}>
+                          <div className="suggestion-move">
+                            <span className="rank">#{item.rank}</span>
+                            <span className="san">{item.san}</span>
+                            <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                          </div>
+                          <div className="suggestion-reason">{item.explanation}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {strategicAdvice && strategicAdvice.length > 0 && (
+                  <div className="analysis-section">
+                    <div className="section-label">战略建议 / Advice</div>
+                    <div className="strategic-advice-list">
+                      {strategicAdvice.map((advice, index) => (
+                        <div key={index} className={`advice-item priority-${advice.priority}`}>
+                          <p className="advice-cn">{advice.cn}</p>
+                          <p className="advice-en">{advice.en}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+                  <div className="analysis-empty">下棋后查看教练分析<br/>Play a move to see coach analysis</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {showResultDialog && (
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult?.result}
+              message={pendingResult?.status}
+              oldRating={oldRating}
+              newRating={newRating}
+              gameType="xiangqi"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+              moves={this.state.history.length}
+              onRematch={this.handleRematch}
+              onClose={this.closeResultDialog}
+            />
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="xiangqi-game-layout">
+        {/* Game Result Dialog with Rating Change */}
+        <GameResultDialog
+          isOpen={showResultDialog}
+          result={pendingResult?.result}
+          message={pendingResult?.status}
+          oldRating={oldRating}
+          newRating={newRating}
+          gameType="xiangqi"
+          opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+          moves={this.state.history.length}
+          onRematch={this.handleRematch}
+          onClose={this.closeResultDialog}
+        />
+
         {/* Left Panel - Settings */}
         <div className="settings-panel xiangqi-settings">
           <div className="panel-title">中国象棋 / Chinese Chess</div>
+
+          {/* Player Rating Display */}
+          {(gameMode === 'ai' || gameMode === 'coach') && (
+            <div className="settings-section">
+              <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
+            </div>
+          )}
 
           {/* Game Mode */}
           <div className="settings-section">
@@ -789,11 +1349,11 @@ class XiangqiGame extends Component {
             {aiThinking ? 'AI 思考中... / AI thinking...' : gameStatus}
           </div>
 
-          <div className="xiangqi-board-wrapper">
+          <div className="xiangqi-board-wrapper" style={{ touchAction: 'none' }}>
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
-                width={450}
+                width={this.state.boardWidth}
                 orientation={boardOrientation}
                 turn={this.game.turn}
                 playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
@@ -805,6 +1365,10 @@ class XiangqiGame extends Component {
               />
             )}
           </div>
+
+          <button className="fullscreen-toggle-btn" onClick={() => this.setState({ isFullscreen: true })}>
+            ⛶ Fullscreen
+          </button>
 
           {/* Move History */}
           {gameMode !== 'tutorial' && (
@@ -831,12 +1395,25 @@ class XiangqiGame extends Component {
         {/* Right Panel - Analysis (Coach Mode or AI with hints) */}
         {(gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI)) && (
           <div className="analysis-panel-right xiangqi-analysis">
-            <div className="panel-title">{gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}</div>
+            <div className="panel-title">
+              {gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}
+              {this.state.engineReady && (
+                <span className="engine-badge" title="Fairy-Stockfish WASM engine active">⚡ GM</span>
+              )}
+              {this.state.engineLoading && (
+                <span className="engine-badge loading" title="Loading engine...">⏳</span>
+              )}
+            </div>
 
             {/* Win Probability */}
             {analysis && (
               <div className="analysis-section">
-                <div className="section-label">胜率 / Win Probability</div>
+                <div className="section-label">
+                  胜率 / Win Probability
+                  {analysis.enginePowered && analysis.depth && (
+                    <span className="engine-depth"> (depth {analysis.depth})</span>
+                  )}
+                </div>
                 <div className="win-probability">
                   <div className="prob-bar">
                     <div
@@ -885,7 +1462,17 @@ class XiangqiGame extends Component {
             )}
 
             {/* Suggested Moves */}
-            {suggestedMoves.length > 0 && !aiThinking && this.game && this.game.turn === playerColor && (
+            {this.state.coachAnalyzing && !aiThinking && (
+              <div className="analysis-section">
+                <div className="section-label">推荐走法 / Suggested Moves</div>
+                <div className="coach-analyzing">
+                  {this.state.engineReady
+                    ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
+                    : '🔍 教练分析中... / Coach analyzing...'}
+                </div>
+              </div>
+            )}
+            {suggestedMoves.length > 0 && !aiThinking && !this.state.coachAnalyzing && this.game && this.game.turn === playerColor && (
               <div className="analysis-section">
                 <div className="section-label">推荐走法 / Suggested Moves</div>
                 <div className="suggested-moves-list">

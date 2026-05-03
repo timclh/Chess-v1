@@ -252,6 +252,13 @@ function evaluate(game) {
   const board = game.board;
   const inOpening = isOpeningPhase(game);
 
+  // Piece counts for endgame detection
+  let redMaterial = 0;
+  let blackMaterial = 0;
+  let redChariots = 0, blackChariots = 0;
+  let redCannons = 0, blackCannons = 0;
+  let redHorses = 0, blackHorses = 0;
+
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
       const piece = board[row][col];
@@ -265,10 +272,18 @@ function evaluate(game) {
         // Red pieces - use table directly
         positionBonus = positionTable[row][col];
         score += pieceValue + positionBonus;
+        redMaterial += pieceValue;
+        if (piece.type === 'r') redChariots++;
+        if (piece.type === 'c') redCannons++;
+        if (piece.type === 'h') redHorses++;
       } else {
         // Black pieces - mirror the table
         positionBonus = positionTable[9 - row][8 - col];
         score -= pieceValue + positionBonus;
+        blackMaterial += pieceValue;
+        if (piece.type === 'r') blackChariots++;
+        if (piece.type === 'c') blackCannons++;
+        if (piece.type === 'h') blackHorses++;
       }
     }
   }
@@ -276,6 +291,23 @@ function evaluate(game) {
   // Add opening-specific evaluation
   if (inOpening) {
     score += evaluateOpening(game);
+  }
+
+  // King safety evaluation
+  score += evaluateKingSafety(board, 'r') - evaluateKingSafety(board, 'b');
+
+  // Chariot on open file bonus
+  score += evaluateChariotActivity(board, 'r') - evaluateChariotActivity(board, 'b');
+
+  // Mobility bonus (rough estimate)
+  const redMoves = game.turn === 'r' ? game.moves().length : 0;
+  score += redMoves * 2;
+
+  // Endgame adjustments
+  const totalMaterial = redMaterial + blackMaterial;
+  if (totalMaterial < 4000) {
+    // In endgame, connected passed soldiers are very valuable
+    score += evaluateEndgame(board, 'r') - evaluateEndgame(board, 'b');
   }
 
   // Bonus for check
@@ -291,6 +323,116 @@ function evaluate(game) {
   return score;
 }
 
+// Evaluate king safety
+function evaluateKingSafety(board, color) {
+  let safety = 0;
+  
+  // Find king position
+  let kingRow = -1, kingCol = -1;
+  for (let row = 0; row < 10; row++) {
+    for (let col = 3; col <= 5; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'k' && piece.color === color) {
+        kingRow = row;
+        kingCol = col;
+        break;
+      }
+    }
+    if (kingRow >= 0) break;
+  }
+  
+  if (kingRow < 0) return -1000; // King not found (should not happen)
+
+  // Bonus for having advisors
+  const palaceRows = color === 'r' ? [7, 8, 9] : [0, 1, 2];
+  let advisorCount = 0;
+  let elephantCount = 0;
+  
+  for (const row of palaceRows) {
+    for (let col = 3; col <= 5; col++) {
+      const piece = board[row][col];
+      if (piece && piece.color === color) {
+        if (piece.type === 'a') advisorCount++;
+        if (piece.type === 'e') elephantCount++;
+      }
+    }
+  }
+  
+  safety += advisorCount * 30;
+  safety += elephantCount * 20;
+
+  // Penalty if king is exposed on file (flying general threat)
+  const enemyKingRow = color === 'r' ? [0, 1, 2] : [7, 8, 9];
+  let blockerCount = 0;
+  const minRow = Math.min(kingRow, ...enemyKingRow);
+  const maxRow = Math.max(kingRow, ...enemyKingRow);
+  
+  for (let row = minRow + 1; row < maxRow; row++) {
+    if (board[row][kingCol]) blockerCount++;
+  }
+  
+  if (blockerCount === 0) {
+    safety -= 50; // Vulnerable to flying general attacks
+  }
+
+  return safety;
+}
+
+// Evaluate chariot activity
+function evaluateChariotActivity(board, color) {
+  let activity = 0;
+  
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 9; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 'r' && piece.color === color) {
+        // Bonus for being on open file
+        let openFile = true;
+        for (let r = 0; r < 10; r++) {
+          if (r !== row && board[r][col] && board[r][col].type === 's') {
+            openFile = false;
+            break;
+          }
+        }
+        if (openFile) activity += 20;
+        
+        // Bonus for penetrating enemy territory
+        if (color === 'r' && row <= 4) activity += 15;
+        if (color === 'b' && row >= 5) activity += 15;
+        
+        // Bonus for being on 7th/3rd rank (near enemy palace)
+        if (color === 'r' && row <= 2) activity += 25;
+        if (color === 'b' && row >= 7) activity += 25;
+      }
+    }
+  }
+  
+  return activity;
+}
+
+// Evaluate endgame factors
+function evaluateEndgame(board, color) {
+  let bonus = 0;
+  
+  // Find king and promote passed soldiers
+  for (let row = 0; row < 10; row++) {
+    for (let col = 0; col < 9; col++) {
+      const piece = board[row][col];
+      if (piece && piece.type === 's' && piece.color === color) {
+        // Soldier in enemy territory
+        if (color === 'r' && row <= 4) {
+          bonus += (5 - row) * 10; // More advanced = more valuable
+        }
+        if (color === 'b' && row >= 5) {
+          bonus += (row - 4) * 10;
+        }
+      }
+    }
+  }
+  
+  return bonus;
+}
+
 // Quick evaluation for sorting moves
 function quickEvaluate(game) {
   const score = evaluate(game);
@@ -301,8 +443,70 @@ function quickEvaluate(game) {
   };
 }
 
-// Minimax with alpha-beta pruning
-function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
+// Quiescence search - continue searching captures to avoid horizon effect
+function quiescence(game, alpha, beta, maximizing, startTime, timeLimit, qDepth = 0) {
+  // Limit quiescence depth
+  if (qDepth > 6 || Date.now() - startTime > timeLimit) {
+    return evaluate(game);
+  }
+
+  const standPat = evaluate(game);
+  
+  if (maximizing) {
+    if (standPat >= beta) return beta;
+    if (standPat > alpha) alpha = standPat;
+  } else {
+    if (standPat <= alpha) return alpha;
+    if (standPat < beta) beta = standPat;
+  }
+
+  // Only search captures and checks
+  const allMoves = game.moves({ verbose: true });
+  const tacticalMoves = allMoves.filter(m => m.captured);
+  
+  // Sort by MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+  tacticalMoves.sort((a, b) => {
+    const scoreA = PIECE_VALUES[a.captured] * 10 - PIECE_VALUES[a.piece];
+    const scoreB = PIECE_VALUES[b.captured] * 10 - PIECE_VALUES[b.piece];
+    return scoreB - scoreA;
+  });
+
+  for (const move of tacticalMoves) {
+    const newGame = cloneGame(game);
+    newGame.move(move);
+    
+    const score = quiescence(newGame, alpha, beta, !maximizing, startTime, timeLimit, qDepth + 1);
+    
+    if (maximizing) {
+      if (score > alpha) alpha = score;
+      if (alpha >= beta) break;
+    } else {
+      if (score < beta) beta = score;
+      if (beta <= alpha) break;
+    }
+  }
+  
+  return maximizing ? alpha : beta;
+}
+
+// Killer moves for better move ordering (moves that caused cutoffs)
+const killerMoves = new Array(20).fill(null).map(() => [null, null]);
+
+// History heuristic for move ordering
+const historyTable = {};
+
+function updateHistory(move, depth) {
+  const key = `${move.from}-${move.to}`;
+  historyTable[key] = (historyTable[key] || 0) + depth * depth;
+}
+
+function getHistoryScore(move) {
+  const key = `${move.from}-${move.to}`;
+  return historyTable[key] || 0;
+}
+
+// Minimax with alpha-beta pruning and advanced features
+function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit, ply = 0) {
   // Check time limit
   if (Date.now() - startTime > timeLimit) {
     return { score: evaluate(game), timeout: true };
@@ -315,18 +519,47 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
     return cached;
   }
 
-  if (depth === 0 || game.game_over()) {
-    const score = evaluate(game);
+  if (game.game_over()) {
+    if (game.in_checkmate()) {
+      // Return mate score adjusted by ply (prefer faster mates)
+      return { score: maximizing ? -100000 + ply : 100000 - ply };
+    }
+    return { score: 0 }; // Stalemate
+  }
+
+  if (depth === 0) {
+    // Use quiescence search instead of static eval
+    const score = quiescence(game, alpha, beta, maximizing, startTime, timeLimit);
     return { score };
   }
 
   const moves = game.moves({ verbose: true });
 
-  // Move ordering: captures first, then checks
+  // Advanced move ordering for better pruning
+  // 1. Captures sorted by MVV-LVA
+  // 2. Killer moves
+  // 3. History heuristic
+  // 4. Other moves
   moves.sort((a, b) => {
     let scoreA = 0, scoreB = 0;
-    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
+    
+    // Captures: MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
+    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 100 - PIECE_VALUES[a.piece];
+    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 100 - PIECE_VALUES[b.piece];
+    
+    // Killer moves bonus
+    const killerSlot = killerMoves[ply];
+    if (killerSlot) {
+      if (killerSlot[0] && killerSlot[0].from === a.from && killerSlot[0].to === a.to) scoreA += 5000;
+      if (killerSlot[1] && killerSlot[1].from === a.from && killerSlot[1].to === a.to) scoreA += 4000;
+      if (killerSlot[0] && killerSlot[0].from === b.from && killerSlot[0].to === b.to) scoreB += 5000;
+      if (killerSlot[1] && killerSlot[1].from === b.from && killerSlot[1].to === b.to) scoreB += 4000;
+    }
+    
+    // History heuristic
+    scoreA += getHistoryScore(a);
+    scoreB += getHistoryScore(b);
+    
     return scoreB - scoreA;
   });
 
@@ -339,7 +572,7 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       const newGame = cloneGame(game);
       newGame.move(move);
 
-      const result = minimax(newGame, depth - 1, alpha, beta, false, startTime, timeLimit);
+      const result = minimax(newGame, depth - 1, alpha, beta, false, startTime, timeLimit, ply + 1);
 
       if (result.timeout) return result;
 
@@ -349,7 +582,18 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       }
 
       alpha = Math.max(alpha, result.score);
-      if (beta <= alpha) break;
+      if (beta <= alpha) {
+        // Beta cutoff - update killer moves and history
+        if (!move.captured) {
+          // Shift killer moves
+          if (killerMoves[ply]) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+          }
+          updateHistory(move, depth);
+        }
+        break;
+      }
     }
 
     const cacheEntry = { score: maxEval, depth, move: bestMove };
@@ -365,7 +609,7 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       const newGame = cloneGame(game);
       newGame.move(move);
 
-      const result = minimax(newGame, depth - 1, alpha, beta, true, startTime, timeLimit);
+      const result = minimax(newGame, depth - 1, alpha, beta, true, startTime, timeLimit, ply + 1);
 
       if (result.timeout) return result;
 
@@ -375,7 +619,17 @@ function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
       }
 
       beta = Math.min(beta, result.score);
-      if (beta <= alpha) break;
+      if (beta <= alpha) {
+        // Alpha cutoff - update killer moves and history
+        if (!move.captured) {
+          if (killerMoves[ply]) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+          }
+          updateHistory(move, depth);
+        }
+        break;
+      }
     }
 
     const cacheEntry = { score: minEval, depth, move: bestMove };
@@ -394,8 +648,27 @@ function cloneGame(game) {
   return newGame;
 }
 
+// Position history for anti-repetition
+const positionHistory = new Map();
+
+function recordPosition(fen) {
+  const count = positionHistory.get(fen) || 0;
+  positionHistory.set(fen, count + 1);
+}
+
+function getRepetitionCount(fen) {
+  return positionHistory.get(fen) || 0;
+}
+
+function resetPositionHistory() {
+  positionHistory.clear();
+}
+
 // Find best move
 function findBestMove(game, difficulty = 2) {
+  // Record current position
+  recordPosition(game.toFEN());
+
   // Check opening book first for higher difficulties
   if (difficulty >= 2 && isOpeningPhase(game)) {
     const bookMove = getOpeningBookMove(game);
@@ -408,34 +681,119 @@ function findBestMove(game, difficulty = 2) {
     }
   }
 
-  // AI opponent depths - lower for easier opponents
-  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
-  const timeLimits = { 1: 500, 2: 1000, 3: 2000, 4: 4000 };
+  // AI opponent depths - SIGNIFICANTLY INCREASED for stronger play
+  // Level 1: Very easy (makes mistakes)
+  // Level 2: Easy (shallow search)
+  // Level 3: Medium (decent search)
+  // Level 4: Hard (deep search, strong player)
+  const depths = { 1: 2, 2: 4, 3: 5, 4: 6 };
+  const timeLimits = { 1: 500, 2: 2000, 3: 4000, 4: 8000 };
 
-  const depth = depths[difficulty] || 3;
-  const timeLimit = timeLimits[difficulty] || 2000;
+  const depth = depths[difficulty] || 4;
+  const timeLimit = timeLimits[difficulty] || 3000;
   const startTime = Date.now();
 
+  // Use iterative deepening for better time management
+  let bestMove = null;
+  let bestScore = -Infinity;
+  
   const maximizing = game.turn === 'r';
-  const result = minimax(game, depth, -Infinity, Infinity, maximizing, startTime, timeLimit);
+  
+  for (let d = 2; d <= depth; d++) {
+    const result = minimax(game, d, -Infinity, Infinity, maximizing, startTime, timeLimit);
+    
+    if (result.timeout) break;
+    
+    if (result.move) {
+      bestMove = result.move;
+      bestScore = result.score;
+    }
+    
+    // If we found checkmate, no need to search deeper
+    if (Math.abs(result.score) > 50000) break;
+  }
 
-  // Add some randomness only at lowest difficulties
-  if (difficulty <= 1 && Math.random() < 0.2) {
+  // Add some randomness only at lowest difficulty
+  if (difficulty <= 1 && Math.random() < 0.3) {
     const moves = game.moves({ verbose: true });
     if (moves.length > 1) {
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      // Pick a random move from top half
+      const sorted = [...moves].sort((a, b) => {
+        const scoreA = a.captured ? PIECE_VALUES[a.captured] : 0;
+        const scoreB = b.captured ? PIECE_VALUES[b.captured] : 0;
+        return scoreB - scoreA;
+      });
+      const topHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
+      const randomMove = topHalf[Math.floor(Math.random() * topHalf.length)];
       return randomMove;
     }
   }
 
-  return result.move || game.moves({ verbose: true })[0];
+  if (!bestMove) {
+    bestMove = game.moves({ verbose: true })[0];
+  }
+
+  // Anti-repetition: if the best move leads to a repeated position, try alternatives
+  if (bestMove) {
+    const testGame = cloneGame(game);
+    testGame.move(bestMove);
+    const resultFen = testGame.toFEN();
+    const repCount = getRepetitionCount(resultFen);
+
+    if (repCount >= 1) {
+      // Best move repeats — find the best non-repeating alternative
+      const moves = game.moves({ verbose: true });
+      let bestAlt = null;
+      let bestAltScore = -Infinity;
+
+      for (const m of moves) {
+        const tg = cloneGame(game);
+        tg.move(m);
+        const mFen = tg.toFEN();
+        if (getRepetitionCount(mFen) === 0) {
+          // Evaluate this non-repeating move
+          const mx = tg.turn === 'r';
+          const mr = minimax(tg, Math.max(1, depth - 1), -Infinity, Infinity, mx, Date.now(), 500);
+          const score = game.turn === 'r' ? mr.score : -mr.score;
+          if (score > bestAltScore) {
+            bestAltScore = score;
+            bestAlt = m;
+          }
+        }
+      }
+
+      // Use alternative if it's not drastically worse (within 200 centipawns)
+      if (bestAlt) {
+        const bestScore = game.turn === 'r' ? result.score : -result.score;
+        if (bestAltScore > bestScore - 200) {
+          bestMove = bestAlt;
+        }
+      }
+    }
+  }
+
+  return bestMove;
 }
 
-// Get top N moves for coach mode - uses deep search for accurate evaluation
-function getTopMoves(game, n = 3, difficulty = 4) {
+// Get top N moves for coach mode - always uses maximum strength search
+function getTopMoves(game, n = 3, moveHistory = []) {
   const moves = game.moves({ verbose: true });
   const evaluatedMoves = [];
   const inOpening = isOpeningPhase(game);
+
+  // Build recent move map for anti-repetition
+  // Check last 10 moves by the current player for reversals
+  const recentPlayerMoves = moveHistory.filter(m => m.color === game.turn).slice(-5);
+
+  // Detect reversal: if the last player move was A→B, penalize B→A
+  const lastPlayerMove = recentPlayerMoves.length > 0 ? recentPlayerMoves[recentPlayerMoves.length - 1] : null;
+
+  // Count how many times each from→to pair has been played by this player
+  const moveFrequency = {};
+  for (const m of moveHistory.filter(m => m.color === game.turn)) {
+    const key = `${m.from}-${m.to}`;
+    moveFrequency[key] = (moveFrequency[key] || 0) + 1;
+  }
 
   // Check opening book first
   if (inOpening) {
@@ -465,40 +823,29 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     }
   }
 
-  // Use search for suggestions - balanced depth/time for responsiveness
-  const depths = { 1: 1, 2: 2, 3: 3, 4: 4 };
-  const searchDepth = depths[difficulty] || 3;
-  const timeLimit = 3000; // 3 seconds for suggestions
+  // Coach uses strong search - depth 6 with ample time for quality suggestions
+  // (Higher depths block the UI thread since JS is single-threaded)
+  const COACH_DEPTH = 6;
+  const searchDepth = COACH_DEPTH;
+  const timeLimit = 5000; // 5 seconds max per analysis
   const startTime = Date.now();
-  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 10));
 
-  // Pre-sort moves to evaluate promising ones first
-  const sortedMoves = [...moves].sort((a, b) => {
-    let scoreA = 0, scoreB = 0;
-
-    // Prioritize non-capture developing moves in opening
-    if (inOpening) {
-      // Cannon to center is excellent
-      if (a.piece === 'c' && a.to[0] === 'e') scoreA += 50;
-      if (b.piece === 'c' && b.to[0] === 'e') scoreB += 50;
-
-      // Horse development is good
-      if (a.piece === 'h' && !a.captured) scoreA += 30;
-      if (b.piece === 'h' && !b.captured) scoreB += 30;
-
-      // Discourage early captures (often bad trades)
-      if (a.captured) scoreA -= 20;
-      if (b.captured) scoreB -= 20;
-    } else {
-      // In middlegame/endgame, captures are important
-      if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-      if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
-    }
-
-    return scoreB - scoreA;
+  // Pre-sort moves by quick evaluation to find promising candidates
+  const quickScored = moves.map(move => {
+    const newGame = cloneGame(game);
+    newGame.move(move);
+    const raw = evaluate(newGame);
+    const score = game.turn === 'r' ? raw : -raw;
+    return { move, score };
   });
+  quickScored.sort((a, b) => b.score - a.score);
 
-  for (const move of sortedMoves) {
+  // Evaluate more candidates for coach accuracy
+  const topCandidates = quickScored.slice(0, 12);
+  const timePerMove = Math.floor((timeLimit - (Date.now() - startTime)) / topCandidates.length);
+
+  for (const candidate of topCandidates) {
+    const move = candidate.move;
     // Time check
     if (Date.now() - startTime > timeLimit) break;
 
@@ -532,6 +879,19 @@ function getTopMoves(game, n = 3, difficulty = 4) {
       } else if (move.piece === 'h' && !move.captured) {
         score += 20; // Horse development
       }
+    }
+
+    // Anti-repetition: light penalties to prefer new moves when alternatives are similar
+    // These are small enough to never override a genuinely better move
+    if (lastPlayerMove && move.from === lastPlayerMove.to && move.to === lastPlayerMove.from) {
+      score -= 20; // Small nudge away from direct reversal
+    }
+
+    // Light penalty for moves we've already played (shuffling)
+    const moveKey = `${move.from}-${move.to}`;
+    const freq = moveFrequency[moveKey] || 0;
+    if (freq > 0) {
+      score -= freq * 10; // Tiny increasing penalty
     }
 
     evaluatedMoves.push({
@@ -633,11 +993,13 @@ function analyzePosition(game) {
 }
 
 // Get strategic advice for coach mode
+// Now position-aware: reads actual piece placement, threats, and structure
 function getStrategicAdvice(game) {
   const advice = [];
   const board = game.board;
   const turn = game.turn;
   const turnName = turn === 'r' ? '红方' : '黑方';
+  const oppColor = turn === 'r' ? 'b' : 'r';
 
   // Check detection
   if (game.in_check()) {
@@ -649,112 +1011,182 @@ function getStrategicAdvice(game) {
     return advice;
   }
 
-  // Count pieces
-  let redPieces = { total: 0, r: 0, h: 0, c: 0, s: 0 };
-  let blackPieces = { total: 0, r: 0, h: 0, c: 0, s: 0 };
+  // ── Scan board for piece positions ──
+  const pieces = { r: [], b: [] };
+  let redPieces = { total: 0, r: 0, h: 0, c: 0, s: 0, a: 0, e: 0 };
+  let blackPieces = { total: 0, r: 0, h: 0, c: 0, s: 0, a: 0, e: 0 };
+  let kingPos = {};
 
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
       const piece = board[row][col];
       if (!piece) continue;
-
-      if (piece.color === 'r') {
-        redPieces.total++;
-        if (redPieces[piece.type] !== undefined) redPieces[piece.type]++;
-      } else {
-        blackPieces.total++;
-        if (blackPieces[piece.type] !== undefined) blackPieces[piece.type]++;
-      }
+      pieces[piece.color].push({ ...piece, row, col });
+      const counter = piece.color === 'r' ? redPieces : blackPieces;
+      counter.total++;
+      if (counter[piece.type] !== undefined) counter[piece.type]++;
+      if (piece.type === 'k') kingPos[piece.color] = { row, col };
     }
   }
 
   const myPieces = turn === 'r' ? redPieces : blackPieces;
   const oppPieces = turn === 'r' ? blackPieces : redPieces;
-
-  // Phase detection
+  const myPieceList = pieces[turn];
+  const oppPieceList = pieces[oppColor];
   const totalPieces = redPieces.total + blackPieces.total;
+
+  // ── Phase detection ──
   const isOpening = totalPieces >= 28;
   const isEndgame = totalPieces <= 14;
+  const isMidgame = !isOpening && !isEndgame;
 
+  // ── Material balance ──
+  const matVal = (p) => p.r * 9 + p.h * 4 + p.c * 4.5 + p.s * 1;
+  const myMat = matVal(myPieces);
+  const oppMat = matVal(oppPieces);
+  const matDiff = myMat - oppMat;
+
+  // ── Detect specific patterns ──
+
+  // 1. Undeveloped back-rank pieces (opening only)
   if (isOpening) {
-    // Opening advice
-    if (myPieces.c === 2) {
+    const homeRow = turn === 'r' ? 9 : 0;
+    const backRankPieces = myPieceList.filter(p =>
+      p.row === homeRow && (p.type === 'h' || p.type === 'r')
+    );
+    if (backRankPieces.length >= 3) {
       advice.push({
-        cn: '💡 开局阶段：可以考虑当头炮或仕角炮开局',
-        en: 'Opening: Consider central cannon or palace corner cannon',
+        cn: '🚀 多个大子未出动，优先出车出马抢先手',
+        en: 'Multiple major pieces undeveloped — prioritize chariot & horse development',
+        priority: 'high',
+      });
+    } else if (backRankPieces.filter(p => p.type === 'r').length === 2) {
+      advice.push({
+        cn: '🚀 双车仍在底线，尽快出车占据开放线',
+        en: 'Both chariots still on back rank — deploy them to open files',
+        priority: 'high',
+      });
+    }
+  }
+
+  // 2. Open file control — chariots on files without soldiers
+  if (myPieces.r > 0 && !isOpening) {
+    const myChariots = myPieceList.filter(p => p.type === 'r');
+    const mySoldierCols = new Set(myPieceList.filter(p => p.type === 's').map(p => p.col));
+    const oppSoldierCols = new Set(oppPieceList.filter(p => p.type === 's').map(p => p.col));
+    const openFiles = myChariots.filter(ch =>
+      !mySoldierCols.has(ch.col) && !oppSoldierCols.has(ch.col)
+    );
+    if (openFiles.length > 0) {
+      advice.push({
+        cn: '📐 车已占据开放线，利用车的纵向机动力',
+        en: 'Chariot controls open file — exploit its vertical mobility',
         priority: 'medium',
       });
     }
+  }
 
-    if (myPieces.h === 2) {
-      advice.push({
-        cn: '💡 及时出动双马，控制中心',
-        en: 'Develop both horses to control the center',
-        priority: 'medium',
-      });
-    }
-
+  // 3. Crossed soldiers (valuable in mid/endgame)
+  const riverRow = turn === 'r' ? 4 : 5;
+  const crossedSoldiers = myPieceList.filter(p =>
+    p.type === 's' && (turn === 'r' ? p.row <= riverRow : p.row >= riverRow)
+  );
+  if (crossedSoldiers.length >= 2 && !isOpening) {
     advice.push({
-      cn: '💡 保护好将帅，注意士象的防守',
-      en: 'Protect the general, maintain advisor and elephant defense',
+      cn: '💪 多个过河兵卒，配合大子可构成强攻',
+      en: `${crossedSoldiers.length} crossed soldiers — coordinate with major pieces to attack`,
       priority: 'medium',
     });
-  } else if (isEndgame) {
-    // Endgame advice
-    if (myPieces.r > 0) {
+  }
+
+  // 4. King safety — missing advisors/elephants
+  const defenseCount = myPieces.a + myPieces.e;
+  if (defenseCount <= 1 && !isEndgame) {
+    advice.push({
+      cn: '🛡️ 防守子力不足（仅剩' + defenseCount + '个士象），注意将帅安全',
+      en: `Low defense (only ${defenseCount} advisor/elephant left) — watch king safety`,
+      priority: 'high',
+    });
+  }
+
+  // 5. Cannon without platform (midgame)
+  if (isMidgame && myPieces.c > 0 && totalPieces <= 20) {
+    advice.push({
+      cn: '💡 子力减少后炮威力降低，考虑用炮换马',
+      en: 'Fewer pieces reduce cannon power — consider trading cannon for horse',
+      priority: 'medium',
+    });
+  }
+
+  // 6. Material advantage / disadvantage
+  if (matDiff >= 9) {
+    advice.push({
+      cn: '✅ 大子力优势！主动兑子简化局面，稳步取胜',
+      en: 'Big material lead — trade pieces to simplify and win',
+      priority: 'high',
+    });
+  } else if (matDiff >= 4) {
+    advice.push({
+      cn: '✅ 子力优势，保持积极但避免不必要的冒险',
+      en: 'Material advantage — stay active but avoid unnecessary risks',
+      priority: 'medium',
+    });
+  } else if (matDiff <= -9) {
+    advice.push({
+      cn: '⚠️ 大幅落后，必须寻找战术反击或逼和',
+      en: 'Far behind in material — must find tactical counterplay or draw',
+      priority: 'critical',
+    });
+  } else if (matDiff <= -4) {
+    advice.push({
+      cn: '⚠️ 子力落后，避免兑子，寻找攻王机会',
+      en: 'Material down — avoid trades, look for king attack chances',
+      priority: 'high',
+    });
+  }
+
+  // 7. Endgame specific
+  if (isEndgame) {
+    if (myPieces.r > 0 && oppPieces.r === 0) {
       advice.push({
-        cn: '💡 残局中车是最强的子力，要充分发挥车的作用',
-        en: 'In endgame, the chariot is most powerful. Use it actively',
+        cn: '🏆 残局有车无车优势极大，用车控制对方将帅活动空间',
+        en: 'Chariot vs no chariot — dominate king\'s movement space',
         priority: 'high',
       });
     }
-
-    if (myPieces.s > 0) {
+    if (myPieces.r === 0 && myPieces.h > 0 && myPieces.c === 0) {
       advice.push({
-        cn: '💡 过河卒子价值大增，可以配合其他子力进攻',
-        en: 'Crossed soldiers are very valuable for attack',
+        cn: '💡 残局马比炮强，利用马的近距离攻击',
+        en: 'Horse is stronger than cannon in endgame — use its close-range power',
         priority: 'medium',
       });
     }
-  } else {
-    // Middle game
-    if (myPieces.r > oppPieces.r) {
+    // King opposition (facing kings on same file)
+    if (kingPos.r && kingPos.b && kingPos.r.col === kingPos.b.col) {
       advice.push({
-        cn: '💡 你有车的优势，应积极进攻',
-        en: 'You have chariot advantage, attack actively',
-        priority: 'high',
-      });
-    }
-
-    if (myPieces.c > 0) {
-      advice.push({
-        cn: '💡 炮需要炮架才能发挥威力，注意配合',
-        en: 'Cannons need platforms to be effective, coordinate pieces',
+        cn: '👑 双王对面，注意利用或避开对面笑规则',
+        en: 'Kings face each other — be aware of the facing kings rule',
         priority: 'medium',
       });
     }
   }
 
-  // Material advice
-  const materialDiff = (myPieces.r - oppPieces.r) * 9 +
-                       (myPieces.h - oppPieces.h) * 4 +
-                       (myPieces.c - oppPieces.c) * 4.5;
-
-  if (materialDiff > 5) {
-    advice.push({
-      cn: '✅ 你有子力优势，可以考虑兑子简化局面',
-      en: 'You have material advantage, consider trading pieces',
-      priority: 'high',
-    });
-  } else if (materialDiff < -5) {
-    advice.push({
-      cn: '⚠️ 对方子力占优，需要寻找战术机会',
-      en: 'Opponent has material advantage, look for tactics',
-      priority: 'high',
-    });
+  // 8. Double chariot coordination
+  if (myPieces.r === 2 && !isOpening) {
+    const chariots = myPieceList.filter(p => p.type === 'r');
+    if (chariots.length === 2 && chariots[0].col === chariots[1].col) {
+      advice.push({
+        cn: '🔥 双车叠在同一线上，火力集中，威胁极大',
+        en: 'Double chariots on same file — concentrated firepower!',
+        priority: 'high',
+      });
+    }
   }
 
-  return advice;
+  // Limit to top 3 most relevant advice (prioritize critical > high > medium)
+  const priorityOrder = { critical: 0, high: 1, medium: 2 };
+  advice.sort((a, b) => (priorityOrder[a.priority] || 9) - (priorityOrder[b.priority] || 9));
+  return advice.slice(0, 3);
 }
 
 // Explain AI move
@@ -779,6 +1211,7 @@ function explainAIMove(game, move) {
 // Clear cache
 function clearCache() {
   transpositionTable.clear();
+  resetPositionHistory();
 }
 
 export {
@@ -790,5 +1223,6 @@ export {
   quickEvaluate,
   evaluate,
   clearCache,
+  resetPositionHistory,
   PIECE_VALUES,
 };

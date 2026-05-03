@@ -3,16 +3,19 @@ import {
   loginWithEmail,
   registerWithEmail,
   loginWithGoogle,
+  resetPassword,
   isFirebaseConfigured
 } from './firebase';
 
 class Login extends Component {
   state = {
     isLogin: true,
+    showForgotPassword: false,
     email: '',
     password: '',
     displayName: '',
     error: '',
+    successMessage: '',
     loading: false,
   };
 
@@ -66,8 +69,35 @@ class Login extends Component {
     }
   };
 
+  handleForgotPassword = async (e) => {
+    e.preventDefault();
+    const { email } = this.state;
+    if (!email.trim()) {
+      this.setState({ error: 'Please enter your email address' });
+      return;
+    }
+    this.setState({ error: '', loading: true });
+    try {
+      await resetPassword(email);
+      this.setState({
+        successMessage: 'Password reset email sent! Check your inbox.',
+        showForgotPassword: false,
+      });
+    } catch (error) {
+      let errorMessage = error.message;
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address';
+      }
+      this.setState({ error: errorMessage });
+    } finally {
+      this.setState({ loading: false });
+    }
+  };
+
   render() {
-    const { isLogin, email, password, displayName, error, loading } = this.state;
+    const { isLogin, showForgotPassword, email, password, displayName, error, successMessage, loading } = this.state;
     const configured = isFirebaseConfigured();
 
     if (!configured) {
@@ -93,12 +123,61 @@ class Login extends Component {
       );
     }
 
+    // Forgot password view
+    if (showForgotPassword) {
+      return (
+        <div className="login-container">
+          <div className="login-box">
+            <h2>Reset Password</h2>
+            <p className="login-subtitle">Enter your email and we'll send you a reset link.</p>
+
+            {error && <div className="login-error">{error}</div>}
+            {successMessage && <div className="login-success">{successMessage}</div>}
+
+            <form onSubmit={this.handleForgotPassword}>
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => this.setState({ email: e.target.value })}
+                  placeholder="email@example.com"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn btn-primary login-btn"
+                disabled={loading}
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+            </form>
+
+            <div className="login-switch">
+              <p>
+                Remember your password?{' '}
+                <button onClick={() => this.setState({ showForgotPassword: false, error: '' })}>
+                  Back to Login
+                </button>
+              </p>
+            </div>
+
+            <button className="btn btn-link close-btn" onClick={this.props.onClose}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="login-container">
         <div className="login-box">
           <h2>{isLogin ? 'Login' : 'Create Account'}</h2>
 
           {error && <div className="login-error">{error}</div>}
+          {successMessage && <div className="login-success">{successMessage}</div>}
 
           <form onSubmit={this.handleSubmit}>
             {!isLogin && (
@@ -134,6 +213,16 @@ class Login extends Component {
                 minLength={6}
               />
             </div>
+            {isLogin && (
+              <div className="forgot-password-link">
+                <button
+                  type="button"
+                  onClick={() => this.setState({ showForgotPassword: true, error: '', successMessage: '' })}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
             <button
               type="submit"
               className="btn btn-primary login-btn"
@@ -142,6 +231,15 @@ class Login extends Component {
               {loading ? 'Loading...' : (isLogin ? 'Login' : 'Create Account')}
             </button>
           </form>
+
+          {!isLogin && (
+            <p className="legal-notice">
+              By creating an account, you agree to our{' '}
+              <button onClick={() => window.open('#/terms', '_blank')}>Terms of Service</button>{' '}
+              and{' '}
+              <button onClick={() => window.open('#/privacy', '_blank')}>Privacy Policy</button>.
+            </p>
+          )}
 
           <div className="login-divider">
             <span>or</span>
@@ -165,14 +263,14 @@ class Login extends Component {
             {isLogin ? (
               <p>
                 Don't have an account?{' '}
-                <button onClick={() => this.setState({ isLogin: false, error: '' })}>
+                <button onClick={() => this.setState({ isLogin: false, error: '', successMessage: '' })}>
                   Sign up
                 </button>
               </p>
             ) : (
               <p>
                 Already have an account?{' '}
-                <button onClick={() => this.setState({ isLogin: true, error: '' })}>
+                <button onClick={() => this.setState({ isLogin: true, error: '', successMessage: '' })}>
                   Login
                 </button>
               </p>
