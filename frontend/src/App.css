@@ -4390,3 +4390,89 @@ body {
     max-height: none;
   }
 }
+
+/* UI pass 2: visual hierarchy and readability */
+.App-header {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  backdrop-filter: blur(8px);
+}
+
+.App-subtitle {
+  letter-spacing: 0.2px;
+}
+
+.nav-btn {
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+.nav-btn:hover {
+  transform: translateY(-1px);
+}
+
+.settings-panel,
+.board-panel,
+.analysis-panel-right,
+.chat-section {
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.panel-title {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+}
+
+.section-label {
+  margin-bottom: 8px;
+}
+
+.toggle-btn,
+.btn,
+.mode-btn,
+.color-btn,
+.diff-btn {
+  min-height: 40px;
+}
+
+.game-status {
+  width: 100%;
+  border-radius: 10px;
+}
+
+.board-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.moves-list {
+  scrollbar-width: thin;
+}
+
+.advice-item {
+  border-radius: 10px;
+}
+
+.analysis-empty {
+  background: #0f172a;
+  color: #94a3b8;
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px dashed #334155;
+}
+
+@media (max-width: 560px) {
+  .App-title {
+    font-size: 1.9em;
+    letter-spacing: 1px;
+  }
+
+  .panel-title {
+    font-size: 14px;
+  }
+
+  .moves-list {
+    max-height: 96px;
+  }
+}
