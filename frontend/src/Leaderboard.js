@@ -1,12 +1,23 @@
 import React, { Component } from "react";
 import { getLeaderboard, getGameHistory } from "./GameHistory";
+import { getRating } from "./services/UserRatingService";
+import EloService from "./services/EloService";
+import { GAME_TYPE, RANK_THRESHOLDS } from "./constants";
+import { RatingHistoryGraph, RatingTrend } from "./components/RatingHistoryGraph";
 
 class Leaderboard extends Component {
   state = {
     leaderboard: [],
     recentGames: [],
-    activeTab: "leaderboard", // 'leaderboard', 'ai-games', 'human-games'
+    activeTab: "leaderboard", // 'leaderboard', 'history', 'ratings'
     historyFilter: "all", // 'all', 'ai', 'human'
+    // Player ELO ratings (getRating returns {rating, gamesPlayed, wins, ...})
+    chessRatingData: getRating(GAME_TYPE.CHESS),
+    xiangqiRatingData: getRating(GAME_TYPE.XIANGQI),
+    wuziqiRatingData: getRating(GAME_TYPE.WUZIQI),
+    chessRank: EloService.getRank(getRating(GAME_TYPE.CHESS).rating || 1200),
+    xiangqiRank: EloService.getRank(getRating(GAME_TYPE.XIANGQI).rating || 1200),
+    wuziqiRank: EloService.getRank(getRating(GAME_TYPE.WUZIQI).rating || 1200),
   };
 
   componentDidMount() {
@@ -16,7 +27,19 @@ class Leaderboard extends Component {
   loadData = () => {
     const leaderboard = getLeaderboard();
     const recentGames = getGameHistory().slice(0, 50);
-    this.setState({ leaderboard, recentGames });
+    const chessData = getRating(GAME_TYPE.CHESS);
+    const xiangqiData = getRating(GAME_TYPE.XIANGQI);
+    const wuziqiData = getRating(GAME_TYPE.WUZIQI);
+    this.setState({
+      leaderboard,
+      recentGames,
+      chessRatingData: chessData,
+      xiangqiRatingData: xiangqiData,
+      wuziqiRatingData: wuziqiData,
+      chessRank: EloService.getRank(chessData.rating || 1200),
+      xiangqiRank: EloService.getRank(xiangqiData.rating || 1200),
+      wuziqiRank: EloService.getRank(wuziqiData.rating || 1200),
+    });
   };
 
   formatDate = (timestamp) => {
@@ -67,8 +90,13 @@ class Leaderboard extends Component {
   };
 
   render() {
-    const { leaderboard, activeTab, historyFilter } = this.state;
+    const { leaderboard, activeTab, historyFilter, chessRatingData, xiangqiRatingData, wuziqiRatingData, chessRank, xiangqiRank, wuziqiRank } = this.state;
     const filteredGames = this.getFilteredGames();
+    
+    // Extract rating numbers for display
+    const chessRating = chessRatingData?.rating || 1200;
+    const xiangqiRating = xiangqiRatingData?.rating || 1200;
+    const wuziqiRating = wuziqiRatingData?.rating || 1200;
 
     return (
       <div className="leaderboard-container">
@@ -82,6 +110,12 @@ class Leaderboard extends Component {
               排行榜 Leaderboard
             </button>
             <button
+              className={`tab-btn ${activeTab === "ratings" ? "active" : ""}`}
+              onClick={() => this.setState({ activeTab: "ratings" })}
+            >
+              评分 My Ratings
+            </button>
+            <button
               className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
               onClick={() => this.setState({ activeTab: "history" })}
             >
@@ -90,7 +124,100 @@ class Leaderboard extends Component {
           </div>
         </div>
 
+        {/* My Ratings Section */}
+        {activeTab === "ratings" && (
+          <div className="ratings-section">
+            <h3>📊 Your ELO Ratings / 你的等级分</h3>
+            <div className="ratings-grid">
+              {/* Chess Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">♟️</div>
+                <div className="rating-game-name">Chess / 国际象棋</div>
+                <div className="rating-value">
+                  {chessRating}
+                  {' '}
+                  <RatingTrend history={chessRatingData?.history || []} currentRating={chessRating} />
+                </div>
+                <div className="rating-rank" style={{ color: chessRank.color }}>
+                  <span className="rank-icon">{chessRank.icon}</span>
+                  <span className="rank-name">{chessRank.name}</span>
+                </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {chessRatingData?.gamesPlayed || 0} games · 
+                  {chessRatingData?.wins || 0}W / {chessRatingData?.losses || 0}L / {chessRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={chessRatingData?.history || []}
+                  currentRating={chessRating}
+                  label="Chess"
+                />
+              </div>
+              {/* Xiangqi Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">車</div>
+                <div className="rating-game-name">Xiangqi / 象棋</div>
+                <div className="rating-value">
+                  {xiangqiRating}
+                  {' '}
+                  <RatingTrend history={xiangqiRatingData?.history || []} currentRating={xiangqiRating} />
+                </div>
+                <div className="rating-rank" style={{ color: xiangqiRank.color }}>
+                  <span className="rank-icon">{xiangqiRank.icon}</span>
+                  <span className="rank-name">{xiangqiRank.name}</span>
+                </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {xiangqiRatingData?.gamesPlayed || 0} games · 
+                  {xiangqiRatingData?.wins || 0}W / {xiangqiRatingData?.losses || 0}L / {xiangqiRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={xiangqiRatingData?.history || []}
+                  currentRating={xiangqiRating}
+                  label="Xiangqi"
+                />
+              </div>
+              {/* Wuziqi Rating */}
+              <div className="rating-card">
+                <div className="rating-game-icon">⚫</div>
+                <div className="rating-game-name">Gomoku / 五子棋</div>
+                <div className="rating-value">
+                  {wuziqiRating}
+                  {' '}
+                  <RatingTrend history={wuziqiRatingData?.history || []} currentRating={wuziqiRating} />
+                </div>
+                <div className="rating-rank" style={{ color: wuziqiRank.color }}>
+                  <span className="rank-icon">{wuziqiRank.icon}</span>
+                  <span className="rank-name">{wuziqiRank.name}</span>
+                </div>
+                <div className="rating-stats" style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                  {wuziqiRatingData?.gamesPlayed || 0} games · 
+                  {wuziqiRatingData?.wins || 0}W / {wuziqiRatingData?.losses || 0}L / {wuziqiRatingData?.draws || 0}D
+                </div>
+                <RatingHistoryGraph
+                  history={wuziqiRatingData?.history || []}
+                  currentRating={wuziqiRating}
+                  label="Gomoku"
+                />
+              </div>
+            </div>
+            
+            {/* ELO Explanation */}
+            <div className="elo-explanation">
+              <h4>ELO Rating System / ELO等级分系统</h4>
+              <p>Your rating changes based on game results against AI or other players.</p>
+              <p>你的等级分会根据与AI或其他玩家的对战结果而变化。</p>
+              <div className="rank-thresholds">
+                {RANK_THRESHOLDS.map((t, i) => (
+                  <span key={i} className="threshold-item" style={{ color: t.color }}>
+                    {t.icon} {t.name} ({t.min}+)
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Scoring Rules */}
+        {activeTab === "leaderboard" && (
         <div className="scoring-rules">
           <div className="rule-title">积分规则 / Scoring Rules:</div>
           <div className="rules-grid">
@@ -102,6 +229,7 @@ class Leaderboard extends Component {
             <span>🤝 Draw: Half points</span>
           </div>
         </div>
+        )}
 
         {activeTab === "leaderboard" && (
           <div className="leaderboard-content">

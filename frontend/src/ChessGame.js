@@ -7,6 +7,12 @@ import {
   getBestMoveForRetrospect, scoreToWinProbability
 } from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
+import { getRating, recordResult } from "./services/UserRatingService";
+import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
+import { GAME_TYPE, RESULT } from "./constants";
+import { fitSquare, autoResize } from "./services/ViewportService";
+import { RatingDisplay } from "./components/RatingDisplay";
+import { GameResultDialog } from "./components/GameResultDialog";
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -170,6 +176,11 @@ class ChessGame extends Component {
     // Pending game result (before user confirms submission)
     pendingResult: null, // { result: 'win'/'loss'/'draw', status: 'Checkmate!...' }
     showResultDialog: false,
+    // Rating state
+    oldRating: null,
+    newRating: null,
+    ratingDelta: 0,
+    ratingProcessed: false,
     // Save/Load state
     hasSavedGame: false,
     showSaveNotification: false,
@@ -188,6 +199,10 @@ class ChessGame extends Component {
     // Best move comparison
     retrospectBestMove: null, // { san, score, winProb } best move at current position
     retrospectAnalyzing: false, // loading state for analysis
+    // Mobile fullscreen mode — only default on small screens
+    isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
+    showFullscreenCoach: false,
+    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 260 }),
   };
 
   game = null;
@@ -200,25 +215,81 @@ class ChessGame extends Component {
     });
     this.updateGameStatus();
     this.updateAnalysis();
+    // Responsive board sizing — auto-fit to available viewport
+    this._cleanupResize = autoResize(
+      (size) => { if (size !== this.state.boardWidth) this.setState({ boardWidth: size }); },
+      { hasSubNav: true, extraChrome: 260 }
+    );
   }
 
   componentWillUnmount() {
     this.game = null;
+    if (this._cleanupResize) {
+      this._cleanupResize();
+    }
   }
 
   updateAnalysis = () => {
-    if (!this.game || this.state.gameMode !== "coach") return;
+    if (!this.game) return;
+    if (this.state.gameMode !== "coach" && this.state.gameMode !== "ai") return;
 
     const analysis = analyzePosition(this.game);
-    // Use selected difficulty for suggestions (balances speed vs quality)
-    const depth = this.state.aiDifficulty;
-    const suggestedMoves = getTopMoves(this.game, 3, depth);
+    // Use at least depth 3 for decent suggestions
+    const depth = Math.max(3, this.state.aiDifficulty);
+    let suggestedMoves = getTopMoves(this.game, 3, depth);
     const strategicAdvice = getStrategicAdvice(this.game);
+
+    // Enhance with opening book in the first 12 moves
+    const historyMoves = this.game.history();
+    if (historyMoves.length < 12) {
+      const bookMoves = getOpeningBookMoves(historyMoves);
+      if (bookMoves.length > 0) {
+        // Boost book moves to the top if they appear in suggestions
+        const boosted = [];
+        const remaining = [];
+        for (const sm of suggestedMoves) {
+          if (bookMoves.includes(sm.san?.replace(/[+#!?]/g, ''))) {
+            sm.explanation = '📖 Opening book: ' + (sm.explanation || sm.san);
+            boosted.push(sm);
+          } else {
+            remaining.push(sm);
+          }
+        }
+        // If no engine moves match the book, add the first book move as a suggestion
+        if (boosted.length === 0 && bookMoves.length > 0) {
+          const legalMoves = this.game.moves({ verbose: true });
+          const bookLegal = legalMoves.find(m => bookMoves.includes(m.san.replace(/[+#!?]/g, '')));
+          if (bookLegal) {
+            boosted.push({
+              rank: 0,
+              san: bookLegal.san,
+              move: bookLegal,
+              winProbability: 0.55,
+              explanation: '📖 Opening book move',
+            });
+          }
+        }
+        suggestedMoves = [...boosted, ...remaining].slice(0, 3);
+        // Re-number ranks
+        suggestedMoves.forEach((m, i) => m.rank = i + 1);
+      }
+
+      // Detect current opening
+      const opening = detectOpening(GAME_TYPE.CHESS, historyMoves);
+      if (opening && !strategicAdvice.find(a => a.type === 'opening')) {
+        strategicAdvice.unshift({
+          priority: 'info',
+          type: 'opening',
+          cn: `当前开局: ${opening.name}`,
+          en: `Opening: ${opening.name}${opening.eco ? ` (${opening.eco})` : ''}`,
+        });
+      }
+    }
 
     this.setState({ analysis, suggestedMoves, strategicAdvice });
 
-    // Highlight suggested move squares
-    if (this.state.showHints && suggestedMoves.length > 0) {
+    // Highlight suggested move squares (coach mode only, to avoid clutter in AI)
+    if (this.state.gameMode === "coach" && this.state.showHints && suggestedMoves.length > 0) {
       const bestMove = suggestedMoves[0].move;
       this.highlightSuggestedMove(bestMove.from, bestMove.to);
     }
@@ -266,6 +337,10 @@ class ChessGame extends Component {
           pendingResult: { result: gameResult, status: status },
           showResultDialog: true,
         });
+        // Process rating in AI/coach mode
+        if ((this.state.gameMode === 'ai' || this.state.gameMode === 'coach') && !this.state.ratingProcessed) {
+          this.processGameResult(gameResult, status);
+        }
       } else {
         this.setState({ gameOver: true, gameStatus: status });
       }
@@ -290,6 +365,47 @@ class ChessGame extends Component {
   // Continue exploring without submitting score
   continueExploring = () => {
     this.setState({ showResultDialog: false });
+  };
+
+  // Process game result and update rating
+  processGameResult = async (result, status) => {
+    if (this.state.ratingProcessed) return;
+    
+    const gameType = GAME_TYPE.CHESS;
+    const oldRatingData = getRating(gameType);
+    const oldRating = oldRatingData.rating;
+    
+    // Map result string to RESULT constant
+    let resultValue;
+    if (result === 'win') resultValue = RESULT.WIN;
+    else if (result === 'loss') resultValue = RESULT.LOSS;
+    else resultValue = RESULT.DRAW;
+    
+    // Record result and get new rating
+    const { newRating, delta } = await recordResult({
+      gameType,
+      result: resultValue,
+      difficulty: this.state.aiDifficulty,
+      userId: this.props.user,
+    });
+    
+    this.setState({
+      oldRating,
+      newRating,
+      ratingDelta: delta,
+      ratingProcessed: true,
+    });
+  };
+
+  // Close result dialog
+  closeResultDialog = () => {
+    this.setState({ showResultDialog: false });
+  };
+
+  // Handle rematch request
+  handleRematch = () => {
+    this.closeResultDialog();
+    this.resetGame();
   };
 
   saveGame = async (result) => {
@@ -321,7 +437,7 @@ class ChessGame extends Component {
   };
 
   makeAIMove = () => {
-    if (!this.game || this.state.gameOver) return;
+    if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn() === this.state.playerColor) return;
 
     this.setState({ aiThinking: true });
@@ -329,9 +445,9 @@ class ChessGame extends Component {
     setTimeout(() => {
       const bestMove = findBestMove(this.game, this.state.aiDifficulty);
       if (bestMove && this.game) {
-        // Get explanation before making the move (for coach mode)
+        // Get explanation for coach & AI modes
         let explanation = "";
-        if (this.state.gameMode === "coach") {
+        if (this.state.gameMode === "coach" || this.state.gameMode === "ai") {
           explanation = explainAIMove(this.game, bestMove);
         }
 
@@ -421,7 +537,6 @@ class ChessGame extends Component {
           }
 
           this.recordEvaluation();
-          this.updateGameStatus();
 
           const newState = {
             fen: this.game.fen(),
@@ -430,15 +545,15 @@ class ChessGame extends Component {
             lastAIExplanation: "",
           };
 
-          if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
-            setTimeout(() => {
-              this.makeAIMove();
-            }, 300);
-          }
-
-          if (this.state.gameMode === "coach") {
+          // Defer updateGameStatus and AI move to after setState completes
+          setTimeout(() => {
+            this.updateGameStatus();
+            if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
+              setTimeout(() => this.makeAIMove(), 300);
+            }
+            // Update analysis for both AI and coach mode (for hint button)
             setTimeout(() => this.updateAnalysis(), 100);
-          }
+          }, 0);
 
           return newState;
         }
@@ -503,9 +618,8 @@ class ChessGame extends Component {
       setTimeout(() => this.makeAIMove(), 300);
     }
 
-    if (this.state.gameMode === "coach") {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
+    // Update analysis for both AI and coach mode (for hint button)
+    setTimeout(() => this.updateAnalysis(), 100);
   };
 
   onMouseOverSquare = (square) => {
@@ -565,6 +679,11 @@ class ChessGame extends Component {
       retrospectMoveIndex: -1,
       pendingResult: null,
       showResultDialog: false,
+      // Reset rating state
+      oldRating: null,
+      newRating: null,
+      ratingDelta: 0,
+      ratingProcessed: false,
     });
     this.updateGameStatus();
 
@@ -580,15 +699,30 @@ class ChessGame extends Component {
   undoMove = () => {
     if (!this.game || this.state.history.length === 0 || this.state.aiThinking) return;
 
-    // Check if we're undoing from a game over state
-    const wasGameOver = this.state.gameOver;
+    const isAIMode = this.state.gameMode === "ai" || this.state.gameMode === "coach";
 
-    if ((this.state.gameMode === "ai" || this.state.gameMode === "coach") && this.state.history.length >= 2) {
-      this.game.undo();
-      this.game.undo();
+    // In AI mode, we want to land on the player's turn after undo.
+    // Check the last move color to decide how many moves to undo.
+    if (isAIMode) {
+      const lastHistory = this.state.history[this.state.history.length - 1];
+      const lastMoveColor = lastHistory?.color;
+
+      if (lastMoveColor === this.state.playerColor) {
+        // Last move was by the player (e.g. game ended on player's winning move) — undo 1
+        this.game.undo();
+      } else if (this.state.history.length >= 2) {
+        // Last move was by AI — undo AI's move and the player's move before it
+        this.game.undo();
+        this.game.undo();
+      } else {
+        this.game.undo();
+      }
     } else {
       this.game.undo();
     }
+
+    // Determine new game status directly from the engine (avoid race conditions)
+    const isGameOver = this.game.game_over();
 
     this.setState({
       fen: this.game.fen(),
@@ -596,21 +730,21 @@ class ChessGame extends Component {
       squareStyles: {},
       pieceSquare: "",
       lastAIExplanation: "",
-      // Reset game over state when undoing - allow continued play
-      gameOver: false,
+      gameOver: isGameOver,
       pendingResult: null,
       showResultDialog: false,
+    }, () => {
+      this.updateGameStatus();
+
+      // After undo, if it's the AI's turn, trigger AI move
+      if (isAIMode && !isGameOver && this.game.turn() !== this.state.playerColor) {
+        setTimeout(() => this.makeAIMove(), 300);
+      }
+
+      if (this.state.gameMode === "coach" && !isGameOver) {
+        setTimeout(() => this.updateAnalysis(), 100);
+      }
     });
-    this.updateGameStatus();
-
-    if (this.state.gameMode === "coach") {
-      setTimeout(() => this.updateAnalysis(), 100);
-    }
-
-    // If AI's turn after undo and we were in a finished game, make AI move
-    if (wasGameOver && (this.state.gameMode === "ai" || this.state.gameMode === "coach")) {
-      setTimeout(() => this.makeAIMove(), 300);
-    }
   };
 
   // Record evaluation after a move
@@ -893,7 +1027,7 @@ class ChessGame extends Component {
     });
     this.updateGameStatus();
 
-    if (this.state.gameMode === "coach") {
+    if (this.state.gameMode === "coach" || this.state.gameMode === "ai") {
       setTimeout(() => this.makeAIMove(), 300);
     }
   };
@@ -907,29 +1041,235 @@ class ChessGame extends Component {
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       showRetrospect, evaluations, criticalMoments, learningTips,
       retrospectMoveIndex, showPatternLibrary,
-      retrospectBestMove, retrospectAnalyzing
+      retrospectBestMove, retrospectAnalyzing,
+      isFullscreen, boardWidth,
     } = this.state;
 
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
+
+    // Fullscreen mode — board fills screen, professional game layout
+    if (isFullscreen) {
+      const { showFullscreenCoach } = this.state;
+      const hasCoachContent = gameMode === 'coach' || (analysis || lastAIExplanation || suggestedMoves.length > 0);
+      const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Master' };
+      const modeShort = { ai: 'AI', coach: 'Coach', tutorial: 'Tutorial', human: 'Human' };
+      // opponent color/avatar
+      const oppColor = playerColor === 'w' ? 'b' : 'w';
+      const oppIcon = gameMode === 'tutorial' ? '📚' : (gameMode === 'human' ? '👤' : '🤖');
+      const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `${modeShort[gameMode] || 'AI'} · ${diffLabels[aiDifficulty] || 'Medium'}`;
+      const turn = this.game ? this.game.turn() : 'w';
+      const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
+      const lastMove = history.length > 0 ? history[history.length - 1] : null;
+      const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '...'} ${lastMove.san}` : '';
+      // Fullscreen has no sub-nav/tab-bar chrome; recompute so board fills screen
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 844;
+      const fsBoardWidth = Math.min(vw - 16, vh - 220);
+      return (
+        <div className="chess-fullscreen-mode">
+          {/* Top Bar — icon actions only; mode info lives on player bars */}
+          <div className="fs-top-bar">
+            <button
+              className="fs-icon-btn"
+              onClick={() => this.setState({ isFullscreen: false })}
+              title="Exit fullscreen"
+              aria-label="Exit fullscreen"
+            >
+              ✕
+            </button>
+            <div className="fs-top-right">
+              {hasCoachContent && (
+                <button
+                  className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
+                  onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
+                  title="Coach"
+                  aria-label="Toggle coach"
+                >
+                  💡
+                </button>
+              )}
+              <button
+                className="fs-icon-btn"
+                onClick={() => this.setState({ isFullscreen: false })}
+                title="Settings"
+                aria-label="Settings"
+              >
+                ⚙️
+              </button>
+            </div>
+          </div>
+
+          {/* Opponent info bar (with turn indicator) */}
+          <div className={`fs-player-bar opponent ${turn === oppColor ? 'active-turn' : ''}`}>
+            <span className={`fs-color-dot ${oppColor === 'w' ? 'white' : 'black'}`} />
+            <span className="fs-player-icon">{oppIcon}</span>
+            <span className="fs-player-name">{oppName}</span>
+            {aiThinking && <span className="fs-thinking-dot" aria-label="thinking">…</span>}
+            {lastMove && turn === playerColor && (
+              <span className="fs-last-move">{lastMoveText}</span>
+            )}
+          </div>
+
+          {/* Status text (directly above board, very compact) */}
+          <div className={`fs-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
+            {aiThinking
+              ? 'Thinking…'
+              : gameOver
+                ? gameStatus
+                : isPlayerTurn
+                  ? '✋ Your turn'
+                  : `${turn === 'w' ? 'White' : 'Black'} to move`}
+          </div>
+
+          {/* Board */}
+          <div className="fullscreen-board-area">
+            <Chessboard
+              id="chessboard-fullscreen"
+              position={fen}
+              width={fsBoardWidth}
+              orientation={boardOrientation}
+              onDrop={this.onDrop}
+              onSquareClick={this.onSquareClick}
+              squareStyles={squareStyles}
+              boardStyle={{ borderRadius: '4px' }}
+              lightSquareStyle={{ backgroundColor: '#f0d9b5' }}
+              darkSquareStyle={{ backgroundColor: '#b58863' }}
+              dropSquareStyle={{ boxShadow: 'inset 0 0 1px 4px rgb(255, 255, 0)' }}
+              draggable={!aiThinking && (!gameOver || gameMode === 'tutorial') && !(gameMode === 'tutorial' && lessonComplete)}
+            />
+          </div>
+
+          {/* Self player bar (with turn indicator + rating) */}
+          <div className={`fs-player-bar self ${turn === playerColor ? 'active-turn' : ''}`}>
+            <span className={`fs-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} />
+            <span className="fs-player-icon">👤</span>
+            <span className="fs-player-name">You</span>
+            <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+          </div>
+
+          {/* Bottom Action Bar — icons only (labels in tooltips) */}
+          <div className="fs-action-bar">
+            <button
+              className="fs-action-btn"
+              onClick={this.undoMove}
+              disabled={history.length === 0 || aiThinking}
+              title="Undo last move"
+              aria-label="Undo"
+            >
+              <span className="fs-act-icon">↩️</span>
+            </button>
+            <button
+              className="fs-action-btn hint"
+              onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
+              disabled={suggestedMoves.length === 0 || aiThinking || !isPlayerTurn}
+              title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'Hint'}
+              aria-label="Hint"
+            >
+              <span className="fs-act-icon">💡</span>
+            </button>
+            <button
+              className="fs-action-btn"
+              onClick={this.newGame}
+              title="New game"
+              aria-label="New game"
+            >
+              <span className="fs-act-icon">🔄</span>
+            </button>
+          </div>
+
+          {/* Slide-in Coach Panel */}
+          {showFullscreenCoach && (
+            <div className="fullscreen-coach-panel">
+              <div className="fullscreen-coach-header">
+                <span>💡 Coach</span>
+                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}>✕</button>
+              </div>
+              <div className="fullscreen-coach-body">
+                {analysis && (
+                  <div className="analysis-section">
+                    <div className="section-label">Win Probability</div>
+                    <div className="win-probability">
+                      <div className="prob-bar">
+                        <div className="prob-white" style={{ width: `${analysis.winProbability.white * 100}%` }}>
+                          {analysis.winProbability.white >= 0.15 && <span>{Math.round(analysis.winProbability.white * 100)}%</span>}
+                        </div>
+                        <div className="prob-black" style={{ width: `${analysis.winProbability.black * 100}%` }}>
+                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
+                        </div>
+                      </div>
+                      <div className="evaluation-text">{analysis.evaluation}</div>
+                    </div>
+                  </div>
+                )}
+                {lastAIExplanation && (
+                  <div className="analysis-section">
+                    <div className="section-label">🤖 AI Move</div>
+                    <div className="ai-explanation-box">{lastAIExplanation}</div>
+                  </div>
+                )}
+                {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
+                  <div className="analysis-section">
+                    <div className="section-label">Recommended Moves</div>
+                    <div className="suggested-moves-list">
+                      {suggestedMoves.map((item, index) => (
+                        <div key={index} className={`suggestion ${index === 0 ? 'best' : ''}`} onClick={() => this.playSuggestedMove(item.move)}>
+                          <div className="suggestion-move">
+                            <span className="rank">#{item.rank}</span>
+                            <span className="san">{item.san}</span>
+                            <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                          </div>
+                          <div className="suggestion-reason">{item.explanation}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {strategicAdvice && strategicAdvice.length > 0 && (
+                  <div className="analysis-section">
+                    <div className="section-label">Strategic Advice</div>
+                    <div className="strategic-advice-list">
+                      {strategicAdvice.map((advice, index) => (
+                        <div key={index} className={`advice-item priority-${advice.priority}`}>
+                          <p className="advice-cn">{advice.cn}</p>
+                          <p className="advice-en">{advice.en}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+                  <div className="analysis-empty">Play a move to see coach analysis</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Game Result Dialog */}
+          {showResultDialog && pendingResult && (
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult.result}
+              message={pendingResult.status}
+              oldRating={this.state.oldRating}
+              newRating={this.state.newRating}
+              gameType="chess"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Human'}
+              moves={history.length}
+              onRematch={this.newGame}
+              onHome={() => this.setState({ isFullscreen: false })}
+              onClose={() => this.setState({ showResultDialog: false })}
+            />
+          )}
+        </div>
+      );
+    }
 
     return (
       <div className="chess-game-layout">
         {/* Left Panel - Settings */}
         <div className="settings-panel">
           <div className="panel-title">Game Settings</div>
-
-          {/* Player Name */}
-          <div className="settings-section">
-            <div className="section-label">Player Name</div>
-            <input
-              type="text"
-              className="player-name-input"
-              placeholder="Enter your name"
-              value={this.state.playerName}
-              onChange={(e) => this.setPlayerName(e.target.value)}
-            />
-          </div>
 
           {/* Game Mode Selector */}
           <div className="settings-section">
@@ -1087,17 +1427,42 @@ class ChessGame extends Component {
 
         {/* Center Panel - Board */}
         <div className="board-panel">
-          {/* Game Status */}
-          <div className={`game-status ${gameOver ? "game-over" : ""} ${aiThinking ? "thinking" : ""}`}>
-            {aiThinking ? "🤔 AI is thinking..." : gameStatus}
-          </div>
+          {(() => {
+            const turn = this.game ? this.game.turn() : 'w';
+            const oppColor = playerColor === 'w' ? 'b' : 'w';
+            const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Expert' };
+            const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `AI · ${diffLabels[aiDifficulty] || 'Medium'}`;
+            const oppIcon = gameMode === 'tutorial' ? '📚' : gameMode === 'human' ? '👤' : '🤖';
+            const lastMove = history.length > 0 ? history[history.length - 1] : null;
+            const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '…'} ${lastMove.san}` : '';
+            const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
+            return (
+              <>
+                {/* Opponent bar — shows name + status inline */}
+                <div className={`desk-player-bar opponent ${turn === oppColor && !gameOver ? 'active-turn' : ''}`}>
+                  <span className={`desk-color-dot ${oppColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
+                  <span className="desk-player-icon" aria-hidden="true">{oppIcon}</span>
+                  <span className="desk-player-name">{oppName}</span>
+                  <span className="desk-bar-status" role="status" aria-live="polite">
+                    {aiThinking
+                      ? <span className="desk-thinking">thinking…</span>
+                      : gameOver
+                        ? <span className="desk-status-over">{gameStatus}</span>
+                        : lastMove && turn === playerColor
+                          ? <span className="desk-last-move" title={`Last move: ${lastMove.san}`}>{lastMoveText}</span>
+                          : null}
+                  </span>
+                </div>
+              </>
+            );
+          })()}
 
           {/* Chess Board */}
-          <div className="board-container">
+          <div className="board-container" style={{ touchAction: 'none' }}>
             <Chessboard
               id="chessboard"
               position={fen}
-              width={520}
+              width={boardWidth}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
@@ -1113,61 +1478,89 @@ class ChessGame extends Component {
               dropSquareStyle={{ boxShadow: "inset 0 0 1px 4px rgb(255, 255, 0)" }}
               draggable={!aiThinking && (!gameOver || gameMode === "tutorial") && !(gameMode === "tutorial" && lessonComplete)}
             />
+            {/* Fullscreen button — shown on smaller screens */}
+            <button
+              className="fullscreen-toggle-btn"
+              onClick={() => this.setState({ isFullscreen: true })}
+              title="Enter fullscreen mode"
+              aria-label="Enter fullscreen mode"
+            >
+              ⛶ Fullscreen
+            </button>
           </div>
+
+          {/* Self bar — shows rating + 'Your turn' status inline */}
+          {(() => {
+            const turn = this.game ? this.game.turn() : 'w';
+            const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
+            return (
+              <div className={`desk-player-bar self ${turn === playerColor && !gameOver ? 'active-turn' : ''}`}>
+                <span className={`desk-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
+                <span className="desk-player-icon" aria-hidden="true">👤</span>
+                <span className="desk-player-name">You</span>
+                {isPlayerTurn && (
+                  <span className="desk-your-turn" role="status" aria-live="polite">✋ Your turn</span>
+                )}
+                <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
+              </div>
+            );
+          })()}
+
+          {/* Inline toolbar — primary actions */}
+          {gameMode !== "tutorial" && !showRetrospect && (
+            <div className="chess-board-toolbar">
+              <button
+                className="tb-btn primary"
+                onClick={this.resetGame}
+                title="New Game"
+              >
+                🔄 New
+              </button>
+              <button
+                className="tb-btn"
+                onClick={this.undoMove}
+                disabled={history.length === 0 || aiThinking}
+                title="Undo"
+              >
+                ↩️ Undo
+              </button>
+              <button
+                className="tb-btn hint"
+                onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
+                disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
+              >
+                💡 Hint
+              </button>
+              {(gameOver || history.length >= 4) && (
+                <button
+                  className="tb-btn"
+                  onClick={this.enterRetrospect}
+                  disabled={history.length < 4}
+                  title="Analyze Game"
+                >
+                  📈 Analyze
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Game Result Dialog */}
           {showResultDialog && pendingResult && (
-            <div className="result-dialog-overlay">
-              <div className={`result-dialog ${pendingResult.result}`}>
-                <div className="result-icon">
-                  {pendingResult.result === 'win' ? '🏆' : pendingResult.result === 'loss' ? '😞' : '🤝'}
-                </div>
-                <h3 className="result-title">{pendingResult.status}</h3>
-                <p className="result-description">
-                  {pendingResult.result === 'win'
-                    ? '恭喜你赢了！要提交成绩还是继续研究棋局？'
-                    : pendingResult.result === 'loss'
-                    ? '很遗憾，你输了。要提交成绩还是悔棋继续？'
-                    : '和棋结束。要提交成绩还是继续研究？'}
-                </p>
-                <p className="result-description-en">
-                  {pendingResult.result === 'win'
-                    ? 'Congratulations! Submit your score or continue exploring?'
-                    : pendingResult.result === 'loss'
-                    ? 'You lost. Submit score or undo to continue?'
-                    : 'Game drawn. Submit score or continue exploring?'}
-                </p>
-                <div className="result-actions">
-                  <button
-                    className="btn btn-primary result-btn"
-                    onClick={this.submitScore}
-                    disabled={!this.state.playerName}
-                  >
-                    📊 Submit Score
-                  </button>
-                  <button
-                    className="btn btn-secondary result-btn"
-                    onClick={this.continueExploring}
-                  >
-                    🔍 Continue Exploring
-                  </button>
-                  <button
-                    className="btn btn-retrospect result-btn"
-                    onClick={() => { this.continueExploring(); this.enterRetrospect(); }}
-                    disabled={history.length < 4}
-                  >
-                    📈 Review Game
-                  </button>
-                </div>
-                {!this.state.playerName && (
-                  <p className="result-warning">
-                    请先输入玩家名称才能提交成绩
-                    <br />
-                    Please enter a player name to submit your score
-                  </p>
-                )}
-              </div>
-            </div>
+            <GameResultDialog
+              isOpen={showResultDialog}
+              result={pendingResult.result}
+              message={pendingResult.status}
+              oldRating={this.state.oldRating}
+              newRating={this.state.newRating}
+              gameType="chess"
+              opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
+              moves={history.length}
+              onRematch={this.handleRematch}
+              onReview={() => { this.closeResultDialog(); this.enterRetrospect(); }}
+              onHome={this.closeResultDialog}
+              onClose={this.closeResultDialog}
+            />
           )}
 
           {/* Move History under board (not in tutorial mode) */}

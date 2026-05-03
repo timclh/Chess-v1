@@ -31,9 +31,29 @@ services:
         value: --openssl-legacy-provider
     staticPublishPath: build
     headers:
+      # COEP/COOP for all paths
       - path: /*
         name: X-Frame-Options
         value: SAMEORIGIN
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
+      - path: /*
+        name: Cross-Origin-Embedder-Policy
+        value: credentialless
+      # Explicit headers for stockfish worker (since wildcard may not work)
+      - path: /stockfish.worker.js
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
+      - path: /stockfish.worker.js
+        name: Cross-Origin-Resource-Policy
+        value: same-origin
+      - path: /fairy-stockfish.worker.js
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
+      - path: /fairy-stockfish.worker.js
+        name: Cross-Origin-Resource-Policy
+        value: same-origin
     routes:
       - type: rewrite
         source: /*

@@ -1,15 +1,40 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "棋 Arena",
+  "name": "棋 Arena - Chess & Xiangqi",
   "icons": [
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": "./index.html",
+  "start_url": ".",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait",
+  "theme_color": "#1a1a2e",
+  "background_color": "#1a1a2e",
+  "categories": ["games", "education"],
+  "description": "Master both International Chess and Chinese Chess (Xiangqi) with GM-level AI coaching, puzzles, and tutorials.",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }
