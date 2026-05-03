@@ -1,3 +1,11 @@
+# Local planning docs (do not push)
+docs/business-plan-and-30day.md
+docs/next-implementation-checklist.md
+
+# Local solo-agent workflow skills (do not push)
+skills/analytics-setup/
+skills/mvp-planner/
+skills/paywall-impl/
 # Private files - business docs, credentials, etc.
 .private/
 

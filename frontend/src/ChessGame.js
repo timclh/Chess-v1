@@ -436,6 +436,26 @@ class ChessGame extends Component {
     localStorage.setItem('chess_player_name', name);
   };
 
+
+  getCoachMove = () => {
+    const level = this.state.aiDifficulty;
+    const coachDepthMap = { 1: 1, 2: 1, 3: 2, 4: 2 };
+    const depth = coachDepthMap[level] || 1;
+
+    const candidates = getTopMoves(this.game, 4, depth);
+    if (!candidates || candidates.length === 0) return null;
+
+    // Forgiving move policy: prefer top-2 but occasionally choose top-3/4
+    // to reduce engine-like punishment and create recovery windows.
+    const roll = Math.random();
+    let pickIndex = 0;
+    if (roll > 0.55 && candidates.length > 1) pickIndex = 1;
+    if (roll > 0.80 && candidates.length > 2) pickIndex = 2;
+    if (roll > 0.93 && candidates.length > 3) pickIndex = 3;
+
+    return candidates[pickIndex].san;
+  };
+
   makeAIMove = () => {
     if (!this.game || this.state.gameOver || this.game.game_over()) return;
     if (this.game.turn() === this.state.playerColor) return;
@@ -443,7 +463,9 @@ class ChessGame extends Component {
     this.setState({ aiThinking: true });
 
     setTimeout(() => {
-      const bestMove = findBestMove(this.game, this.state.aiDifficulty);
+      const bestMove = this.state.gameMode === "coach"
+        ? this.getCoachMove()
+        : findBestMove(this.game, this.state.aiDifficulty);
       if (bestMove && this.game) {
         // Get explanation for coach & AI modes
         let explanation = "";
