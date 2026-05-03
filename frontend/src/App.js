@@ -14,6 +14,7 @@ import VideoLearning from "./VideoLearning";
 import ProfilePage from "./ProfilePage";
 import { PrivacyPolicy, TermsOfService } from "./LegalPages";
 import { AuthProvider } from "./AuthContext";
+import UiFeedbackLoop from "./UiFeedbackLoop";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 // Valid routes
@@ -114,13 +115,13 @@ class AppContent extends Component {
   handleHashChange = () => {
     const page = getPageFromHash();
     if (page !== this.state.currentPage) {
-      this.setState({ currentPage: page });
+      this.setState({ currentPage: page, navOpen: false });
     }
   };
 
   navigateTo = (page) => {
     setHashFromPage(page);
-    this.setState({ currentPage: page });
+    this.setState({ currentPage: page, navOpen: false });
   };
 
   handleLogout = async () => {

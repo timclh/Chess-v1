@@ -6558,3 +6558,235 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
     overflow: visible;
   }
 }
+
+/* UI Feedback Loop */
+.ui-feedback-loop {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+}
+
+.feedback-fab {
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e94560, #f39422);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px 16px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+}
+
+.feedback-panel {
+  margin-top: 10px;
+  width: min(360px, 92vw);
+  background: rgba(15, 23, 42, 0.96);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.feedback-panel h3,
+.feedback-panel h4 {
+  margin: 0 0 8px;
+}
+
+.feedback-panel p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+
+.feedback-panel form {
+  display: grid;
+  gap: 8px;
+}
+
+.feedback-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.feedback-panel select,
+.feedback-panel textarea {
+  width: 100%;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 8px;
+}
+
+.feedback-submit-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  font-weight: 600;
+  background: #22c55e;
+  color: #fff;
+  cursor: pointer;
+}
+
+.feedback-list {
+  margin-top: 12px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.feedback-item {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid #334155;
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.feedback-item.priority-high { border-left-color: #ef4444; }
+.feedback-item.priority-medium { border-left-color: #f59e0b; }
+.feedback-item.priority-low { border-left-color: #22c55e; }
+
+.feedback-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.feedback-item button {
+  margin-top: 8px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: transparent;
+  color: #cbd5e1;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.empty-hint {
+  font-style: italic;
+}
+
+.pro-loop .loop-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.pro-loop .loop-kpis {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.feedback-form-grid input,
+.feedback-form-grid textarea,
+.feedback-form-grid select {
+  width: 100%;
+}
+
+.feedback-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.status-tabs {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-tabs button {
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #cbd5e1;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.status-tabs button.active {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.pro-item .meta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* UX optimization: responsive navigation and spacing */
+.mobile-nav-toggle {
+  display: none;
+  margin: 12px auto 0;
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.45);
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.App-nav {
+  flex-wrap: wrap;
+}
+
+.App-content {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+  .mobile-nav-toggle {
+    display: inline-block;
+  }
+
+  .App-nav {
+    display: none;
+    margin-top: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    max-width: 360px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .App-nav.open {
+    display: flex;
+  }
+
+  .App-nav .nav-btn {
+    width: 100%;
+  }
+
+  .user-menu {
+    display: grid;
+    gap: 8px;
+  }
+
+  .App-content {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .chat-section {
+    width: 100%;
+    max-width: 460px;
+  }
+}
