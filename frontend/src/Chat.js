@@ -50,7 +50,7 @@ class Chat extends Component {
       this.ws = new WebSocket(URL);
 
       this.ws.onopen = () => {
-        console.log("WebSocket connected");
+
         this.reconnectAttempts = 0;
         this.setState({ connected: true });
       };
@@ -65,7 +65,7 @@ class Chat extends Component {
       };
 
       this.ws.onclose = (event) => {
-        console.log("WebSocket disconnected:", event.code, event.reason);
+        console.warn("WebSocket disconnected:", event.code, event.reason);
         this.setState({ connected: false });
         this.handleReconnect();
       };
@@ -82,13 +82,13 @@ class Chat extends Component {
 
   handleReconnect = () => {
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log("Max reconnection attempts reached");
+      console.error("Max reconnection attempts reached");
       return;
     }
 
     this.reconnectAttempts++;
     const delay = RECONNECT_DELAY_MS * this.reconnectAttempts;
-    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
 
     this.reconnectTimeoutId = setTimeout(() => {
       this.connectWebSocket();
