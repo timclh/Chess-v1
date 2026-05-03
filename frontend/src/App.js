@@ -9,6 +9,7 @@ import Multiplayer from "./Multiplayer";
 import Puzzles from "./Puzzles";
 import OpeningExplorer from "./OpeningExplorer";
 import { AuthProvider } from "./AuthContext";
+import UiFeedbackLoop from "./UiFeedbackLoop";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 // Valid routes
@@ -39,6 +40,7 @@ class AppContent extends Component {
     currentPage: getPageFromHash(),
     user: null,
     showLogin: false,
+    navOpen: false,
   };
 
   componentDidMount() {
@@ -61,13 +63,13 @@ class AppContent extends Component {
   handleHashChange = () => {
     const page = getPageFromHash();
     if (page !== this.state.currentPage) {
-      this.setState({ currentPage: page });
+      this.setState({ currentPage: page, navOpen: false });
     }
   };
 
   navigateTo = (page) => {
     setHashFromPage(page);
-    this.setState({ currentPage: page });
+    this.setState({ currentPage: page, navOpen: false });
   };
 
   handleLogout = async () => {
@@ -79,7 +81,7 @@ class AppContent extends Component {
   };
 
   render() {
-    const { currentPage, user, showLogin } = this.state;
+    const { currentPage, user, showLogin, navOpen } = this.state;
     const configured = isFirebaseConfigured();
 
     return (
@@ -87,7 +89,10 @@ class AppContent extends Component {
         <header className="App-header">
           <h1 className="App-title">Chess Arena</h1>
           <p className="App-subtitle">Play chess and chat with friends</p>
-          <nav className="App-nav">
+          <button className="mobile-nav-toggle" onClick={() => this.setState({ navOpen: !navOpen })}>
+            {navOpen ? "Close" : "Menu"}
+          </button>
+          <nav className={`App-nav ${navOpen ? "open" : ""}`}>
             <button
               className={`nav-btn ${currentPage === "game" ? "active" : ""}`}
               onClick={() => this.navigateTo("game")}
@@ -183,6 +188,8 @@ class AppContent extends Component {
             <Leaderboard onBack={() => this.navigateTo("game")} />
           </div>
         )}
+
+        <UiFeedbackLoop />
 
         {showLogin && (
           <Login
