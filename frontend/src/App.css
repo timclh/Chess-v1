@@ -43,6 +43,7 @@ body {
 /* Navigation */
 .App-nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
   margin-top: 16px;
@@ -692,7 +693,9 @@ body {
 }
 
 .move-history {
-  width: 520px;
+  width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
   margin-top: 20px;
 }
 
@@ -2929,6 +2932,7 @@ body {
 /* Puzzle Controls */
 .puzzle-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
   margin-bottom: 16px;
@@ -4030,5 +4034,85 @@ body {
 
   .xiangqi-piece {
     font-size: 22px;
+  }
+}
+
+/* ========================================
+   MOBILE LAYOUT (<= 768px)
+   Single column, board first, nothing wider than the screen.
+   ======================================== */
+@media (max-width: 768px) {
+  .App-content {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 16px;
+  }
+
+  .game-section { order: 1; width: 100%; }
+  .chat-section { order: 2; width: 100%; box-sizing: border-box; }
+
+  .chess-game-layout,
+  .xiangqi-game-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 0;
+  }
+
+  /* Board first on every game page, then settings, then analysis */
+  .board-panel { order: 1; }
+  .settings-panel { order: 2; }
+  .analysis-panel-right,
+  .tutorial-panel-right { order: 3; }
+
+  .settings-panel,
+  .analysis-panel-right,
+  .tutorial-panel-right,
+  .xiangqi-settings,
+  .xiangqi-analysis,
+  .xiangqi-tutorial {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .board-panel {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+  }
+
+  .puzzles-container,
+  .opening-explorer-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .puzzles-container > *,
+  .opening-explorer-container > * {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .openings-page,
+  .puzzles-page { padding: 12px; }
+
+  .opening-sidebar { max-height: none; }
+
+  .xiangqi-board-wrapper { padding: 8px; }
+
+  .App-nav { gap: 8px; padding: 0 12px; }
+  .nav-btn { padding: 8px 14px; }
+}
+
+/* Tablet: let the opening explorer columns wrap instead of overflowing */
+@media (max-width: 1200px) {
+  .opening-explorer-container {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }

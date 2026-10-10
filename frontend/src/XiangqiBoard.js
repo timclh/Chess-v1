@@ -27,161 +27,124 @@ class XiangqiBoard extends Component {
     this.boardRef = React.createRef();
   }
 
-  // Convert board position to pixel coordinates
-  getSquareCenter(row, col) {
-    const { width = 450 } = this.props;
-    const cellSize = width / 9;
-    const padding = cellSize / 2;
-
-    return {
-      x: padding + col * cellSize,
-      y: padding + row * cellSize,
-    };
-  }
-
-  // Convert pixel coordinates to board position
+  // Convert pixel coordinates (relative to the board, in board units) to the
+  // logical board position. Accounts for a flipped (black) orientation.
   getSquareFromPixel(x, y) {
-    const { width = 450 } = this.props;
+    const { width = 450, orientation = 'red' } = this.props;
     const cellSize = width / 9;
     const padding = cellSize / 2;
 
-    const col = Math.round((x - padding) / cellSize);
-    const row = Math.round((y - padding) / cellSize);
+    const displayCol = Math.round((x - padding) / cellSize);
+    const displayRow = Math.round((y - padding) / cellSize);
 
-    if (row >= 0 && row < 10 && col >= 0 && col < 9) {
-      return { row, col };
+    if (displayRow >= 0 && displayRow < 10 && displayCol >= 0 && displayCol < 9) {
+      const flipped = orientation === 'black';
+      return {
+        row: flipped ? 9 - displayRow : displayRow,
+        col: flipped ? 8 - displayCol : displayCol,
+      };
     }
     return null;
   }
 
-  // Handle square click
-  handleClick = (row, col) => {
-    const { onMove, board, turn, playerColor, disabled, validMoves = [] } = this.props;
-    const { selectedSquare } = this.state;
+  // Pointer position inside the board, in the board's own pixel units
+  getBoardPoint(e) {
+    const { width = 450 } = this.props;
+    const rect = this.boardRef.current.getBoundingClientRect();
+    const scale = rect.width ? width / rect.width : 1;
+    return { x: (e.clientX - rect.left) * scale, y: (e.clientY - rect.top) * scale };
+  }
 
+  squareName(row, col) {
+    return String.fromCharCode('a'.charCodeAt(0) + col) + (9 - row);
+  }
+
+  commitMove(from, to) {
+    const { onMove } = this.props;
+    this.setState({ selectedSquare: null, dragging: null, dragPosition: null });
+    if (onMove) {
+      onMove({ from: this.squareName(from.row, from.col), to: this.squareName(to.row, to.col) });
+    }
+  }
+
+  // One handler for mouse, pen and touch:
+  //  - tap/click a legal destination of the selected piece -> move
+  //  - tap/click an own piece -> select it (and arm a drag)
+  //  - anything else -> deselect
+  handlePointerDown = (e) => {
+    const { board, turn, playerColor, disabled, validMoves = [], onSquareSelect } = this.props;
     if (disabled) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-    // Use playerColor if provided, otherwise fall back to turn (for tutorial mode)
+    const point = this.getBoardPoint(e);
+    const sq = this.getSquareFromPixel(point.x, point.y);
+    if (!sq) return;
+
+    // Use playerColor if provided, otherwise fall back to turn (tutorial mode)
     const canSelectColor = playerColor || turn;
+    if (turn !== canSelectColor) return; // not the player's turn
 
-    // Check if it's player's turn (in AI mode, player can only move on their turn)
-    const isPlayerTurn = turn === canSelectColor;
+    const { selectedSquare } = this.state;
+    const piece = board[sq.row][sq.col];
 
-    const piece = board[row][col];
-
-    // If a piece is already selected
-    if (selectedSquare) {
-      const { row: fromRow, col: fromCol } = selectedSquare;
-
-      // Check if clicking on a valid move destination
-      const isValidMove = validMoves.some(
-        m => m.row === row && m.col === col
-      );
-
-      if (isValidMove && isPlayerTurn) {
-        // Make the move
-        if (onMove) {
-          const from = String.fromCharCode('a'.charCodeAt(0) + fromCol) + (9 - fromRow);
-          const to = String.fromCharCode('a'.charCodeAt(0) + col) + (9 - row);
-          onMove({ from, to });
-        }
-        this.setState({ selectedSquare: null });
-        return;
-      }
-
-      // If clicking on own piece and it's player's turn, select it instead
-      if (piece && piece.color === canSelectColor && isPlayerTurn) {
-        this.setState({ selectedSquare: { row, col } });
-        if (this.props.onSquareSelect) {
-          this.props.onSquareSelect(row, col);
-        }
-        return;
-      }
-
-      // Otherwise deselect
-      this.setState({ selectedSquare: null });
-      if (this.props.onSquareSelect) {
-        this.props.onSquareSelect(null, null);
-      }
+    if (selectedSquare && validMoves.some(m => m.row === sq.row && m.col === sq.col)) {
+      this.commitMove(selectedSquare, sq);
       return;
     }
 
-    // Select own piece only if it's player's turn
-    if (piece && piece.color === canSelectColor && isPlayerTurn) {
-      this.setState({ selectedSquare: { row, col } });
-      if (this.props.onSquareSelect) {
-        this.props.onSquareSelect(row, col);
+    if (piece && piece.color === canSelectColor) {
+      try {
+        this.boardRef.current.setPointerCapture(e.pointerId);
+      } catch (err) {
+        // pointer capture is optional
       }
-    }
-  };
-
-  // Handle mouse down for dragging
-  handleMouseDown = (e, row, col) => {
-    const { board, turn, playerColor, disabled } = this.props;
-    if (disabled) return;
-
-    // Use playerColor if provided, otherwise fall back to turn
-    const canSelectColor = playerColor || turn;
-    const isPlayerTurn = turn === canSelectColor;
-
-    const piece = board[row][col];
-    if (piece && piece.color === canSelectColor && isPlayerTurn) {
-      const rect = this.boardRef.current.getBoundingClientRect();
       this.setState({
-        selectedSquare: { row, col },
-        dragging: { row, col, piece },
-        dragPosition: {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        },
+        selectedSquare: sq,
+        dragging: { row: sq.row, col: sq.col, piece, moved: false, startX: point.x, startY: point.y },
+        dragPosition: point,
       });
-
-      if (this.props.onSquareSelect) {
-        this.props.onSquareSelect(row, col);
-      }
+      if (onSquareSelect) onSquareSelect(sq.row, sq.col);
+      return;
     }
+
+    // Tapped somewhere that is not a legal destination: explain why and keep the selection
+    if (selectedSquare && !(selectedSquare.row === sq.row && selectedSquare.col === sq.col)) {
+      if (this.props.onIllegalMove) this.props.onIllegalMove(selectedSquare, sq);
+      return;
+    }
+
+    this.setState({ selectedSquare: null });
+    if (onSquareSelect) onSquareSelect(null, null);
   };
 
-  handleMouseMove = (e) => {
-    if (!this.state.dragging) return;
-
-    const rect = this.boardRef.current.getBoundingClientRect();
-    this.setState({
-      dragPosition: {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      },
-    });
-  };
-
-  handleMouseUp = (e) => {
+  handlePointerMove = (e) => {
     const { dragging } = this.state;
-    const { onMove, validMoves = [] } = this.props;
-
     if (!dragging) return;
 
-    const rect = this.boardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const target = this.getSquareFromPixel(x, y);
+    const point = this.getBoardPoint(e);
+    const moved = dragging.moved || Math.hypot(point.x - dragging.startX, point.y - dragging.startY) > 6;
+    this.setState({ dragPosition: point, dragging: { ...dragging, moved } });
+  };
 
-    if (target) {
-      const isValidMove = validMoves.some(
-        m => m.row === target.row && m.col === target.col
-      );
+  handlePointerUp = (e) => {
+    const { dragging, selectedSquare } = this.state;
+    const { validMoves = [] } = this.props;
+    if (!dragging) return;
 
-      if (isValidMove && onMove) {
-        const from = String.fromCharCode('a'.charCodeAt(0) + dragging.col) + (9 - dragging.row);
-        const to = String.fromCharCode('a'.charCodeAt(0) + target.col) + (9 - target.row);
-        onMove({ from, to });
-        this.setState({ selectedSquare: null });
+    // A real drag drops the piece on a legal square; a plain tap keeps the selection
+    if (dragging.moved && selectedSquare) {
+      const point = this.getBoardPoint(e);
+      const target = this.getSquareFromPixel(point.x, point.y);
+      if (target && validMoves.some(m => m.row === target.row && m.col === target.col)) {
+        this.commitMove(selectedSquare, target);
+        return;
       }
+      if (target && this.props.onIllegalMove) this.props.onIllegalMove(selectedSquare, target);
     }
-
     this.setState({ dragging: null, dragPosition: null });
   };
 
-  handleMouseLeave = () => {
+  handlePointerCancel = () => {
     if (this.state.dragging) {
       this.setState({ dragging: null, dragPosition: null });
     }
@@ -211,10 +174,11 @@ class XiangqiBoard extends Component {
       <div
         ref={this.boardRef}
         className="xiangqi-board-container"
-        style={{ width, height, position: 'relative' }}
-        onMouseMove={this.handleMouseMove}
-        onMouseUp={this.handleMouseUp}
-        onMouseLeave={this.handleMouseLeave}
+        style={{ width, height, position: 'relative', touchAction: 'none', userSelect: 'none' }}
+        onPointerDown={this.handlePointerDown}
+        onPointerMove={this.handlePointerMove}
+        onPointerUp={this.handlePointerUp}
+        onPointerCancel={this.handlePointerCancel}
       >
         {/* Board SVG */}
         <svg width={width} height={height} className="xiangqi-board-svg">
@@ -339,13 +303,13 @@ class XiangqiBoard extends Component {
         </div>
 
         {/* Pieces layer */}
-        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10 }}>
+        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10, pointerEvents: 'none' }}>
           {board && board.map((row, rowIdx) =>
             row.map((piece, colIdx) => {
               if (!piece) return null;
 
               // Skip if this piece is being dragged
-              if (dragging && dragging.row === rowIdx && dragging.col === colIdx) {
+              if (dragging && dragging.moved && dragging.row === rowIdx && dragging.col === colIdx) {
                 return null;
               }
 
@@ -364,8 +328,6 @@ class XiangqiBoard extends Component {
                     height: pieceSize,
                     cursor: 'pointer',
                   }}
-                  onClick={() => this.handleClick(rowIdx, colIdx)}
-                  onMouseDown={(e) => this.handleMouseDown(e, rowIdx, colIdx)}
                 >
                   {PIECE_CHARS[piece.type][piece.color]}
                 </div>
@@ -374,7 +336,7 @@ class XiangqiBoard extends Component {
           )}
 
           {/* Dragging piece */}
-          {dragging && dragPosition && (
+          {dragging && dragging.moved && dragPosition && (
             <div
               className={`xiangqi-piece ${dragging.piece.color === 'r' ? 'red' : 'black'} dragging`}
               style={{
@@ -389,36 +351,6 @@ class XiangqiBoard extends Component {
             >
               {PIECE_CHARS[dragging.piece.type][dragging.piece.color]}
             </div>
-          )}
-        </div>
-
-        {/* Click targets (invisible) - for empty squares */}
-        <div className="xiangqi-click-targets" style={{ position: 'absolute', top: 0, left: 0, width, height, pointerEvents: 'none' }}>
-          {[...Array(10)].map((_, rowIdx) =>
-            [...Array(9)].map((_, colIdx) => {
-              const actualRow = flipped ? 9 - rowIdx : rowIdx;
-              const actualCol = flipped ? 8 - colIdx : colIdx;
-              const piece = board[actualRow][actualCol];
-
-              // Only create click targets for empty squares
-              if (piece) return null;
-
-              return (
-                <div
-                  key={`target-${rowIdx}-${colIdx}`}
-                  style={{
-                    position: 'absolute',
-                    left: padding + colIdx * cellSize - cellSize / 3,
-                    top: padding + rowIdx * cellSize - cellSize / 3,
-                    width: cellSize * 2 / 3,
-                    height: cellSize * 2 / 3,
-                    cursor: 'pointer',
-                    pointerEvents: 'auto',
-                  }}
-                  onClick={() => this.handleClick(actualRow, actualCol)}
-                />
-              );
-            })
           )}
         </div>
       </div>

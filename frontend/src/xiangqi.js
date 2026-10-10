@@ -277,6 +277,70 @@ class Xiangqi {
     return false;
   }
 
+  // Why can't the piece on (fromRow, fromCol) go to (toRow, toCol)?
+  // Returns { zh, en } or null when there is nothing useful to say.
+  explainIllegalMove(fromRow, fromCol, toRow, toCol) {
+    const piece = this.board[fromRow][fromCol];
+    if (!piece) return null;
+    const target = this.board[toRow][toCol];
+    if (target && target.color === piece.color) return null;
+    if (fromRow === toRow && fromCol === toCol) return null;
+
+    const dr = toRow - fromRow;
+    const dc = toCol - fromCol;
+    const adr = Math.abs(dr);
+    const adc = Math.abs(dc);
+    const sign = Math.sign;
+
+    const reachable = this.getPseudoLegalMoves(fromRow, fromCol, piece, this.board)
+      .some(m => m.row === toRow && m.col === toCol);
+    if (reachable) {
+      return {
+        zh: '这步会让你的将/帅被将军，或与对方将帅直接照面',
+        en: 'That would leave your general in check or facing the enemy general',
+      };
+    }
+
+    switch (piece.type) {
+      case 'h': {
+        const lShape = (adr === 2 && adc === 1) || (adr === 1 && adc === 2);
+        if (!lShape) return { zh: '马走"日"字：先直走一格，再斜走一格', en: 'The horse moves in an L-shape' };
+        const legR = adr === 2 ? fromRow + sign(dr) : fromRow;
+        const legC = adr === 2 ? fromCol : fromCol + sign(dc);
+        if (this.board[legR][legC]) return { zh: '蹩马腿：马前进方向的第一格被挡住了', en: 'Blocked: a piece sits on the horse\'s first step' };
+        return null;
+      }
+      case 'e': {
+        if (adr !== 2 || adc !== 2) return { zh: '象走"田"字：斜着走两格', en: 'The elephant moves exactly two squares diagonally' };
+        if (!this.isOnOwnSide(toRow, piece.color)) return { zh: '象不能过河', en: 'The elephant cannot cross the river' };
+        if (this.board[fromRow + sign(dr)][fromCol + sign(dc)]) return { zh: '塞象眼：田字中心有棋子', en: 'Blocked: a piece sits in the elephant\'s eye' };
+        return null;
+      }
+      case 'a':
+        if (adr !== 1 || adc !== 1) return { zh: '仕/士只能斜走一格', en: 'The advisor moves one square diagonally' };
+        return { zh: '仕/士不能离开九宫', en: 'The advisor must stay inside the palace' };
+      case 'k':
+        if (adr + adc !== 1) return { zh: '帅/将每次只能直走一格', en: 'The general moves one square orthogonally' };
+        return { zh: '帅/将不能离开九宫', en: 'The general must stay inside the palace' };
+      case 'r':
+        if (dr !== 0 && dc !== 0) return { zh: '车只能走直线', en: 'The chariot moves in straight lines' };
+        return { zh: '车不能越过其他棋子', en: 'The chariot cannot jump over pieces' };
+      case 'c': {
+        if (dr !== 0 && dc !== 0) return { zh: '炮只能走直线', en: 'The cannon moves in straight lines' };
+        if (!target) return { zh: '炮走子时不能越过棋子', en: 'The cannon cannot jump when it is not capturing' };
+        return { zh: '炮吃子必须隔着恰好一个棋子（炮架）', en: 'The cannon must jump exactly one piece (the screen) to capture' };
+      }
+      case 's': {
+        const forward = piece.color === 'r' ? -1 : 1;
+        if (dr === -forward) return { zh: '兵/卒不能后退', en: 'Soldiers never move backward' };
+        if (dr === 0 && adc === 1) return { zh: '兵/卒过河后才能横走', en: 'Soldiers can only move sideways after crossing the river' };
+        return { zh: '兵/卒每次只能走一格', en: 'Soldiers move one square at a time' };
+      }
+      default:
+        return null;
+    }
+  }
+
   // Legal moves as plain coordinates, for the search (no strings / SAN)
   generateMoves() {
     const out = [];

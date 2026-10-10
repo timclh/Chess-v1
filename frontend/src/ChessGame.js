@@ -7,6 +7,7 @@ import {
   getBestMoveForRetrospect, scoreToWinProbability
 } from "./ChessAI";
 import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSavedGame } from "./GameHistory";
+import { calcBoardWidth } from './boardSize';
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -1098,6 +1099,7 @@ class ChessGame extends Component {
               id="chessboard"
               position={fen}
               width={520}
+              calcWidth={calcBoardWidth(520)}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}

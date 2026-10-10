@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
+import { calcBoardWidth } from './boardSize';
 
 // Opening Database with ECO codes, names, and variations
 const OPENING_DATABASE = [
@@ -717,6 +718,7 @@ class OpeningExplorer extends Component {
                     id="openingboard"
                     position={fen}
                     width={480}
+                    calcWidth={calcBoardWidth(480)}
                     orientation="white"
                     onDrop={this.onDrop}
                     onSquareClick={this.onSquareClick}
@@ -770,6 +772,7 @@ class OpeningExplorer extends Component {
                 id="openingboard"
                 position={fen}
                 width={480}
+                calcWidth={calcBoardWidth(480)}
                 orientation="white"
                 onDrop={this.onDrop}
                 onSquareClick={this.onSquareClick}

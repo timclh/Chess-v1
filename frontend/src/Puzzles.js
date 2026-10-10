@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
+import { calcBoardWidth } from './boardSize';
 
 // Puzzle categories
 const PUZZLE_CATEGORIES = {
@@ -689,6 +690,7 @@ class Puzzles extends Component {
                   id="puzzleboard"
                   position={fen}
                   width={480}
+                  calcWidth={calcBoardWidth(480, 24)}
                   orientation={this.game?.turn() === 'b' ? 'black' : 'white'}
                   onDrop={this.onDrop}
                   onSquareClick={this.onSquareClick}

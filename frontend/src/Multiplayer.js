@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
 import Chess from "chess.js";
+import { calcBoardWidth } from './boardSize';
 
 // Use environment variable or fallback to localhost
 const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:3030";
@@ -609,6 +610,7 @@ class Multiplayer extends Component {
               id="multiplayer-board"
               position={fen}
               width={520}
+              calcWidth={calcBoardWidth(520)}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}

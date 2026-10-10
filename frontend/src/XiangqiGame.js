@@ -6,6 +6,8 @@
 import React, { Component } from 'react';
 import Xiangqi, { PIECE_NAMES } from './xiangqi';
 import XiangqiBoard from './XiangqiBoard';
+import XIANGQI_LESSONS from './xiangqiLessons';
+import { getBoardWidth } from './boardSize';
 import {
   findBestMove,
   getTopMoves,
@@ -15,140 +17,6 @@ import {
   quickEvaluate,
   clearCache,
 } from './XiangqiAI';
-
-// Tutorial lessons for Chinese Chess
-const XIANGQI_LESSONS = [
-  {
-    id: 1,
-    title: '棋子移动: 车',
-    titleEn: 'Piece Movement: Chariot (Rook)',
-    description: '车是最强的棋子，可以横向或纵向移动任意格数，不能跳过其他棋子。',
-    descriptionEn: 'The Chariot is the most powerful piece. It moves horizontally or vertically any number of squares, but cannot jump over pieces.',
-    fen: '4k4/9/9/9/9/9/9/9/9/R3K4',
-    objective: '用车将军黑方的将',
-    objectiveEn: 'Check the black general with the chariot',
-    correctMoves: ['a0-a9'],
-    hint: '车可以沿直线移动到棋盘任意位置',
-    hintEn: 'The chariot can move along straight lines to any position',
-  },
-  {
-    id: 2,
-    title: '棋子移动: 马',
-    titleEn: 'Piece Movement: Horse (Knight)',
-    description: '马走"日"字，即先横（或竖）一格，再斜向走一格。注意：马的行进路线上如有其他棋子挡住，则不能走，称为"蹩马腿"。',
-    descriptionEn: 'The Horse moves in an L-shape: one square orthogonally then one square diagonally. It can be blocked if a piece is adjacent to it in the direction it wants to move.',
-    fen: '4k4/9/9/9/9/9/9/9/4N4/4K4',
-    objective: '将马移动到f2位置',
-    objectiveEn: 'Move the horse to f2',
-    correctMoves: ['e1-f3', 'f3-d2'],
-    hint: '马走日字形',
-    hintEn: 'The horse moves in an L-shape',
-  },
-  {
-    id: 3,
-    title: '棋子移动: 炮',
-    titleEn: 'Piece Movement: Cannon',
-    description: '炮的移动方式与车相同，但吃子时必须隔着一个棋子（称为"炮架"）才能吃掉目标。',
-    descriptionEn: 'The Cannon moves like a Chariot, but captures by jumping over exactly one piece (the "screen") to capture the target.',
-    fen: '4k4/4r4/9/9/9/9/9/4C4/9/4K4',
-    objective: '用炮吃掉黑方的车',
-    objectiveEn: 'Capture the black chariot with the cannon',
-    correctMoves: ['e2-e8'],
-    hint: '炮需要一个炮架才能吃子',
-    hintEn: 'The cannon needs a screen piece to capture',
-  },
-  {
-    id: 4,
-    title: '棋子移动: 象/相',
-    titleEn: 'Piece Movement: Elephant/Minister',
-    description: '象走"田"字，即斜向移动两格。象不能过河，只能在己方半边活动。如果"田"字中心有棋子，象不能走，称为"塞象眼"。',
-    descriptionEn: 'The Elephant moves exactly two squares diagonally. It cannot cross the river and can be blocked if a piece is in the center of its path.',
-    fen: '4k4/9/9/9/9/9/9/9/9/2E1K1E2',
-    objective: '将左边的象移动到c7位置',
-    objectiveEn: 'Move the left elephant to c7',
-    correctMoves: ['c0-a2', 'a2-c4'],
-    hint: '象走田字，不能过河',
-    hintEn: 'Elephant moves diagonally two squares, cannot cross river',
-  },
-  {
-    id: 5,
-    title: '棋子移动: 士/仕',
-    titleEn: 'Piece Movement: Advisor/Guard',
-    description: '士只能在九宫格内斜向移动一格。',
-    descriptionEn: 'The Advisor moves one square diagonally and must stay within the palace.',
-    fen: '4k4/9/9/9/9/9/9/9/9/3AKA3',
-    objective: '将仕移动到d1位置',
-    objectiveEn: 'Move an advisor to d1',
-    correctMoves: ['d0-e1'],
-    hint: '仕只能在九宫格内斜走一步',
-    hintEn: 'Advisor moves one square diagonally within the palace',
-  },
-  {
-    id: 6,
-    title: '棋子移动: 帅/将',
-    titleEn: 'Piece Movement: General/King',
-    description: '帅（将）只能在九宫格内移动，每次走一格，可横走或竖走。注意：两个帅将不能直接面对面（中间没有棋子）。',
-    descriptionEn: 'The General moves one square orthogonally and must stay within the palace. The two generals cannot face each other directly on the same file.',
-    fen: '4k4/9/9/9/9/9/9/9/9/4K4',
-    objective: '将帅移动到f0位置',
-    objectiveEn: 'Move the general to f0',
-    correctMoves: ['e0-f0'],
-    hint: '帅每次只能走一格',
-    hintEn: 'The general can only move one square at a time',
-  },
-  {
-    id: 7,
-    title: '棋子移动: 兵/卒',
-    titleEn: 'Piece Movement: Soldier/Pawn',
-    description: '兵（卒）在过河前只能向前走一格。过河后可以向前或横向移动一格，但不能后退。',
-    descriptionEn: 'Soldiers move one square forward before crossing the river. After crossing, they can also move horizontally, but never backward.',
-    fen: '4k4/9/9/9/4S4/9/9/9/9/4K4',
-    objective: '将兵向前移动一格',
-    objectiveEn: 'Move the soldier forward one square',
-    correctMoves: ['e5-e4'],
-    hint: '过河前的兵只能向前走',
-    hintEn: 'Soldiers can only move forward before crossing the river',
-  },
-  {
-    id: 8,
-    title: '将军与应将',
-    titleEn: 'Check and Responding to Check',
-    description: '当对方的将/帅被攻击时，称为"将军"。被将军时必须立即应对，否则就输了。',
-    descriptionEn: 'When the General is under attack, it is called "check". You must respond to check immediately or lose the game.',
-    fen: '3k5/9/9/9/9/9/9/3r5/9/4K4',
-    objective: '红方被将军了！移动帅躲避',
-    objectiveEn: 'Red is in check! Move the general to safety',
-    correctMoves: ['e0-f0', 'e0-d0'],
-    hint: '帅必须移动到不被攻击的位置',
-    hintEn: 'The general must move to a safe square',
-  },
-  {
-    id: 9,
-    title: '简单杀法: 白脸将',
-    titleEn: 'Basic Checkmate: Facing Generals',
-    description: '两个将帅不能在同一条竖线上直接面对面（中间无子）。利用这个规则可以形成杀招。',
-    descriptionEn: 'The two generals cannot face each other directly on the same file. This rule can be used to achieve checkmate.',
-    fen: '4k4/9/9/9/9/4R4/9/9/9/4K4',
-    objective: '用车将死黑方',
-    objectiveEn: 'Checkmate black with the chariot',
-    correctMoves: ['e4-e9'],
-    hint: '利用帅的威胁让车将死对方',
-    hintEn: 'Use the general\'s threat to checkmate with the chariot',
-  },
-  {
-    id: 10,
-    title: '简单杀法: 双车错',
-    titleEn: 'Basic Checkmate: Double Chariots',
-    description: '双车配合是最基本的杀法之一。',
-    descriptionEn: 'Coordinating two chariots is one of the most basic checkmate patterns.',
-    fen: '4k4/9/9/9/9/9/R8/8R/9/4K4',
-    objective: '用双车将死黑方',
-    objectiveEn: 'Checkmate black with the two chariots',
-    correctMoves: ['i2-i9'],
-    hint: '一车将军，另一车堵住退路',
-    hintEn: 'One chariot gives check, the other blocks escape',
-  },
-];
 
 class XiangqiGame extends Component {
   state = {
@@ -167,6 +35,8 @@ class XiangqiGame extends Component {
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
     coachThinking: false,
+    boardWidth: getBoardWidth(450, 24),
+    notice: null, // transient explanation shown under the status bar
     lastAIExplanation: '',
     // Tutorial state
     currentLesson: 0,
@@ -182,7 +52,13 @@ class XiangqiGame extends Component {
   game = null;
   analysisToken = 0;
 
+  handleResize = () => {
+    const boardWidth = getBoardWidth(450, 24);
+    if (boardWidth !== this.state.boardWidth) this.setState({ boardWidth });
+  };
+
   componentDidMount() {
+    window.addEventListener('resize', this.handleResize);
     this.game = new Xiangqi();
 
     // Try to load saved game state
@@ -215,6 +91,8 @@ class XiangqiGame extends Component {
   }
 
   componentWillUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+    clearTimeout(this.noticeTimer);
     // Save state before unmount
     this.saveGameState();
     this.game = null;
@@ -392,6 +270,18 @@ class XiangqiGame extends Component {
     return { row, col };
   };
 
+  showNotice = (message) => {
+    if (!message) return;
+    clearTimeout(this.noticeTimer);
+    this.setState({ notice: message });
+    this.noticeTimer = setTimeout(() => this.setState({ notice: null }), 4000);
+  };
+
+  handleIllegalMove = (from, to) => {
+    if (!this.game || this.state.aiThinking || this.state.gameOver) return;
+    this.showNotice(this.game.explainIllegalMove(from.row, from.col, to.row, to.col));
+  };
+
   handleSquareSelect = (row, col) => {
     if (!this.game || this.state.aiThinking || this.state.gameOver) {
       this.setState({ validMoves: [] });
@@ -417,6 +307,12 @@ class XiangqiGame extends Component {
     if (piece && piece.color === canSelectColor) {
       const moves = this.game.getValidMoves(row, col);
       this.setState({ validMoves: moves });
+      if (moves.length === 0) {
+        this.showNotice({
+          zh: '这个棋子现在无法移动（被挡住，或移动会让将帅被将军/照面）',
+          en: 'This piece cannot move right now (blocked, or it would expose your general)',
+        });
+      }
     } else {
       this.setState({ validMoves: [] });
     }
@@ -433,6 +329,7 @@ class XiangqiGame extends Component {
 
     const move = this.game.move(moveObj);
     if (!move) return;
+    if (this.state.notice) this.setState({ notice: null });
 
     // Handle tutorial mode
     if (this.state.gameMode === 'tutorial') {
@@ -595,7 +492,7 @@ class XiangqiGame extends Component {
       this.game.undo();
       this.setState({
         fen: this.game.toFEN(),
-        gameStatus: '再试一次 / Try again',
+        gameStatus: '这步合法，但不是本课的目标，再试一次 / Legal, but not the goal of this lesson — try again',
       });
     }
 
@@ -778,11 +675,18 @@ class XiangqiGame extends Component {
             {aiThinking ? 'AI 思考中... / AI thinking...' : gameStatus}
           </div>
 
+          {this.state.notice && (
+            <div className="xiangqi-notice" role="status">
+              <span>{this.state.notice.zh}</span>
+              <span className="xiangqi-notice-en">{this.state.notice.en}</span>
+            </div>
+          )}
+
           <div className="xiangqi-board-wrapper">
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
-                width={450}
+                width={this.state.boardWidth}
                 orientation={boardOrientation}
                 turn={this.game.turn}
                 playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
@@ -790,6 +694,7 @@ class XiangqiGame extends Component {
                 lastMove={lastMove}
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
+                onIllegalMove={this.handleIllegalMove}
                 disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
               />
             )}
