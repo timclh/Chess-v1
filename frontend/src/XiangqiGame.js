@@ -180,6 +180,7 @@ class XiangqiGame extends Component {
   };
 
   game = null;
+  analysisToken = 0;
 
   componentDidMount() {
     this.game = new Xiangqi();
@@ -280,7 +281,10 @@ class XiangqiGame extends Component {
         const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
         status = `将死！${winner}获胜！/ Checkmate! ${winnerEn} wins!`;
       } else if (this.game.in_stalemate()) {
-        status = '和棋（无子可动）/ Stalemate';
+        // In xiangqi a side with no legal move loses
+        const winner = this.game.turn === 'r' ? '黑方' : '红方';
+        const winnerEn = this.game.turn === 'r' ? 'Black' : 'Red';
+        status = `无子可动！${winner}获胜！/ No legal moves! ${winnerEn} wins!`;
       } else {
         status = '游戏结束 / Game Over';
       }
@@ -304,6 +308,7 @@ class XiangqiGame extends Component {
     const strategicAdvice = getStrategicAdvice(this.game);
 
     if (this.game.turn !== this.state.playerColor || this.state.gameOver) {
+      this.analysisToken++;
       this.setState({ analysis, suggestedMoves: [], strategicAdvice, coachThinking: false });
       return;
     }
@@ -311,8 +316,14 @@ class XiangqiGame extends Component {
     // Let the "thinking" label paint before the synchronous search starts
     this.setState({ analysis, strategicAdvice, coachThinking: true });
     const fen = this.game.toFEN();
+    const token = ++this.analysisToken;
     setTimeout(() => {
-      if (!this.game || this.game.toFEN() !== fen) return; // position changed meanwhile
+      if (token !== this.analysisToken) return; // a newer analysis owns the flag
+      if (!this.game) return; // unmounted
+      if (this.game.toFEN() !== fen) {
+        this.setState({ coachThinking: false }); // position changed meanwhile
+        return;
+      }
       const suggestedMoves = getTopMoves(this.game, 3, Math.max(this.state.aiDifficulty, minDifficulty));
       this.setState({ suggestedMoves, coachThinking: false });
     }, 30);

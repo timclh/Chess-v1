@@ -202,6 +202,20 @@ class Xiangqi {
         }
       }
     }
+    if (gr < 0) {
+      // Not in its palace (e.g. just captured the facing general, or a custom
+      // position): fall back to a full-board scan
+      for (let r = 0; r < 10 && gr < 0; r++) {
+        for (let c = 0; c < 9; c++) {
+          const p = board[r][c];
+          if (p && p.type === 'k' && p.color === color) {
+            gr = r;
+            gc = c;
+            break;
+          }
+        }
+      }
+    }
     if (gr < 0) return true; // general captured / missing
 
     const enemy = color === 'r' ? 'b' : 'r';

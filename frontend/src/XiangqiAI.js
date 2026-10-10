@@ -246,21 +246,26 @@ const TT_LOWER = 1;
 const TT_UPPER = 2;
 const PIECE_INDEX = { k: 0, a: 1, e: 2, h: 3, r: 4, c: 5, s: 6 };
 
-let zState = 0x2545f491;
-function zRand() {
-  zState ^= zState << 13;
-  zState ^= zState >>> 17;
-  zState ^= zState << 5;
-  return zState >>> 0;
+// Two independent generators so the 53-bit key really carries ~53 bits
+function mulberry32(seed) {
+  let a = seed | 0;
+  return function next() {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return (t ^ (t >>> 14)) >>> 0;
+  };
 }
+const rand1 = mulberry32(0x1234abcd);
+const rand2 = mulberry32(0x7f4a7c15);
 const Z1 = [];
 const Z2 = [];
 for (let i = 0; i < 14 * 90; i++) {
-  Z1.push(zRand());
-  Z2.push(zRand());
+  Z1.push(rand1());
+  Z2.push(rand2());
 }
-const TURN_Z1 = zRand();
-const TURN_Z2 = zRand();
+const TURN_Z1 = rand1();
+const TURN_Z2 = rand2();
 
 // 53-bit key: 32 bits from h1 + 21 bits from h2
 function hashPosition(game) {
@@ -335,7 +340,9 @@ function quickEvaluate(game) {
 // ---------------------------------------------------------------------------
 // Search: negamax + alpha-beta + quiescence + TT + killers, iterative deepening
 // ---------------------------------------------------------------------------
-const transpositionTable = new Map();
+// Separate tables so deep coach results never strengthen the (shallow) opponent
+const coachTable = new Map();
+const opponentTable = new Map();
 const MAX_CACHE_SIZE = 400000;
 
 function orderScore(m, ttMove, killers) {
@@ -403,7 +410,7 @@ function negamax(game, depth, alpha, beta, ply, ctx) {
 
   const origAlpha = alpha;
   const key = hashPosition(game);
-  const entry = transpositionTable.get(key);
+  const entry = ctx.tt.get(key);
   let ttMove = null;
   if (entry) {
     ttMove = entry.move;
@@ -438,7 +445,7 @@ function negamax(game, depth, alpha, beta, ply, ctx) {
     }
     if (score > alpha) alpha = score;
     if (alpha >= beta) {
-      if (!m.captured && killers[0] !== m) {
+      if (!m.captured && !(killers[0] && killers[0].fr === m.fr && killers[0].fc === m.fc && killers[0].tr === m.tr && killers[0].tc === m.tc)) {
         killers[1] = killers[0];
         killers[0] = m;
       }
@@ -453,7 +460,7 @@ function negamax(game, depth, alpha, beta, ply, ctx) {
   let stored = best;
   if (stored > MATE - 1000) stored += ply;
   else if (stored < -MATE + 1000) stored -= ply;
-  transpositionTable.set(key, {
+  ctx.tt.set(key, {
     depth,
     score: stored,
     flag,
@@ -472,14 +479,14 @@ function cloneGame(game) {
 
 // Iterative deepening at the root. Returns the n best moves of the last
 // fully completed iteration, with exact scores from the mover's perspective.
-function searchRoot(game, maxDepth, timeMs, n = 1) {
-  if (transpositionTable.size > MAX_CACHE_SIZE) transpositionTable.clear();
+function searchRoot(game, maxDepth, timeMs, n = 1, tt = coachTable) {
+  if (tt.size > MAX_CACHE_SIZE) tt.clear();
 
   const g = cloneGame(game); // never mutate the caller's live game
   const rootMoves = g.generateMoves();
   if (rootMoves.length === 0) return null;
 
-  const ctx = { deadline: Infinity, nodes: 0, stopped: false, killers: [] };
+  const ctx = { deadline: Infinity, nodes: 0, stopped: false, killers: [], tt };
   let ordered = sortMoves(rootMoves, null, null);
   let completed = null;
   let completedDepth = 0;
@@ -524,7 +531,7 @@ function toMoveObj(game, m) {
 
 // Find best move for the AI opponent
 function findBestMove(game, difficulty = 2) {
-  const result = searchRoot(game, AI_DEPTH, AI_TIME_MS, 3);
+  const result = searchRoot(game, AI_DEPTH, AI_TIME_MS, 3, opponentTable);
   if (!result) return null;
 
   // Lowest level plays an occasional random move
@@ -809,7 +816,8 @@ function explainAIMove(game, move) {
 
 // Clear cache
 function clearCache() {
-  transpositionTable.clear();
+  coachTable.clear();
+  opponentTable.clear();
 }
 
 export {
