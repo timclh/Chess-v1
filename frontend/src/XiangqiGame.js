@@ -196,8 +196,11 @@ class XiangqiGame extends Component {
     lastMove: null,
     // Responsive board width
     boardWidth: Math.min(450, window.innerWidth - 40),
-    // Fullscreen mode
-    isFullscreen: true,
+    // Coach hint highlighted on the board ({ fromRow, fromCol, toRow, toCol, key })
+    hintMove: null,
+    hintRequested: false, // 💡 pressed: highlight the best move as soon as analysis lands
+    // Fullscreen mode: phones/tablets only; desktop gets the three-column layout
+    isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
     // Rating system state
     showResultDialog: false,
@@ -245,6 +248,9 @@ class XiangqiGame extends Component {
             && this.game.turn !== this.state.playerColor
             && !this.state.gameOver) {
           setTimeout(() => this.makeAIMove(), 500);
+        } else if (this.state.gameMode === 'coach' && !this.state.gameOver) {
+          // Resumed coach game on the player's turn: show suggestions right away
+          this.updateAnalysis();
         }
       });
     } else {
@@ -252,6 +258,17 @@ class XiangqiGame extends Component {
         fen: this.game.toFEN(),
       });
       this.updateGameStatus();
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    // 💡 was pressed while the engine was still thinking: highlight the best
+    // move on the board as soon as suggestions arrive.
+    const { hintRequested, suggestedMoves, coachAnalyzing } = this.state;
+    if (hintRequested && !coachAnalyzing && suggestedMoves.length > 0
+        && (prevState.suggestedMoves !== suggestedMoves || prevState.coachAnalyzing)) {
+      this.setState({ hintRequested: false });
+      this.previewMove(suggestedMoves[0].move);
     }
   }
 
@@ -458,6 +475,22 @@ class XiangqiGame extends Component {
 
   updateAnalysis = () => {
     if (!this.game || this.state.gameMode !== 'coach') return;
+    this._runCoachAnalysis('coach');
+  };
+
+  // Identifies the position an analysis was requested for, so results that
+  // arrive after the position changed (player or AI moved) can be dropped.
+  _positionKey = () => (this.game ? `${this.game.toFEN()} ${this.game.turn}` : '');
+
+  // Run heavy synchronous work after the browser has painted the "analyzing" state
+  _defer = (fn) => {
+    requestAnimationFrame(() => setTimeout(fn, 20));
+  };
+
+  // Shared by coach mode and on-demand hints in AI mode
+  _runCoachAnalysis = (mode) => {
+    if (!this.game) return;
+    const key = this._positionKey();
 
     // Show fast built-in analysis immediately
     const analysis = analyzePosition(this.game);
@@ -466,20 +499,20 @@ class XiangqiGame extends Component {
 
     // Use Fairy-Stockfish engine if available, else fall back to built-in AI
     if (this.state.engineReady && isEngineReady()) {
-      this._updateAnalysisWithEngine('coach');
+      this._updateAnalysisWithEngine(mode, key);
     } else {
-      // Fallback: built-in AI (synchronous, in next tick)
-      setTimeout(() => {
-        if (!this.game) return;
+      // Fallback: built-in AI (synchronous, so let the "analyzing" state paint first)
+      this._defer(() => {
+        if (!this.game || this._positionKey() !== key) return;
         const history = this.game.history_moves();
         const suggestedMoves = getTopMoves(this.game, 3, history);
         this.setState({ suggestedMoves, coachAnalyzing: false });
-      }, 0);
+      });
     }
   };
 
   // Async engine-powered analysis (non-blocking via WASM worker)
-  _updateAnalysisWithEngine = async (mode) => {
+  _updateAnalysisWithEngine = async (mode, key = this._positionKey()) => {
     if (!this.game) return;
 
     try {
@@ -487,7 +520,8 @@ class XiangqiGame extends Component {
       // DON'T run in parallel - they share singleton state and would race!
       const engineMoves = await getTopMovesEngine(this.game, 3);
 
-      if (!this.game) return; // Component may have unmounted
+      // Component unmounted, or the position changed while the engine was thinking
+      if (!this.game || this._positionKey() !== key) return;
 
       if (engineMoves && engineMoves.length > 0) {
         // Extract analysis from the top move's score
@@ -640,6 +674,7 @@ class XiangqiGame extends Component {
         history: this.game.history_moves(),
         aiThinking: false,
         lastAIExplanation: explanation,
+        hintMove: null,
         validMoves: [],
         lastMove: fromPos && toPos ? {
           fromRow: fromPos.row,
@@ -735,6 +770,8 @@ class XiangqiGame extends Component {
       history: this.game.history_moves(),
       validMoves: [],
       lastAIExplanation: '',
+      hintMove: null,
+      hintRequested: false,
       lastMove: fromPos && toPos ? {
         fromRow: fromPos.row,
         fromCol: fromPos.col,
@@ -783,6 +820,9 @@ class XiangqiGame extends Component {
       validMoves: [],
       lastMove: null,
       lastAIExplanation: '',
+      hintMove: null,
+      hintRequested: false,
+      coachAnalyzing: false,
       analysis: null,
       suggestedMoves: [],
       threatWarning: null,
@@ -854,6 +894,8 @@ class XiangqiGame extends Component {
       history: this.game.history_moves(),
       validMoves: [],
       lastMove: null,
+      hintMove: null,
+      hintRequested: false,
       gameOver: isGameOver,
       gameStatus: newStatus,
     }, () => {
@@ -1011,23 +1053,190 @@ class XiangqiGame extends Component {
 
   // Update analysis for AI mode (on demand)
   updateAnalysisForAI = () => {
-    if (!this.game) return;
+    this._runCoachAnalysis('ai');
+  };
 
-    const analysis = analyzePosition(this.game);
-    const strategicAdvice = getStrategicAdvice(this.game);
-    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
+  // Highlight a suggested move on the board without playing it
+  previewMove = (move) => {
+    const from = this.parsePosition(move.from);
+    const to = this.parsePosition(move.to);
+    if (!from || !to) return;
+    this.setState({
+      hintMove: { fromRow: from.row, fromCol: from.col, toRow: to.row, toCol: to.col, key: `${move.from}-${move.to}` },
+    });
+  };
 
-    // Use Fairy-Stockfish engine if available
-    if (this.state.engineReady && isEngineReady()) {
-      this._updateAnalysisWithEngine('ai');
+  // Suggestion cards: first tap shows the move on the board, tapping the same card again plays it
+  handleSuggestionClick = (move) => {
+    const key = `${move.from}-${move.to}`;
+    if (this.state.hintMove && this.state.hintMove.key === key) {
+      this.handleMove(move);
     } else {
-      setTimeout(() => {
-        if (!this.game) return;
-        const suggestedMoves = getTopMoves(this.game, 3);
-        this.setState({ suggestedMoves, coachAnalyzing: false });
-      }, 0);
+      this.previewMove(move);
     }
   };
+
+  // 💡: open the coach, make sure suggestions exist, and show the best move on the board.
+  // Works in AI mode too (no need to find the "coach hints" toggle first).
+  requestHint = () => {
+    const {
+      gameMode, isFullscreen, showCoachInAI, suggestedMoves, coachAnalyzing, aiThinking, playerColor,
+    } = this.state;
+    if (!this.game || gameMode === 'tutorial' || aiThinking) return;
+
+    const openPanel = isFullscreen ? { showFullscreenCoach: true } : {};
+
+    // Nothing to suggest while the opponent is on move; just show what we have
+    if (this.game.turn !== playerColor) {
+      this.setState(openPanel);
+      return;
+    }
+
+    if (gameMode === 'ai' && !showCoachInAI) {
+      this.setState({ ...openPanel, showCoachInAI: true, hintRequested: true }, this.updateAnalysisForAI);
+    } else if (suggestedMoves.length > 0 && !coachAnalyzing) {
+      this.setState(openPanel);
+      this.previewMove(suggestedMoves[0].move);
+    } else if (coachAnalyzing) {
+      this.setState({ ...openPanel, hintRequested: true });
+    } else {
+      this.setState({ ...openPanel, hintRequested: true }, () => this._runCoachAnalysis(gameMode));
+    }
+  };
+
+  // Coach content shared by the desktop side panel and the fullscreen slide-in panel
+  renderCoachBody() {
+    const {
+      analysis, suggestedMoves, strategicAdvice, lastAIExplanation, threatWarning,
+      aiThinking, playerColor, coachAnalyzing, engineReady, hintMove,
+    } = this.state;
+    const isPlayerTurn = !!this.game && this.game.turn === playerColor;
+    const hasThreats = threatWarning && threatWarning.length > 0 && !aiThinking;
+    const hasAnything = analysis || lastAIExplanation || suggestedMoves.length > 0
+      || coachAnalyzing || hasThreats || (strategicAdvice && strategicAdvice.length > 0);
+
+    return (
+      <>
+        {/* Win probability */}
+        {analysis && (
+          <div className="analysis-section">
+            <div className="section-label">
+              胜率 / Win Probability
+              {analysis.enginePowered && analysis.depth && (
+                <span className="engine-depth"> (depth {analysis.depth})</span>
+              )}
+            </div>
+            <div className="win-probability">
+              <div className="prob-bar">
+                <div className="prob-red" style={{ width: `${analysis.winProbability.red * 100}%` }}>
+                  {analysis.winProbability.red >= 0.15 && (
+                    <span>{Math.round(analysis.winProbability.red * 100)}%</span>
+                  )}
+                </div>
+                <div className="prob-black-xiangqi" style={{ width: `${analysis.winProbability.black * 100}%` }}>
+                  {analysis.winProbability.black >= 0.15 && (
+                    <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                  )}
+                </div>
+              </div>
+              <div className="evaluation-text">{analysis.evaluation}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Threat warnings */}
+        {hasThreats && (
+          <div className="analysis-section threat-section">
+            <div className="section-label">⚠️ 注意威胁 / Watch Out</div>
+            {threatWarning.map((t, i) => (
+              <div key={i} className="threat-item">
+                <p>{t.cn}</p>
+                <p className="threat-en">{t.en}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Suggested moves */}
+        {coachAnalyzing && !aiThinking && (
+          <div className="analysis-section">
+            <div className="section-label">推荐走法 / Suggested Moves</div>
+            <div className="coach-analyzing">
+              {engineReady
+                ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
+                : '🔍 教练分析中... / Coach analyzing...'}
+            </div>
+          </div>
+        )}
+        {suggestedMoves.length > 0 && !aiThinking && !coachAnalyzing && isPlayerTurn && (
+          <div className="analysis-section">
+            <div className="section-label">推荐走法 / Suggested Moves</div>
+            <div className="suggested-moves-list">
+              {suggestedMoves.map((item, index) => {
+                const key = `${item.move.from}-${item.move.to}`;
+                const selected = hintMove && hintMove.key === key;
+                return (
+                  <div
+                    key={key}
+                    className={`suggestion ${index === 0 ? 'best' : ''} ${selected ? 'selected' : ''}`}
+                    onClick={() => this.handleSuggestionClick(item.move)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.handleSuggestionClick(item.move);
+                      }
+                    }}
+                  >
+                    <div className="suggestion-move">
+                      <span className="rank">#{item.rank}</span>
+                      <span className="san">{item.san}</span>
+                      <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
+                    </div>
+                    <div className="suggestion-reason">{item.explanation}</div>
+                    {selected && (
+                      <div className="suggestion-tip">再点一次走这步 / Tap again to play</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="suggestion-footnote">点击在棋盘上查看 / Tap to preview on the board</div>
+          </div>
+        )}
+
+        {/* What the AI just played and why */}
+        {lastAIExplanation && (
+          <div className="analysis-section">
+            <div className="section-label">AI 走法说明</div>
+            <div className="ai-explanation-box">{lastAIExplanation}</div>
+          </div>
+        )}
+
+        {/* Strategic advice */}
+        {strategicAdvice && strategicAdvice.length > 0 && (
+          <div className="analysis-section">
+            <div className="section-label">战略建议 / Strategic Advice</div>
+            <div className="strategic-advice-list">
+              {strategicAdvice.map((advice, index) => (
+                <div key={index} className={`advice-item priority-${advice.priority}`}>
+                  <p className="advice-cn">{advice.cn}</p>
+                  <p className="advice-en">{advice.en}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasAnything && (
+          <div className="analysis-empty">
+            点 💡 获取教练建议<br />Tap 💡 for coach advice
+          </div>
+        )}
+      </>
+    );
+  }
 
   render() {
     const {
@@ -1043,154 +1252,202 @@ class XiangqiGame extends Component {
     const currentTutorialLesson = XIANGQI_LESSONS[currentLesson];
     const boardOrientation = (gameMode === 'ai' || gameMode === 'coach') && playerColor === 'b' ? 'black' : 'red';
 
-    // ── Fullscreen mode ──
+    // ── Fullscreen mode (phones / tablets) ──
     if (this.state.isFullscreen) {
-      const fsBoard = Math.min(this.state.boardWidth, window.innerHeight - 120);
       const { showFullscreenCoach } = this.state;
-      const hasCoachContent = gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI) || analysis || lastAIExplanation || suggestedMoves.length > 0;
+      const isTutorial = gameMode === 'tutorial';
+      const turn = this.game ? this.game.turn : 'r';
+      const oppColor = playerColor === 'r' ? 'b' : 'r';
+      const inCheck = !!(this.game && !gameOver && this.game.in_check());
+      const isPlayerTurn = !!this.game && turn === playerColor && !aiThinking && !gameOver;
+      const diffLabels = { 1: '入门', 2: '初级', 3: '中级', 4: '高级' };
+      const oppIcon = isTutorial ? '📚' : '🤖';
+      const oppName = isTutorial
+        ? `第 ${currentLesson + 1} 课 · ${currentTutorialLesson ? currentTutorialLesson.title : ''}`
+        : `${gameMode === 'coach' ? '教练对局 / Coach' : 'AI 对战'} · ${diffLabels[aiDifficulty] || '初级'}`;
+      const lastSan = history.length > 0 ? history[history.length - 1].san : '';
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
+      const vh = typeof window !== 'undefined' ? window.innerHeight : 844;
+      // The board is 9:10; leave room for top bar, two player bars, status and action bar
+      const fsBoardWidth = Math.max(240, Math.min(vw - 16, (vh - 250) * 0.9));
+
+      let statusText;
+      if (aiThinking) statusText = 'AI 思考中… / Thinking…';
+      else if (gameOver || inCheck || isTutorial) statusText = gameStatus;
+      else if (isPlayerTurn) statusText = '✋ 轮到你了 / Your turn';
+      else statusText = gameStatus;
+
       return (
         <div className="chess-fullscreen-mode">
-          <div className="fullscreen-corner-menu">
-            <button className="corner-menu-btn" onClick={() => this.setState({ isFullscreen: false })} title="Exit fullscreen">✕</button>
-            <button className="corner-menu-btn" onClick={this.resetGame} title="New game">🔄</button>
-            <button className="corner-menu-btn" onClick={this.undoMove} disabled={history.length === 0 || aiThinking} title="Undo">↩️</button>
-            {hasCoachContent && (
+          {/* Top bar: exit / coach / settings */}
+          <div className="fs-top-bar">
+            <button
+              className="fs-icon-btn"
+              onClick={() => this.setState({ isFullscreen: false })}
+              title="退出全屏 / Exit fullscreen"
+              aria-label="Exit fullscreen"
+            >
+              ✕
+            </button>
+            <div className="fs-top-right">
+              {!isTutorial && (
+                <button
+                  className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
+                  onClick={() => (showFullscreenCoach
+                    ? this.setState({ showFullscreenCoach: false })
+                    : this.requestHint())}
+                  title="教练 / Coach"
+                  aria-label="Toggle coach"
+                >
+                  💡
+                </button>
+              )}
               <button
-                className={`corner-menu-btn ${showFullscreenCoach ? 'active' : ''}`}
-                onClick={() => this.setState({ showFullscreenCoach: !showFullscreenCoach })}
-                title="Coach"
+                className="fs-icon-btn"
+                onClick={() => this.setState({ isFullscreen: false })}
+                title="设置 / Settings"
+                aria-label="Settings"
               >
-                💡
+                ⚙️
               </button>
+            </div>
+          </div>
+
+          {/* Opponent bar (with turn indicator) */}
+          <div className={`fs-player-bar opponent ${turn === oppColor && !gameOver && !isTutorial ? 'active-turn' : ''}`}>
+            {!isTutorial && <span className={`fs-color-dot ${oppColor === 'r' ? 'red' : 'black'}`} />}
+            <span className="fs-player-icon">{oppIcon}</span>
+            <span className="fs-player-name">{oppName}</span>
+            {aiThinking && <span className="fs-thinking-dot" aria-label="thinking">…</span>}
+            {lastSan && turn === playerColor && !isTutorial && (
+              <span className="fs-last-move">{lastSan}</span>
             )}
           </div>
-          <div className="fullscreen-status">
-            <span>{aiThinking ? 'AI 思考中...' : gameStatus}</span>
+
+          {/* Status */}
+          <div className={`fs-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`} role="status">
+            {statusText}
+            {isTutorial && currentTutorialLesson && (
+              <span className="fs-status-sub">
+                {showTutorialHint
+                  ? `💡 ${currentTutorialLesson.hint} / ${currentTutorialLesson.hintEn}`
+                  : currentTutorialLesson.objectiveEn}
+              </span>
+            )}
           </div>
+
+          {/* Board */}
           <div className="fullscreen-board-area" style={{ touchAction: 'none' }}>
             {this.game && (
               <XiangqiBoard
                 board={this.game.board}
-                width={Math.min(fsBoard, window.innerHeight - 180)}
+                width={fsBoardWidth}
                 orientation={boardOrientation}
                 turn={this.game.turn}
-                playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
+                playerColor={isTutorial ? 'r' : playerColor}
                 validMoves={validMoves}
                 lastMove={lastMove}
+                hintMove={this.state.hintMove}
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
-                disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
+                disabled={aiThinking || (gameOver && !isTutorial) || (isTutorial && lessonComplete)}
               />
             )}
           </div>
 
-          {/* Bottom toolbar */}
-          <div className="fullscreen-bottom-bar">
-            <div className="fullscreen-bottom-rating">
-              <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />
-            </div>
-            <div className="fullscreen-bottom-actions">
-              <button
-                className="bottom-action-btn hint-btn"
-                onClick={() => suggestedMoves.length > 0 && this.handleMove(suggestedMoves[0].move)}
-                disabled={suggestedMoves.length === 0 || aiThinking || !(this.game && this.game.turn === playerColor)}
-                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint'}
-              >
-                💡 Hint
-              </button>
-              <button
-                className="bottom-action-btn"
-                onClick={this.undoMove}
-                disabled={history.length === 0 || aiThinking}
-                title="Undo"
-              >
-                ↩️ Undo
-              </button>
-              <button
-                className="bottom-action-btn"
-                onClick={this.resetGame}
-                title="New Game"
-              >
-                🔄 New
-              </button>
-            </div>
+          {/* Self bar (turn indicator + rating) */}
+          <div className={`fs-player-bar self ${turn === playerColor && !gameOver && !isTutorial ? 'active-turn' : ''}`}>
+            <span className={`fs-color-dot ${(isTutorial ? 'r' : playerColor) === 'r' ? 'red' : 'black'}`} />
+            <span className="fs-player-icon">👤</span>
+            <span className="fs-player-name">你 / You</span>
+            {!isTutorial && <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />}
           </div>
 
-          {/* Slide-in Coach Panel */}
-          {showFullscreenCoach && (
+          {/* Bottom action bar */}
+          <div className="fs-action-bar">
+            {isTutorial ? (
+              <>
+                <button
+                  className="fs-action-btn"
+                  onClick={this.prevLesson}
+                  disabled={currentLesson === 0}
+                  title="上一课 / Previous lesson"
+                  aria-label="Previous lesson"
+                >
+                  <span className="fs-act-icon">◀</span>
+                </button>
+                <button
+                  className="fs-action-btn"
+                  onClick={() => this.startTutorial(currentLesson)}
+                  title="重试 / Retry"
+                  aria-label="Retry"
+                >
+                  <span className="fs-act-icon">🔄</span>
+                </button>
+                <button
+                  className={`fs-action-btn hint ${showTutorialHint ? 'on' : ''}`}
+                  onClick={this.toggleTutorialHint}
+                  title="提示 / Hint"
+                  aria-label="Hint"
+                >
+                  <span className="fs-act-icon">💡</span>
+                </button>
+                <button
+                  className={`fs-action-btn ${lessonComplete ? 'hint' : ''}`}
+                  onClick={this.nextLesson}
+                  disabled={currentLesson >= XIANGQI_LESSONS.length - 1}
+                  title="下一课 / Next lesson"
+                  aria-label="Next lesson"
+                >
+                  <span className="fs-act-icon">▶</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="fs-action-btn"
+                  onClick={this.undoMove}
+                  disabled={history.length === 0 || aiThinking}
+                  title="悔棋 / Undo"
+                  aria-label="Undo"
+                >
+                  <span className="fs-act-icon">↩️</span>
+                </button>
+                <button
+                  className="fs-action-btn hint"
+                  onClick={this.requestHint}
+                  disabled={!isPlayerTurn}
+                  title="提示 / Hint"
+                  aria-label="Hint"
+                >
+                  <span className="fs-act-icon">💡</span>
+                </button>
+                <button
+                  className="fs-action-btn"
+                  onClick={this.resetGame}
+                  title="新局 / New game"
+                  aria-label="New game"
+                >
+                  <span className="fs-act-icon">🔄</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Slide-in coach panel */}
+          {showFullscreenCoach && !isTutorial && (
             <div className="fullscreen-coach-panel">
               <div className="fullscreen-coach-header">
                 <span>💡 教练 / Coach</span>
-                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}>✕</button>
+                <button
+                  className="coach-close-btn"
+                  onClick={() => this.setState({ showFullscreenCoach: false })}
+                  aria-label="Close coach"
+                >
+                  ✕
+                </button>
               </div>
-              <div className="fullscreen-coach-body">
-                {analysis && (
-                  <div className="analysis-section">
-                    <div className="section-label">胜率 / Win Probability</div>
-                    <div className="win-probability">
-                      <div className="prob-bar">
-                        <div className="prob-red" style={{ width: `${analysis.winProbability.red * 100}%` }}>
-                          {analysis.winProbability.red >= 0.15 && <span>{Math.round(analysis.winProbability.red * 100)}%</span>}
-                        </div>
-                        <div className="prob-black-xiangqi" style={{ width: `${analysis.winProbability.black * 100}%` }}>
-                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
-                        </div>
-                      </div>
-                      <div className="evaluation-text">{analysis.evaluation}</div>
-                    </div>
-                  </div>
-                )}
-                {threatWarning && threatWarning.length > 0 && !aiThinking && (
-                  <div className="analysis-section threat-section">
-                    <div className="section-label">⚠️ Watch Out</div>
-                    {threatWarning.map((t, i) => (
-                      <div key={i} className="threat-item">
-                        <p>{t.cn}</p>
-                        <p className="threat-en">{t.en}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {lastAIExplanation && (
-                  <div className="analysis-section">
-                    <div className="section-label">AI 走法说明</div>
-                    <div className="ai-explanation-box">{lastAIExplanation}</div>
-                  </div>
-                )}
-                {suggestedMoves.length > 0 && !aiThinking && this.game && this.game.turn === playerColor && (
-                  <div className="analysis-section">
-                    <div className="section-label">推荐走法 / Suggested</div>
-                    <div className="suggested-moves-list">
-                      {suggestedMoves.map((item, index) => (
-                        <div key={index} className={`suggestion ${index === 0 ? 'best' : ''}`} onClick={() => this.handleMove(item.move)}>
-                          <div className="suggestion-move">
-                            <span className="rank">#{item.rank}</span>
-                            <span className="san">{item.san}</span>
-                            <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
-                          </div>
-                          <div className="suggestion-reason">{item.explanation}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {strategicAdvice && strategicAdvice.length > 0 && (
-                  <div className="analysis-section">
-                    <div className="section-label">战略建议 / Advice</div>
-                    <div className="strategic-advice-list">
-                      {strategicAdvice.map((advice, index) => (
-                        <div key={index} className={`advice-item priority-${advice.priority}`}>
-                          <p className="advice-cn">{advice.cn}</p>
-                          <p className="advice-en">{advice.en}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
-                  <div className="analysis-empty">下棋后查看教练分析<br/>Play a move to see coach analysis</div>
-                )}
-              </div>
+              <div className="fullscreen-coach-body">{this.renderCoachBody()}</div>
             </div>
           )}
 
@@ -1205,6 +1462,7 @@ class XiangqiGame extends Component {
               opponent={gameMode === 'ai' ? `AI (Lv${this.state.aiDifficulty})` : 'Opponent'}
               moves={this.state.history.length}
               onRematch={this.handleRematch}
+              onHome={() => this.setState({ isFullscreen: false, showResultDialog: false })}
               onClose={this.closeResultDialog}
             />
           )}
@@ -1339,6 +1597,13 @@ class XiangqiGame extends Component {
               >
                 悔棋 / Undo
               </button>
+              <button
+                className="btn btn-secondary full-width"
+                onClick={this.requestHint}
+                disabled={aiThinking || gameOver || !this.game || this.game.turn !== playerColor}
+              >
+                💡 提示 / Hint
+              </button>
             </div>
           )}
         </div>
@@ -1359,6 +1624,7 @@ class XiangqiGame extends Component {
                 playerColor={gameMode === 'tutorial' ? 'r' : playerColor}
                 validMoves={validMoves}
                 lastMove={lastMove}
+                hintMove={this.state.hintMove}
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
                 disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}
@@ -1404,110 +1670,7 @@ class XiangqiGame extends Component {
                 <span className="engine-badge loading" title="Loading engine...">⏳</span>
               )}
             </div>
-
-            {/* Win Probability */}
-            {analysis && (
-              <div className="analysis-section">
-                <div className="section-label">
-                  胜率 / Win Probability
-                  {analysis.enginePowered && analysis.depth && (
-                    <span className="engine-depth"> (depth {analysis.depth})</span>
-                  )}
-                </div>
-                <div className="win-probability">
-                  <div className="prob-bar">
-                    <div
-                      className="prob-red"
-                      style={{ width: `${analysis.winProbability.red * 100}%` }}
-                    >
-                      {analysis.winProbability.red >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.red * 100)}%</span>
-                      )}
-                    </div>
-                    <div
-                      className="prob-black-xiangqi"
-                      style={{ width: `${analysis.winProbability.black * 100}%` }}
-                    >
-                      {analysis.winProbability.black >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.black * 100)}%</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="evaluation-text">{analysis.evaluation}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Threat Warnings */}
-            {threatWarning && threatWarning.length > 0 && !aiThinking && (
-              <div className="analysis-section threat-section">
-                <div className="section-label">⚠️ 注意威胁 / Watch Out</div>
-                {threatWarning.map((t, i) => (
-                  <div key={i} className="threat-item">
-                    <p>{t.cn}</p>
-                    <p className="threat-en">{t.en}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* AI Explanation */}
-            {lastAIExplanation && (
-              <div className="analysis-section">
-                <div className="section-label">AI 走法说明</div>
-                <div className="ai-explanation-box">
-                  {lastAIExplanation}
-                </div>
-              </div>
-            )}
-
-            {/* Suggested Moves */}
-            {this.state.coachAnalyzing && !aiThinking && (
-              <div className="analysis-section">
-                <div className="section-label">推荐走法 / Suggested Moves</div>
-                <div className="coach-analyzing">
-                  {this.state.engineReady
-                    ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
-                    : '🔍 教练分析中... / Coach analyzing...'}
-                </div>
-              </div>
-            )}
-            {suggestedMoves.length > 0 && !aiThinking && !this.state.coachAnalyzing && this.game && this.game.turn === playerColor && (
-              <div className="analysis-section">
-                <div className="section-label">推荐走法 / Suggested Moves</div>
-                <div className="suggested-moves-list">
-                  {suggestedMoves.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`suggestion ${index === 0 ? 'best' : ''}`}
-                      onClick={() => this.handleMove(item.move)}
-                    >
-                      <div className="suggestion-move">
-                        <span className="rank">#{item.rank}</span>
-                        <span className="san">{item.san}</span>
-                        <span className="win-prob">{Math.round(item.winProbability * 100)}%</span>
-                      </div>
-                      <div className="suggestion-reason">{item.explanation}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Strategic Advice */}
-            {strategicAdvice && strategicAdvice.length > 0 && (
-              <div className="analysis-section">
-                <div className="section-label">战略建议 / Strategic Advice</div>
-                <div className="strategic-advice-list">
-                  {strategicAdvice.map((advice, index) => (
-                    <div key={index} className={`advice-item priority-${advice.priority}`}>
-                      <p className="advice-cn">{advice.cn}</p>
-                      <p className="advice-en">{advice.en}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {this.renderCoachBody()}
           </div>
         )}
 

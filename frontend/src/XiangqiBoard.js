@@ -263,6 +263,7 @@ class XiangqiBoard extends Component {
       orientation = 'red',
       validMoves = [],
       lastMove,
+      hintMove,
       highlightSquares = {},
     } = this.props;
     const { selectedSquare, dragging, dragPosition } = this.state;
@@ -406,6 +407,28 @@ class XiangqiBoard extends Component {
               />
             </>
           )}
+
+          {/* Coach hint: gold ring on the piece to move, filled gold ring on the target */}
+          {hintMove && ['from', 'to'].map((end) => {
+            const row = end === 'from' ? hintMove.fromRow : hintMove.toRow;
+            const col = end === 'from' ? hintMove.fromCol : hintMove.toCol;
+            // Slightly larger than the piece so the ring stays visible around it
+            const ringSize = pieceSize * 1.2;
+            return (
+              <div
+                key={`hint-${end}`}
+                className={`xiangqi-highlight hint-move hint-${end}`}
+                style={{
+                  position: 'absolute',
+                  left: padding + (flipped ? 8 - col : col) * cellSize - ringSize / 2,
+                  top: padding + (flipped ? 9 - row : row) * cellSize - ringSize / 2,
+                  width: ringSize,
+                  height: ringSize,
+                  borderRadius: '50%',
+                }}
+              />
+            );
+          })}
         </div>
 
         {/* Pieces layer */}

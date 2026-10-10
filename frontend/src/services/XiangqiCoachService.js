@@ -187,13 +187,14 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
     // Adjust depth/time based on skill level
     // WASM is single-threaded, so depth ≈ time-limited.
     // The key is keeping a big gap between AI opponent and coach.
-    // Coach (skill 20): depth 30, 15s — deep GM-level analysis
+    // Coach (skill 20): depth 30 cap, 6s — still far deeper than the opponent
     // AI opponent (skill 1-9): depth 10-12, 0.5-1.5s — intentionally shallow
+    // (15s made every hint feel hung: the panel sat on "analyzing" for a quarter of a minute)
     let depth, timeMs;
     if (skillLevel >= 15) {
-      // Coach mode — spend serious time for deep analysis
+      // Coach mode — deep analysis, but bounded so the hint panel stays responsive
       depth = 30;
-      timeMs = 15000;
+      timeMs = 6000;
     } else {
       // AI opponent — keep shallow so coach is noticeably stronger
       depth = 8 + Math.floor(skillLevel / 2);   // skill 1→8, skill 7→11
