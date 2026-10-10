@@ -155,10 +155,6 @@ const POSITION_TABLES = {
   s: SOLDIER_TABLE,
 };
 
-// Cache for transposition table
-const transpositionTable = new Map();
-const MAX_CACHE_SIZE = 100000;
-
 // Check if we're in opening phase (most pieces still present)
 function isOpeningPhase(game) {
   let pieceCount = 0;
@@ -168,25 +164,6 @@ function isOpeningPhase(game) {
     }
   }
   return pieceCount >= 28; // 32 initial pieces, opening if >= 28
-}
-
-// Get opening book move if available
-function getOpeningBookMove(game) {
-  const fen = game.toFEN();
-  const bookMoves = OPENING_BOOK[fen];
-  if (!bookMoves || bookMoves.length === 0) return null;
-
-  // Validate that the book move is actually legal
-  const legalMoves = game.moves({ verbose: true });
-  const validBookMoves = bookMoves.filter(bm =>
-    legalMoves.some(lm => lm.from === bm.from && lm.to === bm.to)
-  );
-
-  if (validBookMoves.length === 0) return null;
-
-  // Add some randomness among top book moves
-  const topMoves = validBookMoves.filter(m => m.score >= validBookMoves[0].score - 10);
-  return topMoves[Math.floor(Math.random() * topMoves.length)];
 }
 
 // Opening-specific evaluation bonuses
@@ -246,52 +223,106 @@ function evaluateOpening(game) {
   return bonus;
 }
 
-// Evaluate a position from red's perspective
+// ---------------------------------------------------------------------------
+// Search configuration
+// ---------------------------------------------------------------------------
+const MATE = 100000;
+const INF = 1e9;
+const MAX_PLY = 64;
+const QUIESCENCE_MAX_DEPTH = 8;
+
+// Opponent strength (kept deliberately low so the player can win with the coach's help)
+const AI_DEPTH = 2;
+const AI_TIME_MS = 1000;
+// Coach strength: iterative deepening up to this depth, bounded by time
+const COACH_DEPTH = 6;
+const COACH_TIME_MS = 8000;
+
+// ---------------------------------------------------------------------------
+// Transposition table (Zobrist hashing, bound flags)
+// ---------------------------------------------------------------------------
+const TT_EXACT = 0;
+const TT_LOWER = 1;
+const TT_UPPER = 2;
+const PIECE_INDEX = { k: 0, a: 1, e: 2, h: 3, r: 4, c: 5, s: 6 };
+
+let zState = 0x2545f491;
+function zRand() {
+  zState ^= zState << 13;
+  zState ^= zState >>> 17;
+  zState ^= zState << 5;
+  return zState >>> 0;
+}
+const Z1 = [];
+const Z2 = [];
+for (let i = 0; i < 14 * 90; i++) {
+  Z1.push(zRand());
+  Z2.push(zRand());
+}
+const TURN_Z1 = zRand();
+const TURN_Z2 = zRand();
+
+// 53-bit key: 32 bits from h1 + 21 bits from h2
+function hashPosition(game) {
+  let h1 = 0;
+  let h2 = 0;
+  const board = game.board;
+  for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 9; c++) {
+      const p = board[r][c];
+      if (!p) continue;
+      const k = (PIECE_INDEX[p.type] * 2 + (p.color === 'r' ? 0 : 1)) * 90 + r * 9 + c;
+      h1 ^= Z1[k];
+      h2 ^= Z2[k];
+    }
+  }
+  if (game.turn === 'b') {
+    h1 ^= TURN_Z1;
+    h2 ^= TURN_Z2;
+  }
+  return (h1 >>> 0) + (h2 & 0x1fffff) * 4294967296;
+}
+
+// ---------------------------------------------------------------------------
+// Evaluation (red's perspective)
+// ---------------------------------------------------------------------------
 function evaluate(game) {
   let score = 0;
+  let pieceCount = 0;
   const board = game.board;
-  const inOpening = isOpeningPhase(game);
 
   for (let row = 0; row < 10; row++) {
     for (let col = 0; col < 9; col++) {
       const piece = board[row][col];
       if (!piece) continue;
+      pieceCount++;
 
       const pieceValue = PIECE_VALUES[piece.type];
       const positionTable = POSITION_TABLES[piece.type];
 
-      let positionBonus = 0;
       if (piece.color === 'r') {
-        // Red pieces - use table directly
-        positionBonus = positionTable[row][col];
-        score += pieceValue + positionBonus;
+        score += pieceValue + positionTable[row][col];
       } else {
-        // Black pieces - mirror the table
-        positionBonus = positionTable[9 - row][8 - col];
-        score -= pieceValue + positionBonus;
+        // Black pieces use the mirrored table
+        score -= pieceValue + positionTable[9 - row][8 - col];
       }
     }
   }
 
-  // Add opening-specific evaluation
-  if (inOpening) {
+  if (pieceCount >= 28) {
     score += evaluateOpening(game);
-  }
-
-  // Bonus for check
-  if (game.in_check()) {
-    score += game.turn === 'r' ? -50 : 50;
-  }
-
-  // Bonus for checkmate
-  if (game.in_checkmate()) {
-    score += game.turn === 'r' ? -100000 : 100000;
   }
 
   return score;
 }
 
-// Quick evaluation for sorting moves
+// Score from the point of view of the side to move
+function evaluateForMover(game) {
+  const e = evaluate(game);
+  return game.turn === 'r' ? e : -e;
+}
+
+// Quick evaluation for display
 function quickEvaluate(game) {
   const score = evaluate(game);
   const winProb = 1 / (1 + Math.exp(-score / 400));
@@ -301,90 +332,135 @@ function quickEvaluate(game) {
   };
 }
 
-// Minimax with alpha-beta pruning
-function minimax(game, depth, alpha, beta, maximizing, startTime, timeLimit) {
-  // Check time limit
-  if (Date.now() - startTime > timeLimit) {
-    return { score: evaluate(game), timeout: true };
+// ---------------------------------------------------------------------------
+// Search: negamax + alpha-beta + quiescence + TT + killers, iterative deepening
+// ---------------------------------------------------------------------------
+const transpositionTable = new Map();
+const MAX_CACHE_SIZE = 400000;
+
+function orderScore(m, ttMove, killers) {
+  if (ttMove && m.fr === ttMove.fr && m.fc === ttMove.fc && m.tr === ttMove.tr && m.tc === ttMove.tc) {
+    return 1000000;
+  }
+  if (m.captured) {
+    // MVV-LVA: most valuable victim, least valuable attacker
+    return 100000 + PIECE_VALUES[m.captured.type] * 10 - PIECE_VALUES[m.piece];
+  }
+  if (killers) {
+    for (const k of killers) {
+      if (k && k.fr === m.fr && k.fc === m.fc && k.tr === m.tr && k.tc === m.tc) return 90000;
+    }
+  }
+  return 0;
+}
+
+function sortMoves(moves, ttMove, killers) {
+  const scored = moves.map(m => ({ m, s: orderScore(m, ttMove, killers) }));
+  scored.sort((a, b) => b.s - a.s);
+  return scored.map(x => x.m);
+}
+
+function timeUp(ctx) {
+  if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.stopped = true;
+  return ctx.stopped;
+}
+
+// Only captures (or all evasions when in check) until the position is quiet
+function quiesce(game, alpha, beta, ply, qdepth, ctx) {
+  if (timeUp(ctx)) return 0;
+
+  const inCheck = game.isGeneralAttacked(game.turn, game.board);
+  const standPat = evaluateForMover(game);
+
+  if (!inCheck) {
+    if (standPat >= beta) return standPat;
+    if (standPat > alpha) alpha = standPat;
+  }
+  if (qdepth >= QUIESCENCE_MAX_DEPTH || ply >= MAX_PLY) return standPat;
+
+  let moves = game.generateMoves();
+  if (moves.length === 0) return -MATE + ply; // no legal move = loss in xiangqi
+  if (!inCheck) moves = moves.filter(m => m.captured);
+  moves = sortMoves(moves, null, null);
+
+  let best = inCheck ? -INF : standPat;
+  for (const m of moves) {
+    game.makeRaw(m);
+    const score = -quiesce(game, -beta, -alpha, ply + 1, qdepth + 1, ctx);
+    game.unmakeRaw(m);
+    if (ctx.stopped) return 0;
+    if (score > best) best = score;
+    if (score > alpha) alpha = score;
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
+function negamax(game, depth, alpha, beta, ply, ctx) {
+  if (timeUp(ctx)) return 0;
+  if (depth <= 0) return quiesce(game, alpha, beta, ply, 0, ctx);
+  if (ply >= MAX_PLY) return evaluateForMover(game);
+
+  const origAlpha = alpha;
+  const key = hashPosition(game);
+  const entry = transpositionTable.get(key);
+  let ttMove = null;
+  if (entry) {
+    ttMove = entry.move;
+    if (entry.depth >= depth) {
+      let s = entry.score;
+      if (s > MATE - 1000) s -= ply;
+      else if (s < -MATE + 1000) s += ply;
+      if (entry.flag === TT_EXACT) return s;
+      if (entry.flag === TT_LOWER && s > alpha) alpha = s;
+      else if (entry.flag === TT_UPPER && s < beta) beta = s;
+      if (alpha >= beta) return s;
+    }
   }
 
-  // Check transposition table
-  const fen = game.toFEN() + game.turn;
-  const cached = transpositionTable.get(fen);
-  if (cached && cached.depth >= depth) {
-    return cached;
+  const legal = game.generateMoves();
+  if (legal.length === 0) return -MATE + ply; // checkmate or stalemate: side to move loses
+
+  const killers = ctx.killers[ply] || (ctx.killers[ply] = []);
+  const moves = sortMoves(legal, ttMove, killers);
+
+  let best = -INF;
+  let bestMove = null;
+  for (const m of moves) {
+    game.makeRaw(m);
+    const score = -negamax(game, depth - 1, -beta, -alpha, ply + 1, ctx);
+    game.unmakeRaw(m);
+    if (ctx.stopped) return 0;
+
+    if (score > best) {
+      best = score;
+      bestMove = m;
+    }
+    if (score > alpha) alpha = score;
+    if (alpha >= beta) {
+      if (!m.captured && killers[0] !== m) {
+        killers[1] = killers[0];
+        killers[0] = m;
+      }
+      break;
+    }
   }
 
-  if (depth === 0 || game.game_over()) {
-    const score = evaluate(game);
-    return { score };
-  }
+  let flag = TT_EXACT;
+  if (best <= origAlpha) flag = TT_UPPER;
+  else if (best >= beta) flag = TT_LOWER;
 
-  const moves = game.moves({ verbose: true });
-
-  // Move ordering: captures first, then checks
-  moves.sort((a, b) => {
-    let scoreA = 0, scoreB = 0;
-    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
-    return scoreB - scoreA;
+  let stored = best;
+  if (stored > MATE - 1000) stored += ply;
+  else if (stored < -MATE + 1000) stored -= ply;
+  transpositionTable.set(key, {
+    depth,
+    score: stored,
+    flag,
+    move: bestMove ? { fr: bestMove.fr, fc: bestMove.fc, tr: bestMove.tr, tc: bestMove.tc } : null,
   });
 
-  let bestMove = moves[0];
-
-  if (maximizing) {
-    let maxEval = -Infinity;
-
-    for (const move of moves) {
-      const newGame = cloneGame(game);
-      newGame.move(move);
-
-      const result = minimax(newGame, depth - 1, alpha, beta, false, startTime, timeLimit);
-
-      if (result.timeout) return result;
-
-      if (result.score > maxEval) {
-        maxEval = result.score;
-        bestMove = move;
-      }
-
-      alpha = Math.max(alpha, result.score);
-      if (beta <= alpha) break;
-    }
-
-    const cacheEntry = { score: maxEval, depth, move: bestMove };
-    if (transpositionTable.size < MAX_CACHE_SIZE) {
-      transpositionTable.set(fen, cacheEntry);
-    }
-
-    return { score: maxEval, move: bestMove };
-  } else {
-    let minEval = Infinity;
-
-    for (const move of moves) {
-      const newGame = cloneGame(game);
-      newGame.move(move);
-
-      const result = minimax(newGame, depth - 1, alpha, beta, true, startTime, timeLimit);
-
-      if (result.timeout) return result;
-
-      if (result.score < minEval) {
-        minEval = result.score;
-        bestMove = move;
-      }
-
-      beta = Math.min(beta, result.score);
-      if (beta <= alpha) break;
-    }
-
-    const cacheEntry = { score: minEval, depth, move: bestMove };
-    if (transpositionTable.size < MAX_CACHE_SIZE) {
-      transpositionTable.set(fen, cacheEntry);
-    }
-
-    return { score: minEval, move: bestMove };
-  }
+  return best;
 }
 
 // Clone game state
@@ -394,41 +470,79 @@ function cloneGame(game) {
   return newGame;
 }
 
-// Find best move
-function findBestMove(game, difficulty = 2) {
-  // AI opponent does NOT use opening book - keep it simple and weak
-  // Only use basic minimax with low depth
+// Iterative deepening at the root. Returns the n best moves of the last
+// fully completed iteration, with exact scores from the mover's perspective.
+function searchRoot(game, maxDepth, timeMs, n = 1) {
+  if (transpositionTable.size > MAX_CACHE_SIZE) transpositionTable.clear();
 
-  // AI opponent depths - all set to 2 for easy opponents
-  const depths = { 1: 2, 2: 2, 3: 2, 4: 2 };
-  const timeLimits = { 1: 1000, 2: 1000, 3: 1000, 4: 1000 };
+  const g = cloneGame(game); // never mutate the caller's live game
+  const rootMoves = g.generateMoves();
+  if (rootMoves.length === 0) return null;
 
-  const depth = depths[difficulty] || 3;
-  const timeLimit = timeLimits[difficulty] || 2000;
-  const startTime = Date.now();
+  const ctx = { deadline: Infinity, nodes: 0, stopped: false, killers: [] };
+  let ordered = sortMoves(rootMoves, null, null);
+  let completed = null;
+  let completedDepth = 0;
 
-  const maximizing = game.turn === 'r';
-  const result = minimax(game, depth, -Infinity, Infinity, maximizing, startTime, timeLimit);
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    // Depth 1 always completes; later depths are bounded by the time budget
+    if (depth === 2) ctx.deadline = Date.now() + timeMs;
 
-  // Add some randomness only at lowest difficulties
-  if (difficulty <= 1 && Math.random() < 0.2) {
-    const moves = game.moves({ verbose: true });
-    if (moves.length > 1) {
-      const randomMove = moves[Math.floor(Math.random() * moves.length)];
-      return randomMove;
+    const iter = [];
+    for (const m of ordered) {
+      const alpha = iter.length >= n ? iter[n - 1].score : -INF;
+      g.makeRaw(m);
+      const score = -negamax(g, depth - 1, -INF, -alpha, 1, ctx);
+      g.unmakeRaw(m);
+      if (ctx.stopped) break;
+      iter.push({ m, score });
+      iter.sort((a, b) => b.score - a.score);
     }
+    if (ctx.stopped) break;
+
+    completed = iter;
+    completedDepth = depth;
+    ordered = iter.map(x => x.m);
+    if (iter[0].score > MATE - 1000) break; // forced mate found
   }
 
-  return result.move || game.moves({ verbose: true })[0];
+  return { moves: completed.slice(0, n), depth: completedDepth, nodes: ctx.nodes };
 }
 
-// Get top N moves for coach mode - uses deep search for accurate evaluation
-function getTopMoves(game, n = 3, difficulty = 4) {
-  // Clear cache to ensure fresh evaluation
-  transpositionTable.clear();
+// Convert an internal coordinate move into the public move object
+function toMoveObj(game, m) {
+  const piece = game.board[m.fr][m.fc];
+  return {
+    from: game.positionToString(m.fr, m.fc),
+    to: game.positionToString(m.tr, m.tc),
+    piece: piece.type,
+    color: piece.color,
+    captured: m.captured ? m.captured.type : null,
+    san: game.toSAN(m.fr, m.fc, m.tr, m.tc, piece, m.captured),
+  };
+}
 
+// Find best move for the AI opponent
+function findBestMove(game, difficulty = 2) {
+  const result = searchRoot(game, AI_DEPTH, AI_TIME_MS, 3);
+  if (!result) return null;
+
+  // Lowest level plays an occasional random move
+  if (difficulty <= 1 && Math.random() < 0.2) {
+    const all = game.moves({ verbose: true });
+    if (all.length > 1) return all[Math.floor(Math.random() * all.length)];
+  }
+
+  // Vary play: pick randomly among moves that are practically as good as the best
+  const best = result.moves[0].score;
+  const near = result.moves.filter(x => x.score >= best - 15);
+  const pick = near[Math.floor(Math.random() * near.length)];
+  return toMoveObj(game, pick.m);
+}
+
+// Get top N moves for coach mode
+function getTopMoves(game, n = 3, difficulty = 4) { // eslint-disable-line no-unused-vars
   const moves = game.moves({ verbose: true });
-  const evaluatedMoves = [];
   const inOpening = isOpeningPhase(game);
 
   // Check opening book first
@@ -437,13 +551,11 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     const bookMoves = OPENING_BOOK[fen];
 
     if (bookMoves && bookMoves.length > 0) {
-      // Use book moves for opening suggestions
       const validBookMoves = bookMoves.filter(bm =>
         moves.some(m => m.from === bm.from && m.to === bm.to)
       );
 
       if (validBookMoves.length >= n) {
-        // Return top book moves
         return validBookMoves.slice(0, n).map((bm, index) => {
           const matchedMove = moves.find(m => m.from === bm.from && m.to === bm.to);
           return {
@@ -459,61 +571,20 @@ function getTopMoves(game, n = 3, difficulty = 4) {
     }
   }
 
-  // Use deeper search for better suggestions
-  // Coach suggestion depths - all set to 6 for strong guidance
-  const depths = { 1: 6, 2: 6, 3: 6, 4: 6 };
-  const searchDepth = depths[difficulty] || 6;
-  const timeLimit = 30000; // 30 seconds for suggestions
-  const startTime = Date.now();
-  // Give more time per move for accurate deep search
-  const timePerMove = Math.floor(timeLimit / Math.min(moves.length, 8));
+  const result = searchRoot(game, COACH_DEPTH, COACH_TIME_MS, n);
+  if (!result) return [];
 
-  // Pre-sort moves to evaluate promising ones first (captures and checks)
-  const sortedMoves = [...moves].sort((a, b) => {
-    let scoreA = 0, scoreB = 0;
-    // Captures are important to evaluate first
-    if (a.captured) scoreA += PIECE_VALUES[a.captured] * 10;
-    if (b.captured) scoreB += PIECE_VALUES[b.captured] * 10;
-    return scoreB - scoreA;
-  });
-
-  for (const move of sortedMoves) {
-    // Time check
-    if (Date.now() - startTime > timeLimit) break;
-
-    const newGame = cloneGame(game);
-    newGame.move(move);
-
-    // Use minimax to evaluate this move properly
-    const moveStartTime = Date.now();
-    const maximizing = newGame.turn === 'r';
-    const result = minimax(newGame, searchDepth - 1, -Infinity, Infinity, maximizing, moveStartTime, timePerMove);
-
-    // Adjust score based on whose turn it was
-    // If Red is moving, higher score = better for Red
-    // If Black is moving, we negate so higher score = better for Black
-    let score = game.turn === 'r' ? result.score : -result.score;
-
-    evaluatedMoves.push({
-      move,
-      score: score,
-      san: move.san,
-    });
-  }
-
-  // Sort by score (best moves first)
-  evaluatedMoves.sort((a, b) => b.score - a.score);
-
-  // Take top N
-  return evaluatedMoves.slice(0, n).map((item, index) => {
+  return result.moves.map((item, index) => {
+    const move = toMoveObj(game, item.m);
     const winProb = 1 / (1 + Math.exp(-item.score / 400));
     return {
       rank: index + 1,
-      move: item.move,
-      san: item.san,
+      move,
+      san: move.san,
       score: item.score,
-      winProbability: Math.min(0.95, Math.max(0.05, winProb)), // Clamp to reasonable range
-      explanation: getMoveExplanation(item.move, item.score, inOpening),
+      depth: result.depth,
+      winProbability: Math.min(0.95, Math.max(0.05, winProb)),
+      explanation: getMoveExplanation(move, item.score, inOpening),
     };
   });
 }
@@ -750,5 +821,6 @@ export {
   quickEvaluate,
   evaluate,
   clearCache,
+  searchRoot,
   PIECE_VALUES,
 };

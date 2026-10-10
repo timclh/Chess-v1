@@ -172,13 +172,123 @@ class Xiangqi {
         break;
     }
 
-    // Filter out moves that would put own general in check
+    // Filter out moves that would put own general in check.
+    // Make/unmake in place on the real board (no per-move board copy).
+    const board = this.board;
     return moves.filter(move => {
-      const testBoard = this.cloneBoard();
-      testBoard[move.row][move.col] = testBoard[row][col];
-      testBoard[row][col] = null;
-      return !this.isInCheckWithBoard(piece.color, testBoard);
+      const captured = board[move.row][move.col];
+      board[move.row][move.col] = piece;
+      board[row][col] = null;
+      const illegal = this.isGeneralAttacked(piece.color, board);
+      board[row][col] = piece;
+      board[move.row][move.col] = captured;
+      return !illegal;
     });
+  }
+
+  // Fast check test: is `color`'s general attacked on `board`?
+  // Looks outward from the general instead of generating every enemy move.
+  isGeneralAttacked(color, board) {
+    const r0 = color === 'r' ? 7 : 0;
+    let gr = -1;
+    let gc = -1;
+    for (let r = r0; r < r0 + 3 && gr < 0; r++) {
+      for (let c = 3; c <= 5; c++) {
+        const p = board[r][c];
+        if (p && p.type === 'k' && p.color === color) {
+          gr = r;
+          gc = c;
+          break;
+        }
+      }
+    }
+    if (gr < 0) return true; // general captured / missing
+
+    const enemy = color === 'r' ? 'b' : 'r';
+
+    // Chariot, cannon (needs exactly one screen) and flying general
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (const [dr, dc] of dirs) {
+      let r = gr + dr;
+      let c = gc + dc;
+      let screen = false;
+      while (r >= 0 && r < 10 && c >= 0 && c < 9) {
+        const p = board[r][c];
+        if (p) {
+          if (!screen) {
+            if (p.color === enemy) {
+              if (p.type === 'r') return true;
+              if (p.type === 'k' && dc === 0) return true;
+            }
+            screen = true;
+          } else {
+            if (p.color === enemy && p.type === 'c') return true;
+            break;
+          }
+        }
+        r += dr;
+        c += dc;
+      }
+    }
+
+    // Horse: attacker at G+(a,b), blocked by the leg square next to the horse
+    const horseOffsets = [[-2, -1], [-2, 1], [2, -1], [2, 1], [-1, -2], [1, -2], [-1, 2], [1, 2]];
+    for (const [a, b] of horseOffsets) {
+      const hr = gr + a;
+      const hc = gc + b;
+      if (hr < 0 || hr > 9 || hc < 0 || hc > 8) continue;
+      const h = board[hr][hc];
+      if (!h || h.type !== 'h' || h.color !== enemy) continue;
+      const legR = hr + (Math.abs(a) === 2 ? -Math.sign(a) : 0);
+      const legC = hc + (Math.abs(b) === 2 ? -Math.sign(b) : 0);
+      if (!board[legR][legC]) return true;
+    }
+
+    // Soldier: from "behind" (it moves toward the general) or from the side once crossed
+    const fwdRow = enemy === 'r' ? gr + 1 : gr - 1;
+    if (fwdRow >= 0 && fwdRow < 10) {
+      const p = board[fwdRow][gc];
+      if (p && p.type === 's' && p.color === enemy) return true;
+    }
+    const crossed = enemy === 'r' ? gr <= 4 : gr >= 5;
+    if (crossed) {
+      for (const dc of [-1, 1]) {
+        const c = gc + dc;
+        if (c < 0 || c > 8) continue;
+        const p = board[gr][c];
+        if (p && p.type === 's' && p.color === enemy) return true;
+      }
+    }
+
+    return false;
+  }
+
+  // Legal moves as plain coordinates, for the search (no strings / SAN)
+  generateMoves() {
+    const out = [];
+    for (let row = 0; row < 10; row++) {
+      for (let col = 0; col < 9; col++) {
+        const piece = this.board[row][col];
+        if (!piece || piece.color !== this.turn) continue;
+        for (const m of this.getValidMoves(row, col)) {
+          out.push({ fr: row, fc: col, tr: m.row, tc: m.col, piece: piece.type, captured: this.board[m.row][m.col] });
+        }
+      }
+    }
+    return out;
+  }
+
+  // Apply / revert a move from generateMoves() in place (no history, no validation)
+  makeRaw(m) {
+    this.board[m.tr][m.tc] = this.board[m.fr][m.fc];
+    this.board[m.fr][m.fc] = null;
+    this.turn = this.turn === 'r' ? 'b' : 'r';
+  }
+
+  unmakeRaw(m) {
+    this.board[m.fr][m.fc] = this.board[m.tr][m.tc];
+    this.board[m.tr][m.tc] = m.captured;
+    this.turn = this.turn === 'r' ? 'b' : 'r';
   }
 
   getGeneralMoves(row, col, color) {
@@ -414,52 +524,7 @@ class Xiangqi {
   }
 
   isInCheckWithBoard(color, board) {
-    // Find general position
-    let generalPos = null;
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 9; col++) {
-        const piece = board[row][col];
-        if (piece && piece.type === 'k' && piece.color === color) {
-          generalPos = { row, col };
-          break;
-        }
-      }
-      if (generalPos) break;
-    }
-
-    if (!generalPos) return true; // No general means in check (captured)
-
-    const opponentColor = color === 'r' ? 'b' : 'r';
-
-    // Check if any opponent piece can capture the general
-    for (let row = 0; row < 10; row++) {
-      for (let col = 0; col < 9; col++) {
-        const piece = board[row][col];
-        if (piece && piece.color === opponentColor) {
-          const moves = this.getPseudoLegalMoves(row, col, piece, board);
-          if (moves.some(m => m.row === generalPos.row && m.col === generalPos.col)) {
-            return true;
-          }
-        }
-      }
-    }
-
-    // Check flying general rule
-    const opponentGeneral = this.findGeneralInBoard(opponentColor, board);
-    if (opponentGeneral && opponentGeneral.col === generalPos.col) {
-      let hasBlocker = false;
-      const minRow = Math.min(generalPos.row, opponentGeneral.row);
-      const maxRow = Math.max(generalPos.row, opponentGeneral.row);
-      for (let r = minRow + 1; r < maxRow; r++) {
-        if (board[r][generalPos.col]) {
-          hasBlocker = true;
-          break;
-        }
-      }
-      if (!hasBlocker) return true;
-    }
-
-    return false;
+    return this.isGeneralAttacked(color, board);
   }
 
   findGeneralInBoard(color, board) {
