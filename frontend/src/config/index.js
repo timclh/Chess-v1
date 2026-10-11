@@ -60,6 +60,7 @@ const config = {
     savedGame: 'chess_saved_game',
     userPrefs: 'qi_arena_prefs',
     eloRatings: 'qi_arena_elo',
+    soundMuted: 'qi_arena_sound_muted',
   },
 };
 
