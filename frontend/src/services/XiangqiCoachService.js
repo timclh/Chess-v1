@@ -213,6 +213,12 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
 
 
 
+    // A newer request replaced this one before it started. Not an engine
+    // failure: signal "drop it" (null) rather than "fall back" ([]).
+    if (result && result.superseded) {
+      return null;
+    }
+
     if (!result || !result.lines || result.lines.length === 0) {
       console.warn('[XiangqiCoach] No engine lines returned');
       return [];
@@ -311,7 +317,7 @@ export async function analyzePositionEngine(game) {
       numLines: 1,
     });
 
-    if (!result) return null;
+    if (!result || result.superseded) return null;
 
 
 
