@@ -2,7 +2,7 @@ name: iOS Build
 
 on:
   push:
-    branches: [main, bugfix/functional-issues]
+    branches: [master]
   workflow_dispatch: # Allow manual trigger
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22' # @capacitor/cli 8 engines.node is ">=22.0.0"
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -47,7 +47,7 @@ jobs:
             | tail -20
 
       - name: Build iOS app (Archive for device)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         working-directory: frontend/ios/App
         run: |
           xcodebuild archive \
@@ -60,7 +60,7 @@ jobs:
             | tail -20
 
       - name: Upload build artifact
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
@@ -73,6 +73,6 @@ jobs:
           echo "- ✅ React build: success" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Capacitor sync: success" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ iOS simulator build: success" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
             echo "- ✅ iOS archive: success" >> $GITHUB_STEP_SUMMARY
           fi
