@@ -28,11 +28,13 @@ import { getRating, recordResult } from './services/UserRatingService';
 import {
   initSound,
   playSound,
-  soundForMove,
   isMuted,
   toggleMuted,
+  onMutedChange,
   SOUND,
 } from './services/SoundService';
+import { moveFeedback, selectFeedback } from './services/FeedbackService';
+import { Icon } from './components/Icon';
 import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
@@ -232,6 +234,8 @@ class XiangqiGame extends Component {
 
     // Sounds need a user gesture before the browser lets them play
     initSound();
+    // The speaker toggle in the header changes the same setting
+    this._unsubscribeMuted = onMutedChange((soundMuted) => this.setState({ soundMuted }));
 
     // Listen for window resize to adjust board size
     this._handleResize = () => {
@@ -295,6 +299,7 @@ class XiangqiGame extends Component {
       window.removeEventListener('resize', this._handleResize);
     }
     clearTimeout(this._coachWaitTimer);
+    if (this._unsubscribeMuted) this._unsubscribeMuted();
     // Save state before unmount
     this.saveGameState();
     stopAnalysis();
@@ -746,14 +751,14 @@ class XiangqiGame extends Component {
   // Sound for the move that was just played (this.game already reflects it)
   playMoveSound = (move) => {
     if (!this.game || !move) return;
-    playSound(soundForMove({
+    moveFeedback({
       captured: !!move.captured,
       inCheck: this.game.in_check(),
       gameOver: this.game.game_over(),
       // The mover wins when the opponent is left without legal moves.
       // Tutorial lessons are always played as Red by the learner.
       won: this.state.gameMode === 'tutorial' || move.color === this.state.playerColor,
-    }));
+    });
   };
 
   toggleSound = () => {
@@ -793,6 +798,7 @@ class XiangqiGame extends Component {
     const piece = this.game.board[row][col];
     if (piece && piece.color === canSelectColor) {
       const moves = this.game.getValidMoves(row, col);
+      selectFeedback();
       this.setState({ validMoves: moves });
     } else {
       this.setState({ validMoves: [] });
@@ -1339,7 +1345,7 @@ class XiangqiGame extends Component {
       const inCheck = !!(this.game && !gameOver && this.game.in_check());
       const isPlayerTurn = !!this.game && turn === playerColor && !aiThinking && !gameOver;
       const diffLabels = { 1: '入门', 2: '初级', 3: '中级', 4: '高级' };
-      const oppIcon = isTutorial ? '📚' : '🤖';
+      const oppIcon = <Icon name={isTutorial ? 'learn' : 'coach'} size={18} />;
       const oppName = isTutorial
         ? `第 ${currentLesson + 1} 课 · ${currentTutorialLesson ? currentTutorialLesson.title : ''}`
         : `${gameMode === 'coach' ? '教练对局 / Coach' : 'AI 对战'} · ${diffLabels[aiDifficulty] || '初级'}`;
@@ -1352,7 +1358,7 @@ class XiangqiGame extends Component {
       let statusText;
       if (aiThinking) statusText = 'AI 思考中… / Thinking…';
       else if (gameOver || inCheck || isTutorial) statusText = gameStatus;
-      else if (isPlayerTurn) statusText = '✋ 轮到你了 / Your turn';
+      else if (isPlayerTurn) statusText = '轮到你了 / Your turn';
       else statusText = gameStatus;
 
       return (
@@ -1365,7 +1371,7 @@ class XiangqiGame extends Component {
               title="退出全屏 / Exit fullscreen"
               aria-label="Exit fullscreen"
             >
-              ✕
+              <Icon name="close" size={20} />
             </button>
             <div className="fs-top-right">
               <button
@@ -1375,7 +1381,7 @@ class XiangqiGame extends Component {
                 aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
                 aria-pressed={soundMuted}
               >
-                {soundMuted ? '🔇' : '🔊'}
+                <Icon name={soundMuted ? 'muted' : 'sound'} size={20} />
               </button>
               {!isTutorial && (
                 <button
@@ -1386,7 +1392,7 @@ class XiangqiGame extends Component {
                   title="教练 / Coach"
                   aria-label="Toggle coach"
                 >
-                  💡
+                  <Icon name="hint" size={20} />
                 </button>
               )}
               <button
@@ -1395,7 +1401,7 @@ class XiangqiGame extends Component {
                 title="设置 / Settings"
                 aria-label="Settings"
               >
-                ⚙️
+                <Icon name="settings" size={20} />
               </button>
             </div>
           </div>
@@ -1445,7 +1451,7 @@ class XiangqiGame extends Component {
           {/* Self bar (turn indicator + rating) */}
           <div className={`fs-player-bar self ${turn === playerColor && !gameOver && !isTutorial ? 'active-turn' : ''}`}>
             <span className={`fs-color-dot ${(isTutorial ? 'r' : playerColor) === 'r' ? 'red' : 'black'}`} />
-            <span className="fs-player-icon">👤</span>
+            <span className="fs-player-icon"><Icon name="profile" size={18} /></span>
             <span className="fs-player-name">你 / You</span>
             {!isTutorial && <RatingDisplay gameType={GAME_TYPE.XIANGQI} compact />}
           </div>
@@ -1469,7 +1475,7 @@ class XiangqiGame extends Component {
                   title="重试 / Retry"
                   aria-label="Retry"
                 >
-                  <span className="fs-act-icon">🔄</span>
+                  <span className="fs-act-icon"><Icon name="reset" size={20} /></span>
                 </button>
                 <button
                   className={`fs-action-btn hint ${showTutorialHint ? 'on' : ''}`}
@@ -1477,7 +1483,7 @@ class XiangqiGame extends Component {
                   title="提示 / Hint"
                   aria-label="Hint"
                 >
-                  <span className="fs-act-icon">💡</span>
+                  <span className="fs-act-icon"><Icon name="hint" size={20} /></span>
                 </button>
                 <button
                   className={`fs-action-btn ${lessonComplete ? 'hint' : ''}`}
@@ -1498,7 +1504,7 @@ class XiangqiGame extends Component {
                   title="悔棋 / Undo"
                   aria-label="Undo"
                 >
-                  <span className="fs-act-icon">↩️</span>
+                  <span className="fs-act-icon"><Icon name="undo" size={20} /></span>
                 </button>
                 <button
                   className="fs-action-btn hint"
@@ -1507,7 +1513,7 @@ class XiangqiGame extends Component {
                   title="提示 / Hint"
                   aria-label="Hint"
                 >
-                  <span className="fs-act-icon">💡</span>
+                  <span className="fs-act-icon"><Icon name="hint" size={20} /></span>
                 </button>
                 <button
                   className="fs-action-btn"
@@ -1515,7 +1521,7 @@ class XiangqiGame extends Component {
                   title="新局 / New game"
                   aria-label="New game"
                 >
-                  <span className="fs-act-icon">🔄</span>
+                  <span className="fs-act-icon"><Icon name="reset" size={20} /></span>
                 </button>
               </>
             )}
@@ -1531,7 +1537,7 @@ class XiangqiGame extends Component {
                   onClick={() => this.setState({ showFullscreenCoach: false })}
                   aria-label="Close coach"
                 >
-                  ✕
+                  <Icon name="close" size={20} />
                 </button>
               </div>
               <div className="fullscreen-coach-body">{this.renderCoachBody()}</div>
@@ -1679,7 +1685,7 @@ class XiangqiGame extends Component {
               onClick={this.toggleSound}
               aria-pressed={!soundMuted}
             >
-              {soundMuted ? '🔇 已静音 / Muted' : '🔊 已开启 / On'}
+              <Icon name={soundMuted ? 'muted' : 'sound'} size={16} /> {soundMuted ? '已静音 / Muted' : '已开启 / On'}
             </button>
           </div>
 

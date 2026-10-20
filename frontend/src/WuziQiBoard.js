@@ -157,7 +157,7 @@ class WuziQiBoard extends Component {
         const isWin = winSet.has(`${r},${c}`);
 
         stones.push(
-          <g key={`s${r}_${c}`}>
+          <g key={`s${r}_${c}`} className="wuziqi-stone">
             {/* Shadow */}
             <circle cx={cx + 1.5} cy={cy + 1.5} r={STONE_RADIUS} fill="rgba(0,0,0,0.2)" />
             {/* Stone */}

@@ -13,6 +13,8 @@ import WuziQi, { BOARD_SIZE, EMPTY, BLACK, WHITE } from './wuziqi';
 import WuziQiBoard from './WuziQiBoard';
 import { findBestMoveWuziQi, analyzeWuziQiPosition } from './WuziQiAI';
 import { getRating, recordResult } from './services/UserRatingService';
+import { initSound } from './services/SoundService';
+import { placeFeedback } from './services/FeedbackService';
 import { GAME_TYPE, DIFFICULTY, DIFFICULTY_LABEL, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
@@ -56,6 +58,7 @@ class WuziQiGame extends Component {
   }
 
   componentDidMount() {
+    initSound();
     // If player chose white, AI goes first
     if (this.state.mode === MODE.VS_AI && this.state.playerColor === WHITE) {
       this.doAIMove();
@@ -83,6 +86,7 @@ class WuziQiGame extends Component {
 
     const ok = this.game.place(row, col);
     if (!ok) return;
+    this.placeStoneFeedback(this.game.winner === playerColor || mode !== MODE.VS_AI);
 
     // Clear hint on move
     this.setState({ hintMove: null });
@@ -105,12 +109,19 @@ class WuziQiGame extends Component {
     }
   };
 
+  // Sound + haptic for the stone that was just placed. `playerFavoured` says who a
+  // winning placement favours (two-player games treat every win as a win).
+  placeStoneFeedback = (playerFavoured) => {
+    placeFeedback({ gameOver: !!(this.game.gameOver && this.game.winner), won: playerFavoured });
+  };
+
   doAIMove = () => {
     this.setState({ aiThinking: true });
     setTimeout(() => {
       const move = findBestMoveWuziQi(this.game, this.state.difficulty);
       if (move) {
         this.game.place(move.row, move.col);
+        this.placeStoneFeedback(false);
 
         if (this.game.gameOver && this.game.winner) {
           const winLine = this.findWinLine(move.row, move.col, this.game.winner);

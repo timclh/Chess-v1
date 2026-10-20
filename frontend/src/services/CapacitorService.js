@@ -97,7 +97,7 @@ export async function setStatusBarDark() {
   if (StatusBar) {
     try {
       await StatusBar.setStyle({ style: 'dark' });
-      await StatusBar.setBackgroundColor({ color: '#1a1a2e' });
+      await StatusBar.setBackgroundColor({ color: '#151220' });
     } catch (_) { /* no-op */ }
   }
 }

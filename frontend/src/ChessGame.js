@@ -11,6 +11,8 @@ import { getRating, recordResult } from "./services/UserRatingService";
 import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
 import { GAME_TYPE, RESULT } from "./constants";
 import { fitSquare, autoResize } from "./services/ViewportService";
+import { initSound } from "./services/SoundService";
+import { chessMoveFeedback, selectFeedback } from "./services/FeedbackService";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
 
@@ -209,6 +211,7 @@ class ChessGame extends Component {
 
   componentDidMount() {
     this.game = new Chess();
+    initSound();
     this.setState({
       gameStartTime: Date.now(),
       hasSavedGame: hasSavedGame(),
@@ -473,7 +476,8 @@ class ChessGame extends Component {
           explanation = explainAIMove(this.game, bestMove);
         }
 
-        this.game.move(bestMove);
+        const aiMove = this.game.move(bestMove);
+        this.playMoveFeedback(aiMove);
         this.setState({
           fen: this.game.fen(),
           history: this.game.history({ verbose: true }),
@@ -519,6 +523,14 @@ class ChessGame extends Component {
     this.setState({ squareStyles: {} });
   };
 
+  // Sound + haptic for the move that was just played (this.game already reflects it)
+  playMoveFeedback = (move) => {
+    if (!this.game || !move) return;
+    // Tutorial lessons are always played as the side to move, so the learner "wins" them
+    const playerColor = this.state.gameMode === "tutorial" ? move.color : this.state.playerColor;
+    chessMoveFeedback(this.game, move, playerColor);
+  };
+
   isPlayerTurn = () => {
     if (this.state.gameMode === "human" || this.state.gameMode === "tutorial") return true;
     return this.game && this.game.turn() === this.state.playerColor;
@@ -547,6 +559,7 @@ class ChessGame extends Component {
         });
 
         if (move !== null) {
+          this.playMoveFeedback(move);
           this.removeHighlightSquare();
 
           // Handle tutorial mode
@@ -589,6 +602,7 @@ class ChessGame extends Component {
         });
         const squaresToHighlight = moves.map((move) => move.to);
         this.highlightSquare(square, squaresToHighlight);
+        selectFeedback();
         return { pieceSquare: square };
       }
 
@@ -615,6 +629,7 @@ class ChessGame extends Component {
 
     if (move === null) return;
 
+    this.playMoveFeedback(move);
     this.removeHighlightSquare();
 
     // Handle tutorial mode
@@ -1040,7 +1055,8 @@ class ChessGame extends Component {
   playSuggestedMove = (move) => {
     if (!this.game || this.state.gameOver || this.state.aiThinking) return;
 
-    this.game.move(move.san);
+    const played = this.game.move(move.san);
+    this.playMoveFeedback(played);
     this.setState({
       fen: this.game.fen(),
       history: this.game.history({ verbose: true }),

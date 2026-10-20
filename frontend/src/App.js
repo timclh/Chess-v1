@@ -15,6 +15,8 @@ import ProfilePage from "./ProfilePage";
 import { PrivacyPolicy, TermsOfService } from "./LegalPages";
 import { AuthProvider } from "./AuthContext";
 import UiFeedbackLoop from "./UiFeedbackLoop";
+import { Icon } from "./components/Icon";
+import { isMuted, toggleMuted, onMutedChange, initSound, playSound, SOUND } from "./services/SoundService";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
 // Valid routes
@@ -53,11 +55,15 @@ class AppContent extends Component {
     showLogin: false,
     showInstallPrompt: false,
     isOffline: !navigator.onLine,
+    soundMuted: isMuted(),
   };
 
   deferredPrompt = null;
 
   componentDidMount() {
+    initSound();
+    this.unsubscribeMuted = onMutedChange((soundMuted) => this.setState({ soundMuted }));
+
     // Listen for auth changes
     this.unsubscribe = onAuthChange((user) => {
       this.setState({ user, showLogin: false });
@@ -78,6 +84,7 @@ class AppContent extends Component {
     if (this.unsubscribe) {
       this.unsubscribe();
     }
+    if (this.unsubscribeMuted) this.unsubscribeMuted();
     window.removeEventListener('hashchange', this.handleHashChange);
     window.removeEventListener('beforeinstallprompt', this.handleInstallPrompt);
     window.removeEventListener('online', this.handleOnline);
@@ -163,8 +170,17 @@ class AppContent extends Component {
         {/* Compact Top Header */}
         <header className="App-header">
           <div className="header-row">
-            <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}>棋 Arena</h1>
+            <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}><span className="brush logo-mark">棋</span> Arena</h1>
             <div className="header-right">
+              <button
+                className="icon-btn sound-toggle"
+                onClick={() => { if (!toggleMuted()) playSound(SOUND.SELECT); }}
+                title={this.state.soundMuted ? "开启声音 / Sound on" : "静音 / Mute"}
+                aria-label={this.state.soundMuted ? "Unmute sound" : "Mute sound"}
+                aria-pressed={this.state.soundMuted}
+              >
+                <Icon name={this.state.soundMuted ? "muted" : "sound"} size={20} />
+              </button>
               {user ? (
                 <div className="user-menu">
                   <span className="user-name">{user.displayName || user.email}</span>
@@ -194,9 +210,9 @@ class AppContent extends Component {
 
         {isGamePage && (
           <div className="sub-nav-bar">
-            <button className={`sub-nav-btn ${currentPage === 'game' ? 'active' : ''}`} onClick={() => this.navigateTo('game')}>♟ Chess</button>
-            <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')}>象棋 Xiangqi</button>
-            <button className={`sub-nav-btn ${currentPage === 'wuziqi' ? 'active' : ''}`} onClick={() => this.navigateTo('wuziqi')}>⚫ Gomoku</button>
+            <button className={`sub-nav-btn ${currentPage === 'game' ? 'active' : ''}`} onClick={() => this.navigateTo('game')}><Icon name="play" size={16} /> Chess</button>
+            <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')}><span className="brush">象棋</span> Xiangqi</button>
+            <button className={`sub-nav-btn ${currentPage === 'wuziqi' ? 'active' : ''}`} onClick={() => this.navigateTo('wuziqi')}><Icon name="games" size={16} /> Gomoku</button>
           </div>
         )}
 
@@ -221,10 +237,10 @@ class AppContent extends Component {
         {/* Learn section sub-navigation */}
         {isLearnPage && (
           <div className="sub-nav-bar">
-            <button className={`sub-nav-btn ${currentPage === 'puzzles' ? 'active' : ''}`} onClick={() => this.navigateTo('puzzles')}>🧩 Puzzles</button>
-            <button className={`sub-nav-btn ${currentPage === 'openings' ? 'active' : ''}`} onClick={() => this.navigateTo('openings')}>📖 Openings</button>
-            <button className={`sub-nav-btn ${currentPage === 'learn' ? 'active' : ''}`} onClick={() => this.navigateTo('learn')}>📺 Videos</button>
-            <button className={`sub-nav-btn ${currentPage === 'coach' ? 'active' : ''}`} onClick={() => this.navigateTo('coach')}>🤖 Coach</button>
+            <button className={`sub-nav-btn ${currentPage === 'puzzles' ? 'active' : ''}`} onClick={() => this.navigateTo('puzzles')}><Icon name="puzzles" size={16} /> Puzzles</button>
+            <button className={`sub-nav-btn ${currentPage === 'openings' ? 'active' : ''}`} onClick={() => this.navigateTo('openings')}><Icon name="learn" size={16} /> Openings</button>
+            <button className={`sub-nav-btn ${currentPage === 'learn' ? 'active' : ''}`} onClick={() => this.navigateTo('learn')}><Icon name="videos" size={16} /> Videos</button>
+            <button className={`sub-nav-btn ${currentPage === 'coach' ? 'active' : ''}`} onClick={() => this.navigateTo('coach')}><Icon name="coach" size={16} /> Coach</button>
           </div>
         )}
 
@@ -295,35 +311,35 @@ class AppContent extends Component {
             className={`btab-btn ${currentPage === 'home' ? 'active' : ''}`}
             onClick={() => this.navigateTo('home')}
           >
-            <span className="btab-icon">🏠</span>
+            <span className="btab-icon"><Icon name="home" size={22} /></span>
             <span className="btab-label">Home</span>
           </button>
           <button
             className={`btab-btn ${isGamePage ? 'active' : ''}`}
             onClick={() => this.navigateTo(isGamePage ? currentPage : 'game')}
           >
-            <span className="btab-icon">♟</span>
+            <span className="btab-icon"><Icon name="play" size={22} /></span>
             <span className="btab-label">Play</span>
           </button>
           <button
             className={`btab-btn ${isLearnPage ? 'active' : ''}`}
             onClick={() => this.navigateTo(isLearnPage ? currentPage : 'puzzles')}
           >
-            <span className="btab-icon">🧩</span>
+            <span className="btab-icon"><Icon name="learn" size={22} /></span>
             <span className="btab-label">Learn</span>
           </button>
           <button
             className={`btab-btn ${currentPage === 'multiplayer' ? 'active' : ''}`}
             onClick={() => this.navigateTo('multiplayer')}
           >
-            <span className="btab-icon">🌐</span>
+            <span className="btab-icon"><Icon name="online" size={22} /></span>
             <span className="btab-label">Online</span>
           </button>
           <button
             className={`btab-btn ${['profile', 'leaderboard'].includes(currentPage) ? 'active' : ''}`}
             onClick={() => this.navigateTo('profile')}
           >
-            <span className="btab-icon">👤</span>
+            <span className="btab-icon"><Icon name="profile" size={22} /></span>
             <span className="btab-label">Me</span>
           </button>
         </nav>

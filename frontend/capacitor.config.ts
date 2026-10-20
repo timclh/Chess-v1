@@ -33,7 +33,7 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#1a1a2e', // Match our dark theme
+      backgroundColor: '#151220', // Match our dark theme
       showSpinner: false,
     },
     Keyboard: {
@@ -42,7 +42,7 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#1a1a2e',
+      backgroundColor: '#151220',
     },
   },
 };

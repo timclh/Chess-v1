@@ -7,6 +7,7 @@ import React, { Component } from 'react';
 import { getStreak, isTodayCompleted } from './services/DailyPuzzleService';
 import { getRating } from './services/UserRatingService';
 import { GAME_TYPE } from './constants';
+import { Icon } from './components/Icon';
 
 class HomePage extends Component {
   render() {
@@ -21,23 +22,23 @@ class HomePage extends Component {
         {/* Game Selection - big tappable cards */}
         <div className="home-games">
           <div className="home-game-card hgc-chess" onClick={() => onNavigate('game')}>
-            <div className="hgc-pieces">♚♔</div>
+            <div className="hgc-pieces" aria-hidden="true">♚♔</div>
             <div className="hgc-info">
               <span className="hgc-title">Chess</span>
               <span className="hgc-rating">ELO {chessRating}</span>
             </div>
           </div>
           <div className="home-game-card hgc-xiangqi" onClick={() => onNavigate('xiangqi')}>
-            <div className="hgc-pieces"><span className="hgc-char r">將</span><span className="hgc-char b">帥</span></div>
+            <div className="hgc-pieces" aria-hidden="true"><span className="hgc-coin r brush">帥</span><span className="hgc-coin b brush">將</span></div>
             <div className="hgc-info">
-              <span className="hgc-title">象棋</span>
+              <span className="hgc-title brush">象棋</span>
               <span className="hgc-rating">ELO {xiangqiRating}</span>
             </div>
           </div>
           <div className="home-game-card hgc-gomoku" onClick={() => onNavigate('wuziqi')}>
-            <div className="hgc-pieces">⚫⚪</div>
+            <div className="hgc-pieces" aria-hidden="true"><span className="hgc-stone black" /><span className="hgc-stone white" /></div>
             <div className="hgc-info">
-              <span className="hgc-title">五子棋</span>
+              <span className="hgc-title brush">五子棋</span>
               <span className="hgc-sub">Gomoku</span>
             </div>
           </div>
@@ -46,14 +47,14 @@ class HomePage extends Component {
         {/* Daily Challenge Banner */}
         <div className="home-daily" onClick={() => onNavigate('puzzles')}>
           <div className="daily-left">
-            <span className="daily-icon">{todayDone ? '✅' : '🧩'}</span>
+            <span className="daily-icon"><Icon name={todayDone ? 'done' : 'puzzles'} size={26} /></span>
             <div className="daily-text">
               <span className="daily-title">{todayDone ? 'Puzzle Complete!' : 'Daily Puzzle'}</span>
               <span className="daily-sub">{todayDone ? 'Come back tomorrow' : 'Solve today\'s challenge'}</span>
             </div>
           </div>
           <div className="daily-streak">
-            <span className="streak-num">🔥 {streak.current}</span>
+            <span className="streak-num"><Icon name="streak" size={16} /> {streak.current}</span>
             <span className="streak-label">streak</span>
           </div>
         </div>
@@ -61,35 +62,35 @@ class HomePage extends Component {
         {/* Feature Grid - 2x4 */}
         <div className="home-features">
           <button className="home-feat" onClick={() => onNavigate('puzzles')}>
-            <span className="feat-icon">🧩</span>
+            <span className="feat-icon"><Icon name="puzzles" size={24} /></span>
             <span className="feat-label">Puzzles</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('learn')}>
-            <span className="feat-icon">📺</span>
+            <span className="feat-icon"><Icon name="videos" size={24} /></span>
             <span className="feat-label">Learn</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('coach')}>
-            <span className="feat-icon">🤖</span>
+            <span className="feat-icon"><Icon name="coach" size={24} /></span>
             <span className="feat-label">Coach</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('openings')}>
-            <span className="feat-icon">📖</span>
+            <span className="feat-icon"><Icon name="learn" size={24} /></span>
             <span className="feat-label">Openings</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('multiplayer')}>
-            <span className="feat-icon">🌐</span>
+            <span className="feat-icon"><Icon name="online" size={24} /></span>
             <span className="feat-label">Online</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('leaderboard')}>
-            <span className="feat-icon">🏆</span>
+            <span className="feat-icon"><Icon name="rankings" size={24} /></span>
             <span className="feat-label">Rankings</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('profile')}>
-            <span className="feat-icon">👤</span>
+            <span className="feat-icon"><Icon name="profile" size={24} /></span>
             <span className="feat-label">Profile</span>
           </button>
           <button className="home-feat" onClick={() => onNavigate('multiplayer')}>
-            <span className="feat-icon">⚔️</span>
+            <span className="feat-icon"><Icon name="challenge" size={24} /></span>
             <span className="feat-label">Challenge</span>
           </button>
         </div>

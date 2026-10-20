@@ -164,11 +164,11 @@ describe('XiangqiGame sound wiring', () => {
     await mount();
     const btn = container.querySelector('.fs-top-bar button[aria-label="Mute sound"]');
     expect(btn).not.toBeNull();
-    expect(btn.textContent).toBe('🔊');
+    expect(btn.querySelector('svg').getAttribute('class')).toMatch(/volume-2/); // speaker icon
 
     act(() => { btn.click(); });
     const after = container.querySelector('.fs-top-bar button[aria-label="Unmute sound"]');
     expect(after).not.toBeNull();
-    expect(after.textContent).toBe('🔇');
+    expect(after.querySelector('svg').getAttribute('class')).toMatch(/volume-x/); // muted icon
   });
 });

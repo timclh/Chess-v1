@@ -1,0 +1,177 @@
+/* ==========================================================================
+   Design tokens: "Lacquer & Ink" (漆与墨)
+   Source of truth for colour, type, space, radius, elevation and motion.
+   See docs/design/UI_DESIGN_REVIEW.md (sections 4 and appendix A/B).
+
+   Rules of thumb
+   - Use the semantic tokens (--surface-*, --text, --accent...) in component CSS.
+     The raw palette (--ink-*, --vermilion-*...) is for defining those tokens.
+   - Text on --ink-900 must be --text-100/300/500 (>= 6.9:1). White text on a
+     vermilion fill needs --vermilion-600 or darker (6.1:1); --vermilion-500
+     is only for large text and graphics (4.3:1).
+   ========================================================================== */
+
+:root {
+  /* ---- palette -------------------------------------------------------- */
+  --ink-950: #0E0C13;
+  --ink-900: #151220;
+  --ink-800: #1E1A2B;
+  --ink-700: #2A2438;
+  --ink-600: #3A3350;
+
+  --text-100: #F5F0E6;
+  --text-300: #CFC8BC;
+  --text-500: #A39BB0;
+
+  --vermilion-300: #EE7A6D;
+  --vermilion-400: #E5594B;
+  --vermilion-500: #CF3B2E;
+  --vermilion-600: #A82A20;
+  --vermilion-700: #8A2018;
+
+  --gold-300: #F0CF86;
+  --gold-400: #E4B95C;
+  --gold-500: #CC9A3E;
+
+  --jade-400: #52C4A3;
+  --azure-400: #6FA8FF;
+  --amber-400: #F2A33A;
+
+  /* board and paper */
+  --paper-50: #FBF4E4;
+  --paper-100: #F6E8C8;
+  --paper-300: #E7CD97;
+  --walnut-700: #5C3B22;
+  --walnut-900: #2A1A0F;
+  --ivory: #F3E3C0;
+  --red-ink: #B3261E;
+  --black-ink: #1B1713;
+  /* text on paper (warm, not slate) */
+  --on-paper-900: #2A1A0F;
+  --on-paper-700: #4B3A2B;
+  --on-paper-500: #6B5846;
+
+  /* ---- semantic colours ----------------------------------------------- */
+  --bg: var(--ink-900);
+  --bg-deep: var(--ink-950);
+  --surface-1: var(--ink-800);   /* cards, panels */
+  --surface-2: var(--ink-700);   /* raised elements, inputs */
+  --surface-3: var(--ink-600);   /* hover / pressed */
+  --surface-paper: var(--paper-100);
+  --border: rgba(245, 240, 230, 0.10);
+  --border-strong: rgba(245, 240, 230, 0.22);
+
+  --text: var(--text-100);
+  --text-muted: var(--text-300);
+  --text-faint: var(--text-500);
+
+  --accent: var(--vermilion-300);         /* text, links, outlines on ink (6.4:1 on ink-900) */
+  --accent-on-paper: var(--vermilion-600); /* the same role on paper cards (5.6:1) */
+  --accent-fill: var(--vermilion-600);    /* filled buttons with white text */
+  --accent-fill-hover: var(--vermilion-700);
+  --accent-gold: var(--gold-400);
+  --success: var(--jade-400);
+  --info: var(--azure-400);
+  --warning: var(--amber-400);
+  --danger: var(--vermilion-400);
+  --focus-ring: var(--gold-400);
+
+  --grad-accent: linear-gradient(135deg, var(--vermilion-600), var(--vermilion-700)); /* white text: 6.1:1 to 8.6:1 */
+  --grad-gold: linear-gradient(135deg, var(--gold-300), var(--gold-500));
+  --grad-surface: linear-gradient(180deg, var(--ink-800) 0%, var(--ink-900) 100%);
+
+  /* ---- type ------------------------------------------------------------ */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "PingFang SC", "Noto Sans SC",
+    "Microsoft YaHei", Roboto, "Helvetica Neue", sans-serif;
+  /* brush face: loaded as a ~14-glyph subset (see public/index.html); falls back to system regular script */
+  --font-brush: "Ma Shan Zheng", "STKaiti", "KaiTi", "Kaiti SC", "Songti SC", serif;
+
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-24: 1.5rem;
+  --fs-32: 2rem;
+  --lh-tight: 1.2;
+  --lh-body: 1.5;
+
+  /* ---- space, radius, size --------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  --tap: 44px;               /* minimum touch target */
+  --bottom-bar-h: 56px;
+
+  /* ---- elevation: one light source, top-left --------------------------- */
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --e2: 0 4px 10px rgba(0, 0, 0, 0.40), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --e3: 0 10px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --e4: 0 20px 44px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  /* ---- motion ----------------------------------------------------------- */
+  --dur-1: 90ms;
+  --dur-2: 160ms;
+  --dur-3: 240ms;
+  --dur-4: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+    --dur-4: 0ms;
+  }
+}
+
+/* ---- base ---------------------------------------------------------------- */
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(1100px 480px at 78% -8%, rgba(204, 154, 62, 0.10), transparent 62%),
+    radial-gradient(900px 480px at 0% 12%, rgba(168, 42, 32, 0.10), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keyboard focus is visible everywhere; mouse/touch focus stays quiet. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Ratings, streaks and timers should not jitter as digits change. */
+.num,
+.hgc-rating,
+.streak-num,
+.hss-val {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brush face for a few words and the piece characters. */
+.brush {
+  font-family: var(--font-brush);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}

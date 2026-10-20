@@ -21,6 +21,8 @@ export const SOUND = {
   CHECK: 'check',
   WIN: 'win',
   LOSE: 'lose',
+  SELECT: 'select',
+  PLACE: 'place',
 };
 
 // Each sound is a list of notes: f = start frequency (Hz), to = optional glide
@@ -37,6 +39,16 @@ const TONES = {
   ],
   [SOUND.WIN]: [523, 659, 784, 1047].map((f, i) => ({ f, t: i * 0.12, d: 0.18, w: 'triangle', g: 0.3 })),
   [SOUND.LOSE]: [392, 330, 262].map((f, i) => ({ f, t: i * 0.18, d: 0.26, w: 'sine', g: 0.3 })),
+  [SOUND.SELECT]: [{ f: 520, to: 700, t: 0, d: 0.05, w: 'triangle', g: 0.12 }],
+  [SOUND.PLACE]: [{ f: 900, to: 520, t: 0, d: 0.06, w: 'sine', g: 0.25 }],
+};
+
+// Short filtered-noise bursts layered under the tones: the "wood on wood" knock.
+// n = band-pass centre (Hz), t = start offset (s), d = duration (s), g = gain.
+const NOISE = {
+  [SOUND.MOVE]: [{ n: 1100, t: 0, d: 0.06, g: 0.35 }],
+  [SOUND.CAPTURE]: [{ n: 700, t: 0, d: 0.1, g: 0.55 }],
+  [SOUND.PLACE]: [{ n: 2200, t: 0, d: 0.035, g: 0.3 }],
 };
 
 // ── Mute state ──────────────────────────────────────────────
@@ -52,11 +64,22 @@ export function isMuted() {
   return mutedFallback;
 }
 
+const mutedListeners = new Set();
+
+/** Be told when the mute state changes (any screen). Returns an unsubscribe function. */
+export function onMutedChange(listener) {
+  mutedListeners.add(listener);
+  return () => mutedListeners.delete(listener);
+}
+
 export function setMuted(muted) {
   mutedFallback = !!muted;
   try {
     localStorage.setItem(STORAGE_KEY, mutedFallback ? '1' : '0');
   } catch (_) { /* ignore */ }
+  mutedListeners.forEach((listener) => {
+    try { listener(mutedFallback); } catch (_) { /* a bad listener must not break the others */ }
+  });
   return mutedFallback;
 }
 
@@ -136,6 +159,28 @@ export function soundForMove({ captured = false, inCheck = false, gameOver = fal
   return SOUND.MOVE;
 }
 
+function playNoise(c, bursts, now) {
+  if (!bursts || typeof c.createBuffer !== 'function' || typeof c.createBufferSource !== 'function'
+      || typeof c.createBiquadFilter !== 'function') return;
+  bursts.forEach(({ n, t, d, g }) => {
+    const length = Math.max(1, Math.floor(c.sampleRate * d));
+    const buffer = c.createBuffer(1, length, c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+    const source = c.createBufferSource();
+    const filter = c.createBiquadFilter();
+    const gain = c.createGain();
+    source.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.frequency.value = n;
+    gain.gain.value = g;
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(c.destination);
+    source.start(now + t);
+  });
+}
+
 /**
  * Play a sound by name. Returns true if it was scheduled; never throws.
  */
@@ -170,6 +215,8 @@ export function playSound(name) {
       osc.start(start);
       osc.stop(end + 0.02);
     });
+
+    playNoise(c, NOISE[name], now);
     return true;
   } catch (_) {
     return false;
