@@ -25,6 +25,14 @@ import {
   clearAnalysisCache,
 } from './services/XiangqiCoachService';
 import { getRating, recordResult } from './services/UserRatingService';
+import {
+  initSound,
+  playSound,
+  soundForMove,
+  isMuted,
+  toggleMuted,
+  SOUND,
+} from './services/SoundService';
 import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
@@ -213,12 +221,17 @@ class XiangqiGame extends Component {
     newRating: null,
     ratingDelta: null,
     ratingProcessed: false,     // Prevent double-processing
+    // Sound effects
+    soundMuted: isMuted(),
   };
 
   game = null;
 
   componentDidMount() {
     this.game = new Xiangqi();
+
+    // Sounds need a user gesture before the browser lets them play
+    initSound();
 
     // Listen for window resize to adjust board size
     this._handleResize = () => {
@@ -695,7 +708,8 @@ class XiangqiGame extends Component {
       const fromPos = this.parsePosition(bestMove.from);
       const toPos = this.parsePosition(bestMove.to);
 
-      this.game.move(bestMove);
+      const playedMove = this.game.move(bestMove);
+      this.playMoveSound(playedMove);
       this.setState({
         fen: this.game.toFEN(),
         history: this.game.history_moves(),
@@ -727,6 +741,25 @@ class XiangqiGame extends Component {
     } else {
       this.setState({ aiThinking: false });
     }
+  };
+
+  // Sound for the move that was just played (this.game already reflects it)
+  playMoveSound = (move) => {
+    if (!this.game || !move) return;
+    playSound(soundForMove({
+      captured: !!move.captured,
+      inCheck: this.game.in_check(),
+      gameOver: this.game.game_over(),
+      // The mover wins when the opponent is left without legal moves.
+      // Tutorial lessons are always played as Red by the learner.
+      won: this.state.gameMode === 'tutorial' || move.color === this.state.playerColor,
+    }));
+  };
+
+  toggleSound = () => {
+    const soundMuted = toggleMuted();
+    this.setState({ soundMuted });
+    if (!soundMuted) playSound(SOUND.MOVE); // audible confirmation
   };
 
   parsePosition = (pos) => {
@@ -780,13 +813,16 @@ class XiangqiGame extends Component {
 
     // Handle tutorial mode
     if (this.state.gameMode === 'tutorial') {
-      this.checkTutorialMove(moveObj);
+      // A wrong tutorial move is undone, so only the correct one makes a sound
+      if (this.checkTutorialMove(moveObj)) this.playMoveSound(move);
       this.setState({
         fen: this.game.toFEN(),
         validMoves: [],
       });
       return;
     }
+
+    this.playMoveSound(move);
 
     // Parse positions for last move highlighting
     const fromPos = this.parsePosition(moveObj.from);
@@ -1288,6 +1324,7 @@ class XiangqiGame extends Component {
       currentLesson, lessonComplete, showTutorialHint, tutorialProgress,
       validMoves, lastMove,
       showResultDialog, pendingResult, oldRating, newRating,
+      soundMuted,
     } = this.state;
 
     const currentTutorialLesson = XIANGQI_LESSONS[currentLesson];
@@ -1331,6 +1368,15 @@ class XiangqiGame extends Component {
               ✕
             </button>
             <div className="fs-top-right">
+              <button
+                className="fs-icon-btn"
+                onClick={this.toggleSound}
+                title={soundMuted ? '开启声音 / Sound on' : '静音 / Mute'}
+                aria-label={soundMuted ? 'Unmute sound' : 'Mute sound'}
+                aria-pressed={soundMuted}
+              >
+                {soundMuted ? '🔇' : '🔊'}
+              </button>
               {!isTutorial && (
                 <button
                   className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
@@ -1624,6 +1670,18 @@ class XiangqiGame extends Component {
               )}
             </>
           )}
+
+          {/* Sound */}
+          <div className="settings-section">
+            <div className="section-label">声音 / Sound</div>
+            <button
+              className={`toggle-btn ${soundMuted ? '' : 'active'}`}
+              onClick={this.toggleSound}
+              aria-pressed={!soundMuted}
+            >
+              {soundMuted ? '🔇 已静音 / Muted' : '🔊 已开启 / On'}
+            </button>
+          </div>
 
           {/* Game Controls */}
           {gameMode !== 'tutorial' && (
