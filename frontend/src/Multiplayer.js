@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
+import { boardCalcWidth } from "./services/ViewportService";
 import Chess from "chess.js";
 import { GameResultDialog } from "./components/GameResultDialog";
 import { RatingDisplay } from "./components/RatingDisplay";
@@ -699,6 +700,7 @@ class Multiplayer extends Component {
               id="multiplayer-board"
               position={fen}
               width={520}
+              calcWidth={boardCalcWidth(520, 76)}
               orientation={boardOrientation}
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}

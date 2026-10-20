@@ -237,6 +237,7 @@ class Leaderboard extends Component {
               <div className="empty-state">
                 <p>暂无玩家。开始游戏后即可上榜！</p>
                 <p>No players yet. Play some games to appear on the leaderboard!</p>
+                <button className="empty-state-cta" onClick={this.props.onBack}>开始一局 / Play a game</button>
               </div>
             ) : (
               <>
@@ -346,6 +347,7 @@ class Leaderboard extends Component {
               <div className="empty-state">
                 <p>暂无游戏记录</p>
                 <p>No games played yet. Start playing to see your history!</p>
+                <button className="empty-state-cta" onClick={this.props.onBack}>开始一局 / Play a game</button>
               </div>
             ) : (
               <div className="games-list">

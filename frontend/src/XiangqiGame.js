@@ -29,6 +29,9 @@ import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
 
+// How long the coach waits for a still-starting engine before showing preliminary suggestions
+const COACH_ENGINE_WAIT_MS = 6000;
+
 // Tutorial lessons for Chinese Chess
 const XIANGQI_LESSONS = [
   {
@@ -278,6 +281,7 @@ class XiangqiGame extends Component {
     if (this._handleResize) {
       window.removeEventListener('resize', this._handleResize);
     }
+    clearTimeout(this._coachWaitTimer);
     // Save state before unmount
     this.saveGameState();
     stopAnalysis();
@@ -296,22 +300,18 @@ class XiangqiGame extends Component {
       const isolated = await this._waitForCrossOriginIsolation(5000);
       if (!isolated) {
         console.warn('[XiangqiGame] Not cross-origin isolated — SharedArrayBuffer unavailable. Using built-in AI.');
-        this.setState({ engineReady: false, engineLoading: false });
+        this._onEngineSettled(false);
         return;
       }
     }
 
     try {
       const ok = await initCoachEngine();
-      this.setState({ engineReady: ok, engineLoading: false });
-      if (ok) {
-
-      } else {
-        console.warn('[XiangqiGame] Engine init failed, using built-in AI');
-      }
+      if (!ok) console.warn('[XiangqiGame] Engine init failed, using built-in AI');
+      this._onEngineSettled(ok);
     } catch (err) {
       console.warn('[XiangqiGame] Engine init error, using built-in AI:', err);
-      this.setState({ engineReady: false, engineLoading: false });
+      this._onEngineSettled(false);
     }
   };
 
@@ -501,15 +501,38 @@ class XiangqiGame extends Component {
     // Use Fairy-Stockfish engine if available, else fall back to built-in AI
     if (this.state.engineReady && isEngineReady()) {
       this._updateAnalysisWithEngine(mode, key);
+    } else if (this.state.engineLoading) {
+      // The engine is still starting. Give it a few seconds instead of answering
+      // with the much weaker built-in coach; if it is slow, show preliminary
+      // suggestions (clearly marked) and refresh them once the engine is up.
+      this._pendingCoach = { mode, key };
+      clearTimeout(this._coachWaitTimer);
+      this._coachWaitTimer = setTimeout(() => this._applyBuiltinCoach(key, 'loading'), COACH_ENGINE_WAIT_MS);
     } else {
-      // Fallback: built-in AI (synchronous, so let the "analyzing" state paint first)
-      this._defer(() => {
-        if (!this.game || this._positionKey() !== key) return;
-        const history = this.game.history_moves();
-        const suggestedMoves = getTopMoves(this.game, 3, history);
-        this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
-      });
+      // Engine unavailable: built-in AI (synchronous, so let the "analyzing" state paint first)
+      this._defer(() => this._applyBuiltinCoach(key, 'builtin'));
     }
+  };
+
+  _applyBuiltinCoach = (key, source) => {
+    if (!this.game || this._positionKey() !== key) return;
+    const history = this.game.history_moves();
+    const suggestedMoves = getTopMoves(this.game, 3, history);
+    this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: source });
+  };
+
+  // The engine finished starting (or failed to). Redo the analysis that was
+  // waiting for it, unless the position has moved on since.
+  _onEngineSettled = (ok) => {
+    if (!this.game) return;
+    this.setState({ engineReady: ok, engineLoading: false }, () => {
+      clearTimeout(this._coachWaitTimer);
+      const pending = this._pendingCoach;
+      this._pendingCoach = null;
+      if (pending && this.game && !this.state.gameOver && this._positionKey() === pending.key) {
+        this._runCoachAnalysis(pending.mode);
+      }
+    });
   };
 
   // Async engine-powered analysis (non-blocking via WASM worker)
@@ -1112,7 +1135,7 @@ class XiangqiGame extends Component {
   renderCoachBody() {
     const {
       analysis, suggestedMoves, strategicAdvice, lastAIExplanation, threatWarning,
-      aiThinking, playerColor, coachAnalyzing, engineReady, hintMove, coachSource,
+      aiThinking, playerColor, coachAnalyzing, engineReady, engineLoading, hintMove, coachSource,
     } = this.state;
     const isPlayerTurn = !!this.game && this.game.turn === playerColor;
     const hasThreats = threatWarning && threatWarning.length > 0 && !aiThinking;
@@ -1168,7 +1191,9 @@ class XiangqiGame extends Component {
             <div className="coach-analyzing">
               {engineReady
                 ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
-                : '🔍 教练分析中... / Coach analyzing...'}
+                : engineLoading
+                  ? '⏳ 引擎启动中，请稍候... / Starting engine...'
+                  : '🔍 教练分析中... / Coach analyzing...'}
             </div>
           </div>
         )}
@@ -1207,7 +1232,13 @@ class XiangqiGame extends Component {
               })}
             </div>
             <div className="suggestion-footnote">点击在棋盘上查看 / Tap to preview on the board</div>
-            {coachSource === 'builtin' && (
+            {coachSource === 'loading' && engineLoading && (
+              <div className="coach-source-note" role="status">
+                ⏳ 引擎还在启动，这是初步建议，就绪后会自动更新<br />
+                Engine still starting — preliminary suggestions, will update when ready
+              </div>
+            )}
+            {coachSource === 'builtin' && !engineLoading && (
               <div className="coach-source-warning" role="note">
                 ⚠️ 引擎暂不可用，当前为内置教练（强度较弱）<br />
                 Engine unavailable — basic coach, treat with caution

@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
+import { boardCalcWidth, fitBoardWidth } from "./services/ViewportService";
 import Chess from "chess.js";
 import Xiangqi from "./xiangqi";
 import XiangqiBoard from "./XiangqiBoard";
@@ -466,6 +467,13 @@ class OpeningExplorer extends Component {
   componentDidMount() {
     this.game = new Chess();
     this.updateMatchingOpenings();
+    // Xiangqi boards are sized from the window, so redraw them when it changes
+    this._onResize = () => this.forceUpdate();
+    window.addEventListener("resize", this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
   }
 
   updateMatchingOpenings = () => {
@@ -1125,7 +1133,7 @@ class OpeningExplorer extends Component {
                       board={this.xiangqiGame ? this.xiangqiGame.board : null}
                       turn={this.xiangqiGame ? this.xiangqiGame.turn : 'r'}
                       playerColor="r"
-                      width={480}
+                      width={fitBoardWidth(480, 72)}
                       orientation="red"
                       validMoves={xiangqiValidMoves}
                       onSquareSelect={this.onXiangqiTrainingSelect}
@@ -1137,6 +1145,7 @@ class OpeningExplorer extends Component {
                       id="openingboard"
                       position={fen}
                       width={480}
+                      calcWidth={boardCalcWidth(480, 72)}
                       orientation="white"
                       onDrop={this.onDrop}
                       onSquareClick={this.onSquareClick}
@@ -1192,7 +1201,7 @@ class OpeningExplorer extends Component {
                   board={this.xiangqiGame ? this.xiangqiGame.board : null}
                   turn={this.xiangqiGame ? this.xiangqiGame.turn : 'r'}
                   playerColor="r"
-                  width={480}
+                  width={fitBoardWidth(480, 72)}
                   orientation="red"
                   validMoves={xiangqiValidMoves}
                   onSquareSelect={this.onXiangqiSquareSelect}
@@ -1204,6 +1213,7 @@ class OpeningExplorer extends Component {
                   id="openingboard"
                   position={fen}
                   width={480}
+                  calcWidth={boardCalcWidth(480, 72)}
                   orientation="white"
                   onDrop={this.onDrop}
                   onSquareClick={this.onSquareClick}
