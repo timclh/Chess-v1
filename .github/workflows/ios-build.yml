@@ -3,12 +3,12 @@ name: iOS Build
 on:
   push:
     branches: [master]
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # Allow manual trigger (runs the archive too, on any branch)
 
 jobs:
   build-ios:
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,10 +21,12 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
+        id: install
         working-directory: frontend
         run: npm ci
 
       - name: Build React app
+        id: react
         working-directory: frontend
         env:
           NODE_OPTIONS: '--openssl-legacy-provider'
@@ -32,24 +34,34 @@ jobs:
         run: npx react-scripts build
 
       - name: Sync Capacitor iOS
+        id: sync
         working-directory: frontend
         run: npx cap sync ios
 
+      # Note: `xcodebuild ... | tail` hides xcodebuild's exit code unless pipefail
+      # is on (GitHub's default `bash -e` does not enable it), which used to turn
+      # a failed build into a green step. Keep `set -o pipefail` in these steps.
       - name: Build iOS app (Simulator)
+        id: simulator
         working-directory: frontend/ios/App
         run: |
+          set -o pipefail
+          # "generic" needs no specific device; named simulators come and go with
+          # the runner image (iPhone 16 disappeared with macOS 26).
           xcodebuild build \
             -scheme App \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            | tail -20
+            | tail -40
 
-      - name: Build iOS app (Archive for device)
-        if: github.ref == 'refs/heads/master'
+      - name: Build iOS app (Archive for device, unsigned)
+        id: archive
+        if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
         working-directory: frontend/ios/App
         run: |
+          set -o pipefail
           xcodebuild archive \
             -scheme App \
             -archivePath build/ChessArena.xcarchive \
@@ -57,22 +69,38 @@ jobs:
             -destination 'generic/platform=iOS' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
-            | tail -20
+            | tail -40
 
       - name: Upload build artifact
-        if: github.ref == 'refs/heads/master'
+        id: upload
+        if: steps.archive.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: ios-build
           path: frontend/ios/App/build/ChessArena.xcarchive
+          if-no-files-found: error
           retention-days: 30
 
       - name: Build Summary
+        if: always()
         run: |
-          echo "## iOS Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ React build: success" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ Capacitor sync: success" >> $GITHUB_STEP_SUMMARY
-          echo "- ✅ iOS simulator build: success" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
-            echo "- ✅ iOS archive: success" >> $GITHUB_STEP_SUMMARY
-          fi
+          icon() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              skipped) echo "⏭️" ;;
+              cancelled) echo "🚫" ;;
+              *) echo "❔" ;;
+            esac
+          }
+          {
+            echo "## iOS Build Summary"
+            echo "- $(icon '${{ steps.install.outcome }}') Install dependencies (npm ci): ${{ steps.install.outcome }}"
+            echo "- $(icon '${{ steps.react.outcome }}') React build: ${{ steps.react.outcome }}"
+            echo "- $(icon '${{ steps.sync.outcome }}') Capacitor sync: ${{ steps.sync.outcome }}"
+            echo "- $(icon '${{ steps.simulator.outcome }}') iOS simulator build: ${{ steps.simulator.outcome }}"
+            echo "- $(icon '${{ steps.archive.outcome }}') iOS archive (unsigned): ${{ steps.archive.outcome }}"
+            echo "- $(icon '${{ steps.upload.outcome }}') Artifact upload: ${{ steps.upload.outcome }}"
+            echo ""
+            echo "_The archive is unsigned: it proves the app compiles for a device, but it cannot be installed or uploaded to TestFlight._"
+          } >> "$GITHUB_STEP_SUMMARY"
