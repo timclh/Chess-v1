@@ -11,11 +11,14 @@ const WebSocket = require('ws');
 
 const config = require('./config');
 const RoomManager = require('./services/RoomManager');
+const ReportStore = require('./services/ReportStore');
 const { createRequestHandler } = require('./routes/health');
 const handlers = require('./handlers/gameHandlers');
+const { handleReport } = require('./handlers/reportHandlers');
 
 // ── Services ────────────────────────────────────────────────
 const roomManager = new RoomManager();
+const reportStore = new ReportStore();
 
 // ── HTTP Server ─────────────────────────────────────────────
 const server = http.createServer(createRequestHandler(roomManager));
@@ -59,6 +62,7 @@ function routeMessage(ws, message) {
     case 'draw_offer':      return handlers.handleDrawOffer(ws, message, roomManager);
     case 'draw_response':   return handlers.handleDrawResponse(ws, message, roomManager);
     case 'rematch':         return handlers.handleRematch(ws, message, roomManager);
+    case 'report':          return handleReport(ws, message, roomManager, reportStore);
     default:
       // Legacy global chat
       const data = JSON.stringify(message);

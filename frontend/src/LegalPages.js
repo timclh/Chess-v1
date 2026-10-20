@@ -1,5 +1,8 @@
 import React, { Component } from 'react';
 
+// Support / moderation contact, shared with the chat panels
+export const SUPPORT_EMAIL = 'support@chessarena.app';
+
 export class PrivacyPolicy extends Component {
   render() {
     return (
@@ -45,7 +48,7 @@ export class PrivacyPolicy extends Component {
         <p>We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last updated" date.</p>
 
         <h3>8. Contact Us</h3>
-        <p>If you have questions about this privacy policy, please contact us at: <a href="mailto:support@chessarena.app">support@chessarena.app</a></p>
+        <p>If you have questions about this privacy policy, please contact us at: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
       </div>
     );
   }
@@ -100,7 +103,7 @@ export class TermsOfService extends Component {
         <p>We reserve the right to modify these terms at any time. Continued use of the App after changes constitutes acceptance of the new terms.</p>
 
         <h3>10. Contact</h3>
-        <p>For questions about these terms, contact us at: <a href="mailto:support@chessarena.app">support@chessarena.app</a></p>
+        <p>For questions about these terms, contact us at: <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a></p>
       </div>
     );
   }

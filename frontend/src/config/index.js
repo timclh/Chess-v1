@@ -56,6 +56,7 @@ const config = {
   // ── localStorage Keys ────────────────────────────────
   storage: {
     gameHistory: 'chess_game_history',
+    blockedUsers: 'qi_arena_blocked_users',
     players: 'chess_players',
     savedGame: 'chess_saved_game',
     userPrefs: 'qi_arena_prefs',

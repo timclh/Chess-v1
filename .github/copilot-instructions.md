@@ -107,8 +107,8 @@ cd frontend && npm run build && npx cap sync
 
 ## WebSocket Message Types
 
-Client→Server: `create_room`, `join_room`, `move`, `chat`, `resign`, `draw_offer`, `draw_response`, `rematch`  
-Server→Client: `room_created`, `room_joined`, `opponent_joined`, `game_start`, `opponent_move`, `game_over`, `chat`, `draw_offered`, `draw_declined`, `rematch_start`, `opponent_disconnected`, `error`
+Client→Server: `create_room`, `join_room`, `move`, `chat`, `resign`, `draw_offer`, `draw_response`, `rematch`, `report`  
+Server→Client: `room_created`, `room_joined`, `opponent_joined`, `game_start`, `opponent_move`, `game_over`, `chat`, `draw_offered`, `draw_declined`, `rematch_start`, `opponent_disconnected`, `report_received`, `error`
 
 ## File Naming
 

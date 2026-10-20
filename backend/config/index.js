@@ -36,6 +36,15 @@ const config = {
     resetHourUTC: parseInt(process.env.PUZZLE_RESET_HOUR || '0', 10),
   },
 
+  // ── Chat reports (moderation) ────────────────────────────
+  reports: {
+    maxStored: parseInt(process.env.REPORT_MAX_STORED || '200', 10),        // in-memory list size
+    minIntervalMs: parseInt(process.env.REPORT_MIN_INTERVAL || '3000', 10), // per connection
+    maxNameLength: parseInt(process.env.REPORT_MAX_NAME || '40', 10),
+    maxTextLength: parseInt(process.env.REPORT_MAX_TEXT || '500', 10),
+    maxReasonLength: parseInt(process.env.REPORT_MAX_REASON || '50', 10),
+  },
+
   // ── Logging ──────────────────────────────────────────────
   logLevel: process.env.LOG_LEVEL || 'info',
 };

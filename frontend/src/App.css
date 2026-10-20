@@ -2468,6 +2468,85 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   cursor: not-allowed;
 }
 
+/* Chat safety: block / report / contact line (room chat and global chat) */
+.chat-msg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.chat-action-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.chat-action-btn:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.chat-action-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chat-report-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.chat-report-form select {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.chat-safety {
+  margin-top: 10px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.chat-safety a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.chat-blocked {
+  margin-top: 6px;
+}
+
+.chat-blocked ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.chat-blocked li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+@media (pointer: coarse) {
+  .chat-action-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
 /* Responsive adjustments for multiplayer */
 @media (max-width: 1200px) {
   .multiplayer-container {

@@ -1,6 +1,15 @@
 import React, { Component } from "react";
 import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
+import { MessageActions, SafetyFooter } from "./components/ChatSafety";
+import {
+  filterText,
+  getBlockedUsers,
+  isBlocked,
+  blockUser,
+  unblockUser,
+  buildReport,
+} from "./services/ChatSafetyService";
 import "./App.css";
 
 // Use environment variable or fallback to localhost
@@ -18,6 +27,7 @@ class Chat extends Component {
     name: "Bob",
     messages: [],
     connected: false,
+    blockedUsers: getBlockedUsers(),
   };
 
   ws = null;
@@ -58,7 +68,12 @@ class Chat extends Component {
       this.ws.onmessage = (evt) => {
         try {
           const message = JSON.parse(evt.data);
-          this.addMessage(message);
+          if (message.type === "report_received") {
+            // Server acknowledgement of one of our reports (not user chat)
+            this.addMessage({ name: "", message: message.message, notice: true });
+          } else {
+            this.addMessage({ name: message.name, message: message.message });
+          }
         } catch (error) {
           console.error("Failed to parse message:", error);
         }
@@ -96,9 +111,12 @@ class Chat extends Component {
   };
 
   addMessage = (message) => {
-    // Add unique ID for React key
+    // Add unique ID for React key. Text is filtered for display; the original
+    // is kept so a report carries what was actually said.
     const messageWithId = {
       ...message,
+      message: filterText(message.message),
+      rawMessage: typeof message.message === "string" ? message.message : "",
       id: ++this.messageIdCounter,
     };
 
@@ -118,7 +136,7 @@ class Chat extends Component {
       return;
     }
 
-    const message = { name: this.state.name, message: messageString };
+    const message = { name: this.state.name, message: filterText(messageString) };
     try {
       this.ws.send(JSON.stringify(message));
       this.addMessage(message);
@@ -127,8 +145,25 @@ class Chat extends Component {
     }
   };
 
+  blockChatUser = (userName) => {
+    this.setState({ blockedUsers: blockUser(userName) });
+  };
+
+  unblockChatUser = (userName) => {
+    this.setState({ blockedUsers: unblockUser(userName) });
+  };
+
+  reportChatMessage = (reportedName, text, reason) => {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    try {
+      this.ws.send(JSON.stringify(buildReport({ reportedName, text, reason })));
+    } catch (error) {
+      console.error("Failed to send report:", error);
+    }
+  };
+
   render() {
-    const { name, messages, connected } = this.state;
+    const { name, messages, connected, blockedUsers } = this.state;
 
     return (
       <div>
@@ -160,14 +195,26 @@ class Chat extends Component {
           onSubmitMessage={(messageString) => this.submitMessage(messageString)}
         />
         <div className="content">
-          {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message.message}
-              name={message.name}
-            />
-          ))}
+          {messages
+            .filter((message) => !isBlocked(message.name, blockedUsers))
+            .map((message) => (
+              <div key={message.id}>
+                <ChatMessage
+                  message={message.message}
+                  name={filterText(message.name)}
+                />
+                {!message.notice && message.name !== name && (
+                  <MessageActions
+                    name={message.name}
+                    text={message.rawMessage}
+                    onBlock={this.blockChatUser}
+                    onReport={this.reportChatMessage}
+                  />
+                )}
+              </div>
+            ))}
         </div>
+        <SafetyFooter blocked={blockedUsers} onUnblock={this.unblockChatUser} />
       </div>
     );
   }
