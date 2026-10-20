@@ -5,6 +5,15 @@ import { GameResultDialog } from "./components/GameResultDialog";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { getRating, recordResult } from "./services/UserRatingService";
 import { GAME_TYPE, RESULT } from "./constants";
+import { MessageActions, SafetyFooter } from "./components/ChatSafety";
+import {
+  filterText,
+  getBlockedUsers,
+  isBlocked,
+  blockUser,
+  unblockUser,
+  buildReport,
+} from "./services/ChatSafetyService";
 
 // Use environment variable or fallback to localhost
 const WS_URL = process.env.REACT_APP_WS_URL || "ws://localhost:3030";
@@ -32,6 +41,7 @@ class Multiplayer extends Component {
     joinRoomId: "",
     messages: [],
     chatInput: "",
+    blockedUsers: getBlockedUsers(),
     drawOffered: false,
     drawReceived: false,
     copySuccess: false,
@@ -171,6 +181,11 @@ class Multiplayer extends Component {
         this.addChatMessage(message.name, message.message);
         break;
 
+      case 'report_received':
+        // Acknowledgement of a chat report (ok: false when rejected / rate-limited)
+        this.addSystemMessage(message.message);
+        break;
+
       case 'game_over':
         {
           const playerResult = message.playerResult || null;
@@ -248,10 +263,28 @@ class Multiplayer extends Component {
     }));
   };
 
+  // `text` is what is displayed (profanity masked); `rawText` is kept so a
+  // report carries what was actually said.
   addChatMessage = (name, text) => {
+    const rawText = typeof text === 'string' ? text : '';
     this.setState(state => ({
-      messages: [...state.messages, { type: 'chat', name, text, id: Date.now() }],
+      messages: [
+        ...state.messages,
+        { type: 'chat', name, text: filterText(rawText), rawText, id: Date.now() },
+      ],
     }));
+  };
+
+  blockChatUser = (name) => {
+    this.setState({ blockedUsers: blockUser(name) });
+  };
+
+  unblockChatUser = (name) => {
+    this.setState({ blockedUsers: unblockUser(name) });
+  };
+
+  reportChatMessage = (reportedName, text, reason) => {
+    this.sendMessage(buildReport({ reportedName, text, reason }));
   };
 
   sendMessage = (message) => {
@@ -452,11 +485,13 @@ class Multiplayer extends Component {
   sendChat = () => {
     if (!this.state.chatInput.trim()) return;
 
+    // Mask profanity before the text leaves this client
+    const text = filterText(this.state.chatInput);
     this.sendMessage({
       type: 'chat',
-      text: this.state.chatInput,
+      text,
     });
-    this.addChatMessage(this.state.playerName, this.state.chatInput);
+    this.addChatMessage(this.state.playerName, text);
     this.setState({ chatInput: "" });
   };
 
@@ -489,7 +524,7 @@ class Multiplayer extends Component {
     const {
       connected, roomId, playerColor, playerName, opponentName, opponentRating,
       fen, squareStyles, gameStatus, gameOver, history,
-      showJoinDialog, joinRoomId, messages, chatInput,
+      showJoinDialog, joinRoomId, messages, chatInput, blockedUsers,
       drawOffered, drawReceived, copySuccess,
       showResultDialog, gameResult, resultMessage, oldRating, newRating,
     } = this.state;
@@ -703,17 +738,27 @@ class Multiplayer extends Component {
         <div className="chat-panel">
           <div className="panel-title">Chat</div>
           <div className="chat-messages">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`chat-msg ${msg.type}`}>
-                {msg.type === 'chat' ? (
-                  <>
-                    <span className="chat-name">{msg.name}:</span> {msg.text}
-                  </>
-                ) : (
-                  <em>{msg.text}</em>
-                )}
-              </div>
-            ))}
+            {messages
+              .filter((msg) => msg.type !== 'chat' || !isBlocked(msg.name, blockedUsers))
+              .map((msg) => (
+                <div key={msg.id} className={`chat-msg ${msg.type}`}>
+                  {msg.type === 'chat' ? (
+                    <>
+                      <span className="chat-name">{filterText(msg.name)}:</span> {msg.text}
+                      {msg.name !== playerName && (
+                        <MessageActions
+                          name={msg.name}
+                          text={msg.rawText}
+                          onBlock={this.blockChatUser}
+                          onReport={this.reportChatMessage}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <em>{msg.text}</em>
+                  )}
+                </div>
+              ))}
           </div>
           <div className="chat-input-area">
             <input
@@ -733,6 +778,7 @@ class Multiplayer extends Component {
               Send
             </button>
           </div>
+          <SafetyFooter blocked={blockedUsers} onUnblock={this.unblockChatUser} />
         </div>
 
         {/* Game Result Dialog with Rating */}
