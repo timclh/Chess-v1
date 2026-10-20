@@ -24,8 +24,10 @@ class WuziQiBoard extends Component {
     if (!onCellClick) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // The SVG is scaled down on narrow screens, so convert to board units
+    const scale = BOARD_PX / rect.width;
+    const x = (e.clientX - rect.left) * scale;
+    const y = (e.clientY - rect.top) * scale;
 
     // Snap to nearest intersection
     const col = Math.round((x - PADDING) / CELL_SIZE);
@@ -46,8 +48,9 @@ class WuziQiBoard extends Component {
 
     const touch = e.changedTouches[0];
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
+    const scale = BOARD_PX / rect.width;
+    const x = (touch.clientX - rect.left) * scale;
+    const y = (touch.clientY - rect.top) * scale;
 
     const col = Math.round((x - PADDING) / CELL_SIZE);
     const row = Math.round((y - PADDING) / CELL_SIZE);

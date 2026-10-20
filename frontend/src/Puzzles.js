@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import Chessboard from "chessboardjsx";
+import { boardCalcWidth, fitBoardWidth } from "./services/ViewportService";
 import Chess from "chess.js";
 import Xiangqi from "./xiangqi";
 import XiangqiBoard from "./XiangqiBoard";
@@ -433,6 +434,13 @@ class Puzzles extends Component {
   componentDidMount() {
     this.game = new Chess();
     this.loadDailyPuzzles();
+    // Xiangqi boards are sized from the window, so redraw them when it changes
+    this._onResize = () => this.forceUpdate();
+    window.addEventListener("resize", this._onResize);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("resize", this._onResize);
   }
 
   loadDailyPuzzles = () => {
@@ -978,6 +986,7 @@ class Puzzles extends Component {
                     id="puzzleboard"
                     position={fen}
                     width={480}
+                    calcWidth={boardCalcWidth(480, 72)}
                     orientation={this.game?.turn() === 'b' ? 'black' : 'white'}
                     onDrop={this.onDrop}
                     onSquareClick={this.onSquareClick}
@@ -995,7 +1004,7 @@ class Puzzles extends Component {
                     board={this.xiangqiGame ? this.xiangqiGame.board : []}
                     turn={this.xiangqiGame ? this.xiangqiGame.turn : 'r'}
                     playerColor="r"
-                    width={Math.min(450, window.innerWidth - 40)}
+                    width={fitBoardWidth(450, 72)}
                     orientation="red"
                     validMoves={xiangqiValidMoves}
                     onSquareSelect={this.onXiangqiSquareSelect}

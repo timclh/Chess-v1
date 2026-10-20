@@ -65,6 +65,27 @@ export function fitSquare(opts = {}) {
 }
 
 /**
+ * Board width for pages that sit inside padded panels: as wide as `max`, but
+ * never wider than the screen minus `gutter` (page + panel padding), so the
+ * page cannot scroll sideways on a phone.
+ * @param {number} max    - Desktop width in px
+ * @param {number} gutter - Horizontal space taken by padding around the board
+ * @param {number} [screenWidth] - Defaults to window.innerWidth
+ * @returns {number} board width in px
+ */
+export function fitBoardWidth(max, gutter = 72, screenWidth = window.innerWidth) {
+  return Math.max(240, Math.min(max, screenWidth - gutter));
+}
+
+/**
+ * `calcWidth` prop for chessboardjsx (it re-runs on window resize).
+ *   <Chessboard calcWidth={boardCalcWidth(480)} ... />
+ */
+export function boardCalcWidth(max, gutter = 72) {
+  return ({ screenWidth }) => fitBoardWidth(max, gutter, screenWidth);
+}
+
+/**
  * Calculate card/column width for a grid layout.
  * @param {number} columns - Number of columns
  * @param {number} gap - Gap between columns in px (default: 8)
@@ -119,6 +140,8 @@ export function getChromeInfo() {
 export default {
   getAvailable,
   fitSquare,
+  fitBoardWidth,
+  boardCalcWidth,
   fitColumns,
   pageMinHeight,
   autoResize,

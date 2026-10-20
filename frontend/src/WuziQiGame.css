@@ -290,3 +290,13 @@
     padding: 5px 8px;
   }
 }
+
+/* The page is a padded flex item; cap the board to what is left of the screen
+   (16px page padding + 6px game padding on each side) so it never scrolls sideways. */
+@media (max-width: 520px) {
+  .wuziqi-game { max-width: 100%; box-sizing: border-box; }
+  .wuziqi-board-svg { max-width: calc(100vw - 44px); height: auto; }
+}
+
+/* Legible and tappable on a phone (UI review P0) */
+.wuziqi-btn { font-size: 12px; min-height: 44px; }

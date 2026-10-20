@@ -29,6 +29,7 @@ import {
 import { getRating } from './services/UserRatingService';
 import { deleteAccount, isFirebaseConfigured } from './firebase';
 import { GAME_TYPE } from './constants';
+import './ProfilePage.css';
 
 class ProfilePage extends Component {
   state = {

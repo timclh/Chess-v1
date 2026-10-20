@@ -499,3 +499,18 @@
   .coach-tab { font-size: 0.75rem; padding: 8px 4px; }
   .game-selector { flex-direction: column; }
 }
+
+/* Phone width: the chat input and quick-action row set the card's minimum width,
+   which pushed the whole page 280px past the screen. */
+.ai-coach { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.coach-tabs, .coach-tab-content, .messages-container, .input-container { min-width: 0; }
+.input-container input { min-width: 0; }
+
+/* Tap targets (UI review P0) */
+@media (max-width: 820px) {
+  .coach-tab,
+  .quick-actions button,
+  .input-container input,
+  .input-container button,
+  .new-chat-btn { min-height: 44px; }
+}

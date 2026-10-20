@@ -1013,7 +1013,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .empty-state {
   text-align: center;
   padding: 40px 20px;
-  color: #94a3b8;
+  color: #64748b;
   font-style: italic;
 }
 
@@ -1216,7 +1216,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .scoring-rules .rule-title {
   font-weight: 600;
-  color: #e94560;
+  color: #be1e3c;
   margin-bottom: 12px;
   font-size: 14px;
 }
@@ -1226,7 +1226,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   font-size: 13px;
-  color: #cbd5e1;
+  color: #334155;
 }
 
 /* Top Players Showcase */
@@ -7661,4 +7661,120 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   color: #fdba74;
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* Room chat text colour. The chat panel is dark but never set a text colour, so
+   message text, the block/report buttons and the contact line (which use
+   `color: inherit`) fell back to the page's black. */
+.chat-panel { color: #e2e8f0; }
+.chat-panel .panel-title { color: #e2e8f0; }
+.chat-safety { opacity: 1; color: #cbd5e1; }
+.chat-safety a { color: #93c5fd; }
+
+/* Shown while the engine is still starting and the coach has only a preliminary answer */
+.coach-source-note {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════
+   Phone-width layout fixes (UI review P0-3). Puzzles, openings and online play
+   were laid out for desktop and scrolled sideways on a 390px phone.
+   ══════════════════════════════════════════ */
+@media (max-width: 820px) {
+  .puzzles-container,
+  .opening-explorer-container,
+  .multiplayer-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .puzzles-sidebar,
+  .puzzle-info-panel,
+  .opening-sidebar,
+  .multiplayer-panel,
+  .multiplayer-container .chat-panel,
+  .multiplayer-container .board-panel {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .opening-sidebar { max-height: none; }
+
+  .multiplayer-container .move-history,
+  .multiplayer-container .board-panel .game-status {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* Empty leaderboard / history: point people at what to do next */
+.empty-state .empty-state-cta {
+  margin-top: 16px;
+  min-height: 44px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #be1e3c, #a52a1c);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-style: normal;
+  cursor: pointer;
+}
+
+/* ══════════════════════════════════════════
+   UI review P0: legibility and touch targets. Labels under 12px and tap
+   targets under 44px were everywhere on phones; muted tab labels were 3.4:1.
+   ══════════════════════════════════════════ */
+.btab-btn { min-height: 48px; }
+.btab-label { font-size: 12px; color: #94a3b8; }
+.btab-btn.active .btab-label { color: #ff7b92; }
+
+.sub-nav-btn { min-height: 44px; }
+.fs-icon-btn { width: 44px; height: 44px; }
+
+.feat-label,
+.hss-lbl,
+.stat-label,
+.hgc-rating,
+.opening-eco,
+.opening-name-cn,
+.opening-difficulty,
+.puzzle-difficulty,
+.mode-tab,
+.filter-btn { font-size: 12px; }
+
+.mode-tab,
+.filter-btn { min-height: 44px; }
+
+@media (max-width: 820px) {
+  .nav-btn,
+  .game-type-tab,
+  .tab-btn,
+  .level-btn,
+  .action-btn { min-height: 44px; }
+}
+
+@media (max-width: 820px) {
+  .btn,
+  .topic-btn,
+  .hint-float-btn,
+  .player-name-input,
+  .chat-input,
+  .opening-search input { min-height: 44px; }
+
+  .action-btn,
+  .filter-btn,
+  .new-chat-btn { min-width: 44px; min-height: 44px; }
 }
