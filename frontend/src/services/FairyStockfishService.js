@@ -101,6 +101,13 @@ class FairyStockfishService {
     this._bestMove = null;
     this._depth = 0;
     this._score = null;
+    // UCI answers every `go` (including one cut short by `stop`) with its own
+    // `bestmove`. Without tracking that, the late reply of a stopped search is
+    // mistaken for the result of the next one and arrives with no lines.
+    this._searching = false;
+    this._idleWaiters = [];
+    this._analysisChain = Promise.resolve();
+    this._requestSeq = 0;
   }
 
   /**
@@ -314,6 +321,7 @@ class FairyStockfishService {
     if (line.startsWith('bestmove')) {
       const parts = line.split(' ');
       this._bestMove = parts[1] || null;
+      this._searching = false;
 
       // Resolve the current analysis promise
       if (this._currentAnalysis) {
@@ -325,6 +333,11 @@ class FairyStockfishService {
         });
         this._currentAnalysis = null;
       }
+
+      // Wake up analyze() calls that were waiting for this search to end
+      const waiters = this._idleWaiters;
+      this._idleWaiters = [];
+      waiters.forEach((wake) => wake());
     }
   }
 
@@ -396,6 +409,44 @@ class FairyStockfishService {
       if (!ok) throw new Error('Engine failed to initialize');
     }
 
+    // A newer request always supersedes whatever is running or still queued:
+    // cut the running search short so its (now stale) result comes back fast,
+    // and run requests strictly one at a time so replies cannot be mixed up.
+    const id = ++this._requestSeq;
+    this.stop();
+    const run = () => {
+      if (id !== this._requestSeq) {
+        // A newer request was queued while we waited; it is in charge now.
+        return Promise.resolve({ superseded: true, bestMove: null, lines: [], depth: 0, score: null });
+      }
+      return this._analyzeNow(ourFen, turn, options);
+    };
+    const result = this._analysisChain.then(run, run);
+    this._analysisChain = result.catch(() => {});
+    return result;
+  }
+
+  /**
+   * Wait until the engine is not searching. Sends `stop` if it is, then
+   * resolves when the corresponding `bestmove` has arrived (or after a
+   * safety timeout so a hung engine cannot block analysis forever).
+   */
+  _waitUntilIdle(timeoutMs = 3000) {
+    if (!this._searching) return Promise.resolve();
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this._searching = false;
+        resolve();
+      }, timeoutMs);
+      this._idleWaiters.push(() => {
+        clearTimeout(timer);
+        resolve();
+      });
+      this._send('stop');
+    });
+  }
+
+  async _analyzeNow(ourFen, turn, options) {
     const {
       depth = 18,
       timeMs = 3000,
@@ -403,8 +454,9 @@ class FairyStockfishService {
       skillLevel = 20, // Default to max strength (GM level)
     } = options;
 
-    // Stop any ongoing analysis
-    this.stop();
+    // The previous search must be completely finished (its bestmove consumed)
+    // before we reset state and start ours.
+    await this._waitUntilIdle();
 
     // Reset analysis state
     this._multiPVLines = [];
@@ -455,6 +507,7 @@ class FairyStockfishService {
       };
     });
 
+    this._searching = true;
     this._send(searchCmd);
     return resultPromise;
   }
@@ -479,6 +532,10 @@ class FairyStockfishService {
     this.engine = null;
     this.ready = false;
     this._initPromise = null;
+    this._searching = false;
+    const waiters = this._idleWaiters;
+    this._idleWaiters = [];
+    waiters.forEach((wake) => wake());
   }
 
   /**

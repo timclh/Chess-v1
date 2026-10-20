@@ -7548,3 +7548,15 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .fullscreen-coach-body .suggestion-move .win-prob { background: rgba(255, 255, 255, 0.12); color: #e2e8f0; }
 .fullscreen-coach-body .suggestion.best .suggestion-move .win-prob { background: #22c55e; color: #fff; }
 .fullscreen-coach-body .suggestion-reason { color: #cbd5e1; }
+
+/* Shown when the weaker built-in coach had to stand in for the engine */
+.coach-source-warning {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(251, 146, 60, 0.5);
+  background: rgba(251, 146, 60, 0.12);
+  color: #fdba74;
+  font-size: 12px;
+  line-height: 1.5;
+}

@@ -180,6 +180,7 @@ class XiangqiGame extends Component {
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
     coachAnalyzing: false, // Coach is computing suggestions
+    coachSource: null, // 'engine' | 'builtin': where the current suggestions came from
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
     // Fairy-Stockfish engine state
@@ -506,7 +507,7 @@ class XiangqiGame extends Component {
         if (!this.game || this._positionKey() !== key) return;
         const history = this.game.history_moves();
         const suggestedMoves = getTopMoves(this.game, 3, history);
-        this.setState({ suggestedMoves, coachAnalyzing: false });
+        this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
       });
     }
   };
@@ -522,6 +523,8 @@ class XiangqiGame extends Component {
 
       // Component unmounted, or the position changed while the engine was thinking
       if (!this.game || this._positionKey() !== key) return;
+      // Replaced by a newer request, which will report its own result
+      if (engineMoves === null) return;
 
       if (engineMoves && engineMoves.length > 0) {
         // Extract analysis from the top move's score
@@ -567,13 +570,14 @@ class XiangqiGame extends Component {
         this.setState({ 
           analysis: engineAnalysis,
           suggestedMoves: engineMoves, 
-          coachAnalyzing: false 
+          coachAnalyzing: false,
+          coachSource: 'engine',
         });
       } else {
         // Engine returned no moves — fall back to built-in
         const history = this.game.history_moves();
         const suggestedMoves = getTopMoves(this.game, 3, history);
-        this.setState({ suggestedMoves, coachAnalyzing: false });
+        this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
       }
     } catch (err) {
       console.error('[XiangqiGame] Engine analysis error:', err);
@@ -581,7 +585,7 @@ class XiangqiGame extends Component {
       if (!this.game) return;
       const history = this.game.history_moves();
       const suggestedMoves = getTopMoves(this.game, 3, history);
-      this.setState({ suggestedMoves, coachAnalyzing: false });
+      this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
     }
   };
 
@@ -1108,7 +1112,7 @@ class XiangqiGame extends Component {
   renderCoachBody() {
     const {
       analysis, suggestedMoves, strategicAdvice, lastAIExplanation, threatWarning,
-      aiThinking, playerColor, coachAnalyzing, engineReady, hintMove,
+      aiThinking, playerColor, coachAnalyzing, engineReady, hintMove, coachSource,
     } = this.state;
     const isPlayerTurn = !!this.game && this.game.turn === playerColor;
     const hasThreats = threatWarning && threatWarning.length > 0 && !aiThinking;
@@ -1203,6 +1207,12 @@ class XiangqiGame extends Component {
               })}
             </div>
             <div className="suggestion-footnote">点击在棋盘上查看 / Tap to preview on the board</div>
+            {coachSource === 'builtin' && (
+              <div className="coach-source-warning" role="note">
+                ⚠️ 引擎暂不可用，当前为内置教练（强度较弱）<br />
+                Engine unavailable — basic coach, treat with caution
+              </div>
+            )}
           </div>
         )}
 
