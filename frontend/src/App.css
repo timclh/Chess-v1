@@ -7496,12 +7496,19 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   color: #cbd5e1;
 }
 
-/* Xiangqi page layout: keep the 9:10 board at full size instead of letting the
-   side panels squeeze it (board-panel has min-width: 0), and wrap the coach
-   panel under the board when the viewport is too narrow for three columns. */
+/* Xiangqi page layout.
+   Every column has a fixed width so the layout cannot move while you play:
+   the board panel used to size itself to its content, and the move history is
+   a wrapping row whose max-content grows with every move, so the panel kept
+   getting wider until the coach and settings panels were pushed underneath.
+   The board is 450px (see state.boardWidth) + wrapper chrome + panel padding = 522px.
+   An older rule forced a single column at <= 1100px, which put the (very tall)
+   settings panel above the board; the column layout now only applies to phones. */
 @media (min-width: 821px) {
   .xiangqi-game-layout {
+    flex-direction: row;
     flex-wrap: wrap;
+    align-items: flex-start;
     max-width: 1320px;
   }
   .xiangqi-game-layout .xiangqi-settings {
@@ -7509,14 +7516,30 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
     width: 250px;
   }
   .xiangqi-game-layout .xiangqi-board-panel {
-    flex: 0 0 auto;
-    width: auto;
+    flex: 0 0 522px;
+    width: 522px;
+    min-width: 0;
   }
   .xiangqi-game-layout .xiangqi-analysis,
   .xiangqi-game-layout .xiangqi-tutorial {
     flex: 0 0 300px;
     width: 300px;
   }
+  /* Long games: wrap inside the fixed width and scroll, never grow the panel */
+  .xiangqi-game-layout .xiangqi-history .moves-list {
+    max-height: 120px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
+/* Too narrow for settings | board | coach: keep board and coach (or settings
+   when there is no coach panel) side by side at the top, settings underneath. */
+@media (min-width: 821px) and (max-width: 1179px) {
+  .xiangqi-game-layout .xiangqi-board-panel { order: 1; }
+  .xiangqi-game-layout .xiangqi-analysis,
+  .xiangqi-game-layout .xiangqi-tutorial { order: 2; }
+  .xiangqi-game-layout .xiangqi-settings { order: 3; }
 }
 
 @media (max-width: 820px) {
