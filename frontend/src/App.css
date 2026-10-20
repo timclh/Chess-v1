@@ -7662,3 +7662,11 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* Room chat text colour. The chat panel is dark but never set a text colour, so
+   message text, the block/report buttons and the contact line (which use
+   `color: inherit`) fell back to the page's black. */
+.chat-panel { color: #e2e8f0; }
+.chat-panel .panel-title { color: #e2e8f0; }
+.chat-safety { opacity: 1; color: #cbd5e1; }
+.chat-safety a { color: #93c5fd; }
