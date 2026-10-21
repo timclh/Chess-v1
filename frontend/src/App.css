@@ -3,11 +3,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* background, colour and font come from styles/tokens.css */
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-    Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   min-height: 100vh;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -36,7 +34,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
   padding: 10px 16px;
   font-size: 0.9em;
@@ -52,8 +50,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .pwa-install-banner .install-btn {
-  background: white;
-  color: #e94560;
+  background: var(--paper-50);
+  color: var(--accent);
   border: none;
   padding: 6px 16px;
   border-radius: 20px;
@@ -63,7 +61,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .pwa-install-banner .install-btn:hover {
-  background: #f0f0f0;
+  background: var(--paper-100);
 }
 
 .pwa-install-banner .dismiss-btn {
@@ -81,7 +79,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .App-header {
-  background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+  background: linear-gradient(135deg, var(--ink-700) 0%, var(--ink-900) 100%);
   padding: 6px 12px;
   color: white;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -92,7 +90,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 1.3em;
   font-weight: 700;
   letter-spacing: 2px;
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -120,12 +118,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .nav-btn:hover {
-  border-color: #e94560;
-  color: #e94560;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border-color: transparent;
   color: white;
 }
@@ -134,7 +132,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .player-name-input {
   width: 100%;
   padding: 10px 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -142,7 +140,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .player-name-input:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .App-content {
@@ -156,7 +154,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Chat Section */
 .chat-section {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 20px;
   width: 320px;
@@ -178,7 +176,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .chat-section input[type="text"] {
   padding: 10px 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -186,24 +184,24 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .chat-section input[type="text"]:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .content {
   height: 300px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 12px;
   width: 100%;
   margin: 15px 0;
   overflow-y: auto;
   padding: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--paper-300);
 }
 
 .content > div {
   padding: 8px 12px;
   margin: 4px 0;
-  background: white;
+  background: var(--paper-50);
   border-radius: 8px;
   font-size: 14px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -221,7 +219,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .chat-section form button {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
   border: none;
   border-radius: 8px;
@@ -253,7 +251,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 /* Left Panel - Settings */
 .settings-panel {
   width: 220px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -262,10 +260,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .panel-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
   margin-bottom: 20px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--paper-300);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -301,9 +299,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .toggle-btn {
   width: 100%;
   padding: 10px 16px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
-  background: white;
+  background: var(--paper-50);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -320,7 +318,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .controls-section {
   margin-top: 30px;
   padding-top: 20px;
-  border-top: 2px solid #e2e8f0;
+  border-top: 2px solid var(--paper-300);
 }
 
 .full-width {
@@ -337,7 +335,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 25px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -346,7 +344,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 /* Right Panel - Analysis */
 .analysis-panel-right {
   width: 300px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -454,9 +452,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .mode-btn {
   padding: 12px 24px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 10px;
-  background: white;
+  background: var(--paper-50);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -465,12 +463,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .mode-btn:hover {
-  border-color: #e94560;
-  color: #e94560;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .mode-btn.active {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border-color: transparent;
   color: white;
 }
@@ -483,7 +481,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   justify-content: center;
   margin-bottom: 20px;
   padding: 15px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 12px;
   width: 100%;
 }
@@ -512,9 +510,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .color-btn,
 .diff-btn {
   padding: 8px 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
-  background: white;
+  background: var(--paper-50);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -524,14 +522,14 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .color-btn:hover,
 .diff-btn:hover {
-  border-color: #0f3460;
-  color: #0f3460;
+  border-color: var(--ink-700);
+  color: var(--ink-700);
 }
 
 .color-btn.active,
 .diff-btn.active {
-  background: #0f3460;
-  border-color: #0f3460;
+  background: var(--ink-700);
+  border-color: var(--ink-700);
   color: white;
 }
 
@@ -547,10 +545,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 1.3em;
   font-weight: 700;
   padding: 12px 30px;
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  background: linear-gradient(135deg, var(--paper-50), var(--paper-300));
   border-radius: 12px;
   margin-bottom: 20px;
-  color: #1e293b;
+  color: var(--ink-800);
   min-width: 300px;
 }
 
@@ -559,10 +557,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 1.4em;
   font-weight: 700;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  background: linear-gradient(135deg, var(--paper-50), var(--paper-300));
   border-radius: 12px;
   margin-bottom: 15px;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .game-status.game-over {
@@ -604,7 +602,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
 }
 
@@ -640,10 +638,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .win-probability {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 15px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--paper-300);
 }
 
 .prob-label {
@@ -665,7 +663,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .prob-white {
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+  background: linear-gradient(135deg, var(--paper-50), var(--paper-300));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -676,11 +674,11 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .prob-white span {
   font-size: 13px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .prob-black {
-  background: linear-gradient(135deg, #334155, #1e293b);
+  background: linear-gradient(135deg, var(--ink-700), var(--ink-800));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -741,8 +739,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .suggestion {
-  background: white;
-  border: 2px solid #e2e8f0;
+  background: var(--paper-50);
+  border: 2px solid var(--paper-300);
   border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 8px;
@@ -786,7 +784,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-family: "SF Mono", Monaco, "Consolas", monospace;
   font-size: 16px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
   flex: 1;
 }
 
@@ -794,7 +792,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 14px;
   font-weight: 600;
   color: #64748b;
-  background: #f1f5f9;
+  background: var(--paper-100);
   padding: 4px 10px;
   border-radius: 6px;
 }
@@ -818,19 +816,19 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .move-history h3 {
   margin: 0 0 10px;
   font-size: 1em;
-  color: #475569;
+  color: var(--on-paper-700);
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 .moves-list {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 15px;
   min-height: 60px;
   max-height: 120px;
   overflow-y: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--paper-300);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -845,7 +843,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .move {
   display: inline-block;
   padding: 4px 8px;
-  background: white;
+  background: var(--paper-50);
   border-radius: 4px;
   font-family: "SF Mono", Monaco, "Consolas", monospace;
   font-size: 13px;
@@ -959,7 +957,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .leaderboard-container {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 30px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
@@ -974,7 +972,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .leaderboard-header h2 {
   margin: 0 0 16px;
   font-size: 1.8em;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .tab-selector {
@@ -984,9 +982,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .tab-btn {
   padding: 10px 20px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
-  background: white;
+  background: var(--paper-50);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -995,12 +993,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .tab-btn:hover {
-  border-color: #e94560;
-  color: #e94560;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .tab-btn.active {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border-color: transparent;
   color: white;
 }
@@ -1027,22 +1025,22 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .leaderboard-table th {
   text-align: left;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--paper-50);
   color: #64748b;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid var(--paper-300);
 }
 
 .leaderboard-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--paper-300);
 }
 
 .leaderboard-table tr:hover {
-  background: #f8fafc;
+  background: var(--paper-50);
 }
 
 .leaderboard-table tr.rank-gold {
@@ -1050,7 +1048,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .leaderboard-table tr.rank-silver {
-  background: linear-gradient(90deg, #f1f5f9 0%, white 50%);
+  background: linear-gradient(90deg, var(--paper-100) 0%, white 50%);
 }
 
 .leaderboard-table tr.rank-bronze {
@@ -1072,12 +1070,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .player-name {
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .score {
   font-weight: 700;
-  color: #e94560;
+  color: var(--accent);
 }
 
 .record .wins {
@@ -1102,7 +1100,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .streak {
   font-weight: 600;
-  color: #f59e0b;
+  color: var(--amber-400);
 }
 
 .expert-wins {
@@ -1118,8 +1116,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .game-card {
-  background: white;
-  border: 2px solid #e2e8f0;
+  background: var(--paper-50);
+  border: 2px solid var(--paper-300);
   border-radius: 10px;
   padding: 14px 18px;
   transition: all 0.2s;
@@ -1138,7 +1136,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .game-card.result-draw {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--amber-400);
 }
 
 .game-main {
@@ -1150,7 +1148,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .game-player {
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .game-result {
@@ -1226,7 +1224,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   font-size: 13px;
-  color: #334155;
+  color: var(--ink-700);
 }
 
 /* Top Players Showcase */
@@ -1238,7 +1236,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .top-player {
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 100%);
   border-radius: 16px;
   padding: 20px;
   text-align: center;
@@ -1294,7 +1292,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .top-player-score {
   font-size: 24px;
   font-weight: bold;
-  color: #e94560;
+  color: var(--accent);
   margin-bottom: 8px;
 }
 
@@ -1339,8 +1337,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .filter-btn.active {
-  background: linear-gradient(135deg, #e94560, #d63850);
-  border-color: #e94560;
+  background: linear-gradient(135deg, var(--accent), #d63850);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1448,7 +1446,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .login-box {
-  background: white;
+  background: var(--paper-50);
   border-radius: 16px;
   padding: 30px;
   width: 100%;
@@ -1459,7 +1457,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .login-box h2 {
   margin: 0 0 24px;
   font-size: 1.8em;
-  color: #1e293b;
+  color: var(--ink-800);
   text-align: center;
 }
 
@@ -1488,7 +1486,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .form-group input {
   width: 100%;
   padding: 12px 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
   font-size: 14px;
   transition: border-color 0.2s;
@@ -1496,7 +1494,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .form-group input:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .login-btn {
@@ -1516,7 +1514,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   content: '';
   flex: 1;
   height: 1px;
-  background: #e2e8f0;
+  background: var(--paper-300);
 }
 
 .login-divider span {
@@ -1532,13 +1530,13 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   justify-content: center;
   gap: 10px;
   padding: 14px;
-  background: white;
-  border: 2px solid #e2e8f0;
-  color: #1e293b;
+  background: var(--paper-50);
+  border: 2px solid var(--paper-300);
+  color: var(--ink-800);
 }
 
 .google-btn:hover {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-color: #94a3b8;
 }
 
@@ -1552,7 +1550,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .login-switch button {
   background: none;
   border: none;
-  color: #e94560;
+  color: var(--accent);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -1572,7 +1570,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .close-btn:hover {
   color: #64748b;
-  background: #f8fafc;
+  background: var(--paper-50);
 }
 
 .btn-link {
@@ -1580,12 +1578,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .setup-instructions {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 20px;
   font-size: 14px;
-  color: #475569;
+  color: var(--on-paper-700);
 }
 
 .setup-instructions p {
@@ -1602,14 +1600,14 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .setup-instructions code {
-  background: #e2e8f0;
+  background: var(--paper-300);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 13px;
 }
 
 .setup-instructions a {
-  color: #e94560;
+  color: var(--accent);
 }
 
 /* Forgot password & account extras */
@@ -1638,7 +1636,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .forgot-password-link button {
   background: none;
   border: none;
-  color: #e94560;
+  color: var(--accent);
   font-size: 13px;
   cursor: pointer;
   padding: 0;
@@ -1659,7 +1657,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .legal-notice button {
   background: none;
   border: none;
-  color: #e94560;
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -1678,17 +1676,17 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   align-items: center;
   gap: 10px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #e2e8f0;
+  background: var(--paper-50);
+  border: 1px solid var(--paper-300);
   border-radius: 10px;
   font-size: 14px;
-  color: #1e293b;
+  color: var(--ink-800);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .account-action-btn:hover {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-color: #cbd5e1;
 }
 
@@ -1743,8 +1741,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .delete-confirm-actions .btn-cancel {
   flex: 1;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--paper-100);
+  color: var(--on-paper-700);
   border: none;
   padding: 10px;
   border-radius: 8px;
@@ -1752,7 +1750,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .delete-confirm-actions .btn-cancel:hover {
-  background: #e2e8f0;
+  background: var(--paper-300);
 }
 
 /* Legal pages */
@@ -1764,7 +1762,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .legal-page h2 {
   font-size: 1.6em;
-  color: #e94560;
+  color: var(--accent);
   margin-bottom: 8px;
 }
 
@@ -1792,7 +1790,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .legal-page a {
-  color: #e94560;
+  color: var(--accent);
 }
 
 @media (max-width: 480px) {
@@ -1901,7 +1899,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .tutorial-panel-right {
   width: 320px;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 100%);
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(155, 89, 182, 0.3);
@@ -1932,7 +1930,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .tutorial-progress .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #9b59b6, #e94560);
+  background: linear-gradient(90deg, #9b59b6, var(--accent));
   border-radius: 4px;
   transition: width 0.3s ease;
 }
@@ -2213,7 +2211,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .multiplayer-panel {
   width: 280px;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 100%);
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(233, 69, 96, 0.3);
@@ -2256,7 +2254,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .room-id-display {
   font-family: monospace;
   font-size: 24px;
-  color: #e94560;
+  color: var(--accent);
   text-align: center;
   padding: 10px;
   background: rgba(0, 0, 0, 0.3);
@@ -2279,7 +2277,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .room-id-input:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .btn-copy {
@@ -2342,7 +2340,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, #f39c12, #d68910);
+  background: var(--grad-accent);
   color: white;
 }
 
@@ -2381,7 +2379,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 /* Chat Panel */
 .chat-panel {
   width: 280px;
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(180deg, var(--ink-900) 0%, var(--ink-800) 100%);
   border-radius: 12px;
   padding: 20px;
   border: 1px solid rgba(233, 69, 96, 0.3);
@@ -2415,13 +2413,13 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .chat-msg.system {
   background: rgba(233, 69, 96, 0.15);
-  color: #e94560;
+  color: var(--accent);
   font-style: italic;
   text-align: center;
 }
 
 .chat-name {
-  color: #e94560;
+  color: var(--accent);
   font-weight: bold;
 }
 
@@ -2442,7 +2440,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .chat-input:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .chat-input:disabled {
@@ -2451,7 +2449,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .btn-send {
   padding: 10px 16px;
-  background: linear-gradient(135deg, #e94560, #d63850);
+  background: linear-gradient(135deg, var(--accent), #d63850);
   color: white;
   border: none;
   border-radius: 6px;
@@ -2587,7 +2585,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .result-dialog {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(135deg, var(--ink-800) 0%, var(--ink-950) 100%);
   border-radius: 16px;
   padding: 32px;
   max-width: 400px;
@@ -2617,7 +2615,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .result-dialog.draw {
-  border: 2px solid #f59e0b;
+  border: 2px solid var(--amber-400);
 }
 
 .result-icon {
@@ -2640,7 +2638,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .result-dialog.draw .result-title {
-  color: #f59e0b;
+  color: var(--amber-400);
 }
 
 .result-description {
@@ -2674,7 +2672,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .result-warning {
-  color: #f59e0b;
+  color: var(--amber-400);
   font-size: 12px;
   margin-top: 16px;
   padding: 12px;
@@ -2688,7 +2686,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
    ======================================== */
 
 .retrospect-panel-right {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 20px;
   width: 360px;
@@ -2700,7 +2698,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .retrospect-section {
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--paper-300);
 }
 
 .retrospect-section:last-child {
@@ -2710,7 +2708,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Win Probability Timeline */
 .win-prob-timeline {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
   padding: 12px;
 }
@@ -2776,7 +2774,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 6px;
-  background: #e2e8f0;
+  background: var(--paper-300);
   border: none;
   cursor: pointer;
   transition: all 0.2s;
@@ -2793,7 +2791,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .move-counter {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ink-800);
   min-width: 60px;
   text-align: center;
 }
@@ -2806,7 +2804,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .btn-critical {
-  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  background: var(--grad-accent) !important;
   color: white !important;
 }
 
@@ -2819,7 +2817,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
+  background: var(--paper-50);
   padding: 12px;
   border-radius: 8px;
 }
@@ -2827,7 +2825,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .move-san {
   font-weight: 700;
   font-size: 18px;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .move-eval {
@@ -2852,7 +2850,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .critical-moment-item {
   padding: 10px 12px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -2861,7 +2859,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .critical-moment-item:hover {
-  background: #f1f5f9;
+  background: var(--paper-100);
 }
 
 .critical-moment-item.active {
@@ -2878,7 +2876,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .moment-move {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .moment-classification {
@@ -2918,7 +2916,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .learning-tip.priority-medium {
   background: #fffbeb;
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid var(--amber-400);
 }
 
 .learning-tip.priority-positive {
@@ -2927,7 +2925,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .learning-tip .tip-cn {
-  color: #1e293b;
+  color: var(--ink-800);
   margin: 0 0 4px 0;
 }
 
@@ -2956,7 +2954,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .pattern-card {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 10px;
   padding: 14px;
   border-left: 4px solid #3b82f6;
@@ -2983,7 +2981,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .pattern-name {
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
   font-size: 14px;
 }
 
@@ -2991,7 +2989,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-size: 11px;
   text-transform: uppercase;
   color: #64748b;
-  background: #e2e8f0;
+  background: var(--paper-300);
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -3002,7 +3000,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .pattern-description p {
   margin: 0 0 4px 0;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .pattern-description .desc-en {
@@ -3013,10 +3011,10 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .pattern-example {
   margin-top: 8px;
   padding: 8px;
-  background: #e2e8f0;
+  background: var(--paper-300);
   border-radius: 6px;
   font-size: 12px;
-  color: #475569;
+  color: var(--on-paper-700);
   font-family: monospace;
 }
 
@@ -3062,7 +3060,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Left Sidebar */
 .puzzles-sidebar {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 20px;
   width: 280px;
@@ -3074,7 +3072,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   gap: 6px;
   margin-bottom: 16px;
-  background: #f1f5f9;
+  background: var(--paper-100);
   border-radius: 10px;
   padding: 4px;
 }
@@ -3093,14 +3091,14 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .game-type-tab.active {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
   box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
 }
 
 .game-type-tab:hover:not(.active) {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--paper-300);
+  color: var(--ink-700);
 }
 
 /* Streak Display */
@@ -3144,7 +3142,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   flex: 1;
   text-align: center;
   padding: 12px 8px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
 }
 
@@ -3152,7 +3150,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: block;
   font-size: 24px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .puzzle-stats-summary .stat-label {
@@ -3165,7 +3163,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   gap: 4px;
   margin-bottom: 16px;
-  background: #f1f5f9;
+  background: var(--paper-100);
   padding: 4px;
   border-radius: 8px;
 }
@@ -3184,12 +3182,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .mode-tab:hover {
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .mode-tab.active {
-  background: white;
-  color: #e94560;
+  background: var(--paper-50);
+  color: var(--accent);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -3206,8 +3204,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .cat-btn {
   padding: 6px 10px;
-  border: 1px solid #e2e8f0;
-  background: white;
+  border: 1px solid var(--paper-300);
+  background: var(--paper-50);
   border-radius: 6px;
   cursor: pointer;
   font-size: 11px;
@@ -3215,12 +3213,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .cat-btn:hover {
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .cat-btn.active {
-  background: #e94560;
-  border-color: #e94560;
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
 }
 
@@ -3234,7 +3232,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
@@ -3243,7 +3241,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .daily-puzzle-item:hover {
-  background: #f1f5f9;
+  background: var(--paper-100);
 }
 
 .daily-puzzle-item.active {
@@ -3268,7 +3266,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .puzzle-title {
   flex: 1;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--ink-800);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3355,7 +3353,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .btn-hint {
-  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  background: var(--grad-accent) !important;
   color: white !important;
 }
 
@@ -3386,7 +3384,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Right Info Panel */
 .puzzle-info-panel {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 20px;
   width: 300px;
@@ -3397,7 +3395,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .category-info {
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--paper-300);
 }
 
 .cat-header {
@@ -3412,7 +3410,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .cat-name-large {
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
   font-size: 16px;
 }
 
@@ -3436,7 +3434,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #e2e8f0;
+  background: var(--paper-300);
   transition: all 0.3s;
 }
 
@@ -3466,7 +3464,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .puzzle-tips li {
   font-size: 12px;
-  color: #475569;
+  color: var(--on-paper-700);
   margin-bottom: 6px;
 }
 
@@ -3481,7 +3479,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .vip-badge {
   display: inline-block;
   padding: 4px 12px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
+  background: var(--grad-accent);
   color: white;
   border-radius: 20px;
   font-weight: 700;
@@ -3510,7 +3508,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Stats View */
 .stats-view {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 30px;
   width: 100%;
@@ -3518,13 +3516,13 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .stats-view h2 {
-  color: #1e293b;
+  color: var(--ink-800);
   margin-top: 0;
   margin-bottom: 24px;
 }
 
 .stats-view h3 {
-  color: #475569;
+  color: var(--on-paper-700);
   margin-top: 24px;
   margin-bottom: 16px;
 }
@@ -3537,7 +3535,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .stat-card {
   flex: 1;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 24px;
   text-align: center;
@@ -3550,7 +3548,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .stat-big-number {
   font-size: 48px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .stat-big-label {
@@ -3570,7 +3568,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
 }
 
@@ -3581,7 +3579,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .category-stat-item .cat-name {
   flex: 1;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .category-stat-item .cat-solved {
@@ -3627,7 +3625,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Opening Sidebar */
 .opening-sidebar {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 20px;
   width: 340px;
@@ -3639,7 +3637,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .opening-search input {
   width: 100%;
   padding: 10px 14px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--paper-300);
   border-radius: 8px;
   font-size: 14px;
   margin-bottom: 12px;
@@ -3647,7 +3645,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .opening-search input:focus {
   outline: none;
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .difficulty-filter {
@@ -3670,8 +3668,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .filter-btn {
   padding: 4px 8px;
-  border: 1px solid #e2e8f0;
-  background: white;
+  border: 1px solid var(--paper-300);
+  background: var(--paper-50);
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
@@ -3679,12 +3677,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .filter-btn:hover {
-  border-color: #e94560;
+  border-color: var(--accent);
 }
 
 .filter-btn.active {
-  background: #e94560;
-  border-color: #e94560;
+  background: var(--accent);
+  border-color: var(--accent);
   color: white;
 }
 
@@ -3696,7 +3694,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .opening-item {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid transparent;
@@ -3704,7 +3702,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .opening-item:hover {
-  background: #f1f5f9;
+  background: var(--paper-100);
 }
 
 .opening-item.selected {
@@ -3727,7 +3725,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .opening-eco {
-  background: #1e293b;
+  background: var(--ink-800);
   color: white;
   padding: 2px 6px;
   border-radius: 4px;
@@ -3743,7 +3741,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .opening-name {
   font-weight: 600;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .opening-name-cn {
@@ -3762,19 +3760,19 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .in-repertoire {
-  color: #f59e0b;
+  color: var(--amber-400);
 }
 
 /* Opening Details */
 .opening-details {
   padding: 12px;
-  border-top: 1px solid #e2e8f0;
-  background: white;
+  border-top: 1px solid var(--paper-300);
+  background: var(--paper-50);
 }
 
 .opening-desc {
   font-size: 13px;
-  color: #1e293b;
+  color: var(--ink-800);
   margin: 0 0 4px 0;
 }
 
@@ -3799,8 +3797,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .white-wins {
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--paper-50);
+  color: var(--ink-800);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3815,7 +3813,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .black-wins {
-  background: #1e293b;
+  background: var(--ink-800);
   color: white;
   display: flex;
   align-items: center;
@@ -3842,7 +3840,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .opening-actions .btn-sm.active {
-  background: #f59e0b;
+  background: var(--amber-400);
   color: white;
 }
 
@@ -3865,7 +3863,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .current-eco {
-  background: #e94560;
+  background: var(--accent);
   color: white;
   padding: 4px 10px;
   border-radius: 6px;
@@ -3980,7 +3978,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .training-complete {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   padding: 30px;
   border-radius: 12px;
   text-align: center;
@@ -3993,7 +3991,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* Info Panel */
 .opening-info-panel {
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--paper-50);
   border-radius: 12px;
   padding: 20px;
   width: 300px;
@@ -4011,7 +4009,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .key-idea {
   padding: 10px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 6px;
   margin-bottom: 8px;
 }
@@ -4019,7 +4017,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .key-idea p {
   margin: 0;
   font-size: 13px;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .key-idea .idea-en {
@@ -4037,7 +4035,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   flex-wrap: wrap;
   gap: 6px;
   padding: 12px;
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 8px;
 }
 
@@ -4050,7 +4048,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .opening-help {
-  color: #475569;
+  color: var(--on-paper-700);
 }
 
 .opening-help ul {
@@ -4075,7 +4073,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .best-move-comparison {
-  background: #f8fafc;
+  background: var(--paper-50);
   border-radius: 10px;
   padding: 16px;
 }
@@ -4114,7 +4112,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .comparison-move {
   font-size: 20px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ink-800);
 }
 
 .comparison-vs {
@@ -4386,7 +4384,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 700;
   border-radius: 4px;
   background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #1a1a2e;
+  color: var(--ink-900);
   vertical-align: middle;
   letter-spacing: 0.5px;
 }
@@ -4602,17 +4600,17 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .hgc-chess {
-  background: linear-gradient(145deg, #2d1b4e 0%, #1a1a2e 100%);
+  background: linear-gradient(145deg, #2d1b4e 0%, var(--ink-900) 100%);
   border: 1px solid rgba(233, 69, 96, 0.3);
 }
 
 .hgc-xiangqi {
-  background: linear-gradient(145deg, #3d1f0f 0%, #1a1a2e 100%);
+  background: linear-gradient(145deg, #3d1f0f 0%, var(--ink-900) 100%);
   border: 1px solid rgba(255, 107, 53, 0.3);
 }
 
 .hgc-gomoku {
-  background: linear-gradient(145deg, #0f2d1f 0%, #1a1a2e 100%);
+  background: linear-gradient(145deg, #0f2d1f 0%, var(--ink-900) 100%);
   border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
@@ -4636,8 +4634,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .hgc-char.r {
-  color: #e94560;
-  border-color: #e94560;
+  color: var(--accent);
+  border-color: var(--accent);
   background: rgba(233, 69, 96, 0.15);
 }
 
@@ -4723,7 +4721,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .streak-num {
   font-size: 1.1em;
   font-weight: 700;
-  color: #f39422;
+  color: var(--amber-400);
 }
 
 .streak-label {
@@ -4789,7 +4787,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .hss-val {
   font-size: 1.3em;
   font-weight: 800;
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -4847,7 +4845,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-card::before {
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
 }
 
 .xiangqi-card::before {
@@ -4886,7 +4884,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .piece-symbol {
-  color: #1a1a2e;
+  color: var(--ink-900);
   text-shadow: 0 0 10px rgba(233, 69, 96, 0.3);
 }
 
@@ -4914,8 +4912,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .piece-char.red-piece {
-  color: #e94560;
-  border-color: #e94560;
+  color: var(--accent);
+  border-color: var(--accent);
   background: rgba(233, 69, 96, 0.1);
 }
 
@@ -4973,7 +4971,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-play-btn {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
 }
 
 .chess-play-btn:hover {
@@ -4983,7 +4981,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .xiangqi-play-btn {
   background: linear-gradient(135deg, #ff6b35, #ffd700);
-  color: #1a1a2e;
+  color: var(--ink-900);
 }
 
 .xiangqi-play-btn:hover {
@@ -5053,7 +5051,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .stat-number {
   font-size: 1.3em;
   font-weight: 800;
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -5112,7 +5110,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
    ============================================ */
 
 .rating-display {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
+  background: linear-gradient(145deg, var(--ink-800), var(--ink-950));
   border-radius: 12px;
   padding: 16px;
   margin: 12px 0;
@@ -5233,7 +5231,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .game-result-dialog {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
+  background: linear-gradient(145deg, var(--ink-800), var(--ink-950));
   border-radius: 16px;
   padding: 32px;
   max-width: 420px;
@@ -5252,7 +5250,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .game-result-dialog.draw {
-  border-top: 4px solid #f59e0b;
+  border-top: 4px solid var(--amber-400);
 }
 
 .result-icon {
@@ -5289,7 +5287,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .result-btn.primary {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border: none;
   color: white;
 }
@@ -5328,7 +5326,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .rating-card {
-  background: linear-gradient(145deg, #1e293b, #0f172a);
+  background: linear-gradient(145deg, var(--ink-800), var(--ink-950));
   border-radius: 16px;
   padding: 24px;
   text-align: center;
@@ -5354,7 +5352,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .rating-card .rating-value {
   font-size: 2.5em;
   font-weight: bold;
-  background: linear-gradient(90deg, #e94560, #f39422);
+  background: var(--grad-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -5449,7 +5447,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   inset: 0;
   /* Above .bottom-tab-bar (z-index: 9999) so the fs action bar is visible */
   z-index: 10000;
-  background: #1a1a2e;
+  background: var(--ink-900);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -5465,7 +5463,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   gap: 8px;
   padding: 6px 12px;
   padding-top: calc(env(safe-area-inset-top, 8px) + 6px);
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(14, 12, 19, 0.9);
 }
 
 .fs-mode-badge {
@@ -5547,7 +5545,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 .fs-color-dot.white { background: #ffffff; border-color: #e2e8f0; }
-.fs-color-dot.black { background: #1e293b; border-color: #64748b; }
+.fs-color-dot.black { background: var(--ink-800); border-color: #64748b; }
 
 .fs-player-icon {
   font-size: 1.1em;
@@ -5597,7 +5595,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   letter-spacing: 0.2px;
 }
 
-.fs-status.game-over { color: #e94560; font-weight: 800; font-size: 16px; }
+.fs-status.game-over { color: var(--accent); font-weight: 800; font-size: 16px; }
 .fs-status.thinking { color: #facc15; }
 
 /* ── Board Area ── */
@@ -5635,7 +5633,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   gap: 10px;
   padding: 10px 12px;
   padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 10px);
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(14, 12, 19, 0.9);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -5725,7 +5723,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   right: 0;
   width: min(320px, 80vw);
   height: 100%;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(14, 12, 19, 0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 10002;
@@ -5874,8 +5872,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .fullscreen-coach-body .prob-white,
 .fullscreen-coach-body .prob-red {
-  background: #e2e8f0;
-  color: #1e293b;
+  background: var(--paper-300);
+  color: var(--ink-800);
   font-size: 11px;
   display: flex;
   align-items: center;
@@ -5884,7 +5882,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .fullscreen-coach-body .prob-black,
 .fullscreen-coach-body .prob-black-xiangqi {
-  background: #334155;
+  background: var(--ink-700);
   color: #e2e8f0;
   font-size: 11px;
   display: flex;
@@ -5898,8 +5896,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #f59e0b;
-  color: #1a1a2e;
+  background: var(--amber-400);
+  color: var(--ink-900);
   padding: 6px 12px;
   font-size: 0.85em;
   font-weight: 600;
@@ -5914,7 +5912,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   justify-content: space-around;
   align-items: stretch;
-  background: linear-gradient(180deg, #16213e 0%, #0f1a30 100%);
+  background: linear-gradient(180deg, var(--ink-800) 0%, var(--ink-950) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding: 4px 0;
   padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
@@ -5958,7 +5956,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .btab-btn.active .btab-label {
-  color: #e94560;
+  color: var(--accent);
   font-weight: 700;
 }
 
@@ -5992,7 +5990,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   justify-content: center;
   gap: 6px;
   padding: 6px 12px;
-  background: rgba(15, 52, 96, 0.6);
+  background: rgba(30, 26, 43, 0.6);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -6013,12 +6011,12 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .sub-nav-btn:hover {
-  border-color: #e94560;
-  color: #e94560;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .sub-nav-btn.active {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border-color: transparent;
   color: white;
 }
@@ -6065,7 +6063,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .chess-app-content .analysis-panel-right,
 .chess-app-content .tutorial-panel-right,
 .chess-app-content .retrospect-panel-right {
-  background: #1e2a44;
+  background: var(--ink-800);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
@@ -6119,7 +6117,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* ── Inputs ── */
 .chess-app-content .player-name-input {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
   padding: 8px 10px;
@@ -6130,7 +6128,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .player-name-input:focus {
-  border-color: #e94560;
+  border-color: var(--accent);
   outline: none;
 }
 
@@ -6159,7 +6157,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 600 !important;
   border-radius: 8px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  background: rgba(15, 23, 42, 0.5) !important;
+  background: rgba(14, 12, 19, 0.5) !important;
   color: #cbd5e1 !important;
   cursor: pointer;
   transition: all 0.15s;
@@ -6178,14 +6176,14 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .mode-btn.active {
-  background: linear-gradient(135deg, #e94560, #f39422) !important;
+  background: var(--grad-accent) !important;
   border-color: transparent !important;
   color: white !important;
 }
 
 .chess-app-content .color-btn.active,
 .chess-app-content .diff-btn.active {
-  background: #0f3460 !important;
+  background: var(--ink-700) !important;
   border-color: #1e40af !important;
   color: white !important;
 }
@@ -6215,7 +6213,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 600;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(14, 12, 19, 0.5);
   color: #cbd5e1;
   width: 100%;
   margin-bottom: 6px;
@@ -6246,7 +6244,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   font-weight: 600;
   padding: 10px 14px;
   margin: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   color: #e2e8f0;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -6271,8 +6269,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .board-panel .game-status.game-over::before {
-  background: #e94560;
-  box-shadow: 0 0 8px #e94560;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .chess-app-content .board-panel .game-status.thinking {
@@ -6305,7 +6303,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   display: flex;
   gap: 8px;
   padding: 8px;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   justify-content: flex-start;
@@ -6341,7 +6339,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-board-toolbar .tb-btn.primary {
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   border-color: transparent;
   color: white;
 }
@@ -6360,7 +6358,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 10px 14px;
   margin: 0 0 10px;
   min-height: 44px;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-left: 4px solid transparent;
   border-radius: 8px;
@@ -6386,7 +6384,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 .chess-app-content .desk-color-dot.white { background: #ffffff; border-color: #e2e8f0; }
-.chess-app-content .desk-color-dot.black { background: #1e293b; border-color: #64748b; }
+.chess-app-content .desk-color-dot.black { background: var(--ink-800); border-color: #64748b; }
 .chess-app-content .desk-player-icon { font-size: 1.1em; }
 .chess-app-content .desk-player-name {
   color: #e2e8f0;
@@ -6444,7 +6442,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 6px 14px;
   margin: 0 0 8px;
   border-radius: 6px;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(14, 12, 19, 0.5);
   text-align: center;
   color: #94a3b8;
   font-size: 12px;
@@ -6458,7 +6456,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 .chess-app-content .game-status.thinking { color: #facc15; }
 .chess-app-content .game-status.game-over {
-  color: #e94560;
+  color: var(--accent);
   font-size: 15px;
   font-weight: 800;
 }
@@ -6497,7 +6495,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .moves-list {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   padding: 8px 10px;
@@ -6535,7 +6533,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .analysis-panel-right .win-probability {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border-color: rgba(255, 255, 255, 0.06);
   padding: 10px;
 }
@@ -6552,7 +6550,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .chess-app-content .analysis-panel-right .suggestion {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(14, 12, 19, 0.6);
   border-color: rgba(255, 255, 255, 0.08);
   padding: 8px 10px;
   margin-bottom: 5px;
@@ -6608,7 +6606,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 /* ── Rating display inside dark panel ── */
 .chess-app-content .settings-panel .rating-display {
-  background: rgba(15, 23, 42, 0.6) !important;
+  background: rgba(14, 12, 19, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.06) !important;
   padding: 8px 10px !important;
   border-radius: 8px !important;
@@ -6649,18 +6647,18 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-fab {
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: #fff;
   font-weight: 700;
   padding: 12px 16px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 8px 24px rgba(14, 12, 19, 0.35);
 }
 
 .feedback-panel {
   margin-top: 10px;
   width: min(360px, 92vw);
-  background: rgba(15, 23, 42, 0.96);
+  background: rgba(14, 12, 19, 0.96);
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 14px;
@@ -6693,9 +6691,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-panel select,
 .feedback-panel textarea {
   width: 100%;
-  border: 1px solid #334155;
+  border: 1px solid var(--ink-700);
   border-radius: 8px;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #e2e8f0;
   padding: 8px;
 }
@@ -6717,8 +6715,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid #334155;
+  background: rgba(14, 12, 19, 0.7);
+  border: 1px solid var(--ink-700);
   border-left: 4px solid #64748b;
   border-radius: 8px;
   padding: 10px;
@@ -6726,7 +6724,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item.priority-high { border-left-color: #ef4444; }
-.feedback-item.priority-medium { border-left-color: #f59e0b; }
+.feedback-item.priority-medium { border-left-color: var(--amber-400); }
 .feedback-item.priority-low { border-left-color: #22c55e; }
 
 .feedback-item-head {
@@ -6785,7 +6783,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .status-tabs button {
   border: 1px solid #475569;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #cbd5e1;
   border-radius: 999px;
   font-size: 12px;
@@ -6816,7 +6814,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 8px 14px;
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(14, 12, 19, 0.45);
   color: #e2e8f0;
   font-weight: 600;
 }
@@ -6881,18 +6879,18 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-fab {
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: #fff;
   font-weight: 700;
   padding: 12px 16px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 8px 24px rgba(14, 12, 19, 0.35);
 }
 
 .feedback-panel {
   margin-top: 10px;
   width: min(360px, 92vw);
-  background: rgba(15, 23, 42, 0.96);
+  background: rgba(14, 12, 19, 0.96);
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 14px;
@@ -6925,9 +6923,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-panel select,
 .feedback-panel textarea {
   width: 100%;
-  border: 1px solid #334155;
+  border: 1px solid var(--ink-700);
   border-radius: 8px;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #e2e8f0;
   padding: 8px;
 }
@@ -6949,8 +6947,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid #334155;
+  background: rgba(14, 12, 19, 0.7);
+  border: 1px solid var(--ink-700);
   border-left: 4px solid #64748b;
   border-radius: 8px;
   padding: 10px;
@@ -6958,7 +6956,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item.priority-high { border-left-color: #ef4444; }
-.feedback-item.priority-medium { border-left-color: #f59e0b; }
+.feedback-item.priority-medium { border-left-color: var(--amber-400); }
 .feedback-item.priority-low { border-left-color: #22c55e; }
 
 .feedback-item-head {
@@ -7017,7 +7015,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .status-tabs button {
   border: 1px solid #475569;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #cbd5e1;
   border-radius: 999px;
   font-size: 12px;
@@ -7048,7 +7046,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 8px 14px;
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(14, 12, 19, 0.45);
   color: #e2e8f0;
   font-weight: 600;
 }
@@ -7113,18 +7111,18 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-fab {
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: #fff;
   font-weight: 700;
   padding: 12px 16px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.35);
+  box-shadow: 0 8px 24px rgba(14, 12, 19, 0.35);
 }
 
 .feedback-panel {
   margin-top: 10px;
   width: min(360px, 92vw);
-  background: rgba(15, 23, 42, 0.96);
+  background: rgba(14, 12, 19, 0.96);
   color: #e2e8f0;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 14px;
@@ -7157,9 +7155,9 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .feedback-panel select,
 .feedback-panel textarea {
   width: 100%;
-  border: 1px solid #334155;
+  border: 1px solid var(--ink-700);
   border-radius: 8px;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #e2e8f0;
   padding: 8px;
 }
@@ -7181,8 +7179,8 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid #334155;
+  background: rgba(14, 12, 19, 0.7);
+  border: 1px solid var(--ink-700);
   border-left: 4px solid #64748b;
   border-radius: 8px;
   padding: 10px;
@@ -7190,7 +7188,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .feedback-item.priority-high { border-left-color: #ef4444; }
-.feedback-item.priority-medium { border-left-color: #f59e0b; }
+.feedback-item.priority-medium { border-left-color: var(--amber-400); }
 .feedback-item.priority-low { border-left-color: #22c55e; }
 
 .feedback-item-head {
@@ -7249,7 +7247,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 
 .status-tabs button {
   border: 1px solid #475569;
-  background: #0f172a;
+  background: var(--ink-950);
   color: #cbd5e1;
   border-radius: 999px;
   font-size: 12px;
@@ -7280,7 +7278,7 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   padding: 8px 14px;
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(14, 12, 19, 0.45);
   color: #e2e8f0;
   font-weight: 600;
 }
@@ -7464,11 +7462,11 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 }
 
 .analysis-empty {
-  background: #0f172a;
+  background: var(--ink-950);
   color: #94a3b8;
   border-radius: 10px;
   padding: 14px;
-  border: 1px dashed #334155;
+  border: 1px dashed var(--ink-700);
 }
 
 @media (max-width: 560px) {
@@ -7778,3 +7776,309 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
   .filter-btn,
   .new-chat-btn { min-width: 44px; min-height: 44px; }
 }
+
+/* ══════════════════════════════════════════
+   Phase 1: shell and home on design tokens (Lacquer & Ink).
+   Header, tab bars, sub-nav pills and the home page. Tokens: styles/tokens.css
+   ══════════════════════════════════════════ */
+
+.App-header {
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-900));
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--e2);
+  color: var(--text);
+}
+
+.App-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25em;
+  font-size: 1.25em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.App-title .logo-mark {
+  font-size: 1.5em;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.nav-btn {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+.nav-btn:hover { border-color: var(--accent); color: var(--text); }
+.nav-btn.active { background: var(--accent-fill); border-color: transparent; color: #fff; }
+
+/* Bottom tab bar */
+.bottom-tab-bar {
+  background: linear-gradient(180deg, var(--ink-900), var(--ink-950));
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.35);
+}
+.btab-btn {
+  position: relative;
+  color: var(--text-500);
+  gap: 3px;
+}
+.btab-icon {
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  transition: transform var(--dur-2) var(--ease-standard), color var(--dur-2);
+}
+.btab-label { color: inherit; font-size: var(--fs-12); font-weight: 600; letter-spacing: 0.02em; }
+.btab-btn:hover { color: var(--text-300); }
+.btab-btn.active { color: var(--gold-400); }
+.btab-btn.active .btab-icon { transform: translateY(-1px) scale(1.06); }
+.btab-btn.active .btab-label { color: var(--gold-400); font-weight: 700; }
+.btab-btn.active::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 22px;
+  height: 3px;
+  margin-left: -11px;
+  border-radius: 0 0 3px 3px;
+  background: var(--grad-gold);
+}
+
+/* Sub-nav pills (Play / Learn) */
+.sub-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-color: var(--border-strong);
+  background: var(--surface-1);
+  color: var(--text-muted);
+}
+.sub-nav-btn svg { flex: none; }
+.sub-nav-btn:hover { border-color: var(--gold-400); color: var(--text); }
+.sub-nav-btn.active {
+  background: var(--accent-fill);
+  border-color: var(--vermilion-500);
+  color: #fff;
+}
+
+/* Home */
+.home-game-card {
+  position: relative;
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-2) var(--sp-3);
+  background: var(--grad-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--e2);
+  transition: transform var(--dur-2) var(--ease-standard), box-shadow var(--dur-2), border-color var(--dur-2);
+}
+.home-game-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--card-accent, var(--gold-400));
+}
+.home-game-card:hover { transform: translateY(-2px); box-shadow: var(--e3); border-color: var(--border-strong); }
+.hgc-chess { --card-accent: var(--azure-400); background: var(--grad-surface); border: 1px solid var(--border); }
+.hgc-xiangqi { --card-accent: var(--vermilion-400); background: var(--grad-surface); border: 1px solid var(--border); }
+.hgc-gomoku { --card-accent: var(--jade-400); background: var(--grad-surface); border: 1px solid var(--border); }
+
+.hgc-pieces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-bottom: var(--sp-2);
+  color: var(--text-100);
+  font-size: 2.1em;
+}
+.hgc-coin {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.35rem;
+  line-height: 1;
+  background: radial-gradient(circle at 34% 26%, #FFF8E2, var(--ivory) 46%, #D8BE88);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -2px 3px rgba(120, 80, 30, 0.35), 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.hgc-coin.r { color: var(--red-ink); }
+.hgc-coin.b { color: var(--black-ink); }
+.hgc-stone {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.hgc-stone.black { background: radial-gradient(circle at 35% 30%, #5b5560, #1a1720 62%); }
+.hgc-stone.white { background: radial-gradient(circle at 35% 30%, #ffffff, #d9d3c8 70%); }
+
+.hgc-title { color: var(--text-100); font-size: 1.15em; letter-spacing: 0.02em; }
+.hgc-rating { color: var(--text-300); }
+.hgc-sub { color: var(--text-500); font-size: var(--fs-12); }
+
+.home-daily {
+  background: linear-gradient(135deg, rgba(228, 185, 92, 0.14), rgba(228, 185, 92, 0.04));
+  border: 1px solid rgba(228, 185, 92, 0.30);
+  border-radius: var(--r-lg);
+}
+.daily-icon { display: grid; place-items: center; color: var(--gold-400); }
+.daily-title { color: var(--text-100); }
+.daily-sub { color: var(--text-300); }
+.streak-num { display: inline-flex; align-items: center; gap: 4px; color: var(--gold-400); }
+.streak-label { color: var(--text-500); }
+
+.home-feat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--e1);
+  color: var(--text-100);
+}
+.home-feat:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.home-feat:active { background: var(--surface-3); transform: scale(0.96); }
+.feat-icon { display: grid; place-items: center; color: var(--gold-400); }
+.feat-label { color: var(--text-300); }
+
+.home-stats-strip { border-top: 1px solid var(--border); }
+.hss-val {
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hss-lbl { color: var(--text-500); }
+
+/* Icon-only buttons (header sound toggle, etc.) */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  color: var(--text-300);
+  cursor: pointer;
+  transition: background var(--dur-2), color var(--dur-2), border-color var(--dur-2);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
+.icon-btn[aria-pressed="true"] { color: var(--text-500); }
+.header-right { display: flex; align-items: center; gap: var(--sp-2); }
+
+/* Xiangqi pieces: ivory lacquer coins with brush characters (flat; the tilted 2.5D
+   board comes in Phase 2). Glyph size follows the board via --piece-size. */
+.xiangqi-piece {
+  position: absolute;
+  font-family: var(--font-brush);
+  font-weight: 400;
+  font-size: calc(var(--piece-size, 40px) * 0.62);
+  line-height: 1;
+  border: none;
+  background: radial-gradient(circle at 34% 26%, #FFF8E2 0%, var(--ivory) 42%, #D8BE88 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 3px rgba(120, 80, 30, 0.35),
+    0 0 0 1.5px rgba(60, 40, 20, 0.65),
+    0 3px 5px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.xiangqi-piece::after {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.xiangqi-piece.red { background: radial-gradient(circle at 34% 26%, #FFF8E2 0%, var(--ivory) 42%, #D8BE88 100%); border: none; color: var(--red-ink); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.xiangqi-piece.black { background: radial-gradient(circle at 34% 26%, #FFF8E2 0%, var(--ivory) 42%, #D8BE88 100%); border: none; color: var(--black-ink); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.xiangqi-piece.dragging {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 3px rgba(120, 80, 30, 0.35),
+    0 0 0 1.5px rgba(60, 40, 20, 0.65),
+    0 10px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* ══════════════════════════════════════════
+   Phase 1 contrast pass. Found with an automated audit (text vs the colour
+   actually behind it) on every route; target 4.5:1 (3:1 for large text).
+   Paper cards use a darker accent; muted text on paper uses the warm on-paper ramp.
+   ══════════════════════════════════════════ */
+.leaderboard-container,
+.puzzles-sidebar,
+.puzzle-info-panel,
+.opening-sidebar,
+.board-panel {
+  --accent: var(--accent-on-paper);
+}
+
+.leaderboard-container .tab-btn:not(.active),
+.leaderboard-container .empty-state,
+.puzzles-sidebar .stat-label,
+.puzzles-sidebar .section-label,
+.puzzles-sidebar .streak-label,
+.puzzles-sidebar .game-type-tab:not(.active),
+.puzzles-sidebar .mode-tab:not(.active),
+.opening-sidebar .filter-label,
+.opening-sidebar .opening-name-cn,
+.opening-sidebar .section-label,
+.opening-sidebar .game-type-tab:not(.active),
+.opening-sidebar .mode-tab:not(.active),
+.board-panel .no-moves { color: var(--on-paper-500); }
+
+.puzzles-sidebar .streak-label { text-transform: uppercase; }
+
+/* Online play side panel is dark: its title was dark slate (1:1) */
+.multiplayer-panel .panel-title { color: var(--text-100); border-bottom-color: var(--border-strong); }
+.multiplayer-panel .section-label { color: var(--text-500); }
+.btn-send { background: var(--accent-fill); }
+.btn-send:hover:not(:disabled) { background: var(--accent-fill-hover); }
+
+/* Home streak caption */
+.home-daily .streak-label { color: var(--text-300); }
+
+.no-moves,
+.puzzles-container .cat-desc,
+.puzzles-container .section-label,
+.puzzles-container .progress-text { color: var(--on-paper-500); }
+
+/* Dark game pages: chess panels are dark; keep the light accent and legible labels there */
+.chess-app-content,
+.chess-app-content .board-panel { --accent: var(--vermilion-300); }
+.chess-app-content .section-label,
+.chess-app-content .move-history h3,
+.chess-app-content .move-number,
+.chess-app-content .no-moves { color: var(--text-500); }
+
+/* Xiangqi desktop: move list sits on the dark walnut panel; option buttons on it are paper */
+.xiangqi-history .moves-list { background: rgba(0, 0, 0, 0.28); }
+.toggle-btn.active,
+.chess-app-content .toggle-btn.active {
+  background: var(--jade-400) !important;
+  border-color: var(--jade-400) !important;
+  color: var(--ink-950) !important;
+}
+.color-btn.xiangqi-red:hover,
+.color-btn.xiangqi-red.active { background: var(--grad-accent); box-shadow: 0 0 10px rgba(168, 42, 32, 0.6); }
+.mode-btn:not(.active),
+.diff-btn:not(.active) { color: var(--on-paper-700); }
+
+.xiangqi-history .move { background: rgba(255, 255, 255, 0.08); color: var(--gold-300); }
+.xiangqi-history .move-number { color: var(--text-500); }
+.openings-page .no-moves,
+.puzzles-container .puzzle-num { color: var(--on-paper-700); }

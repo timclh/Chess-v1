@@ -16,6 +16,31 @@ const PIECE_CHARS = {
   s: { r: '兵', b: '卒' },
 };
 
+// Which piece sits on each square, as a plain grid. The game mutates its board
+// in place, so the previous position has to be copied to compare with the next.
+const snapshotBoard = (board) =>
+  Array.isArray(board) ? board.map((row) => row.map((p) => (p ? p.type + p.color : ""))) : null;
+
+// If exactly one piece moved between two positions (optionally capturing),
+// return { from: {row, col}, to: {row, col} }; otherwise null (new game, undo of
+// several moves, ...) and the pieces simply appear.
+export function detectSingleMove(prev, next) {
+  if (!prev || !next || prev.length !== next.length) return null;
+  const changed = [];
+  for (let r = 0; r < next.length; r += 1) {
+    for (let c = 0; c < next[r].length; c += 1) {
+      if (prev[r][c] !== next[r][c]) changed.push({ row: r, col: c, before: prev[r][c], after: next[r][c] });
+    }
+  }
+  if (changed.length !== 2) return null;
+  const from = changed.find((s) => s.before && !s.after);
+  const to = changed.find((s) => s.after && s.after !== "" && s !== from);
+  if (!from || !to || to.after !== from.before) return null;
+  return { from: { row: from.row, col: from.col }, to: { row: to.row, col: to.col } };
+}
+
+const SLIDE_MS = 220;
+
 class XiangqiBoard extends Component {
   constructor(props) {
     super(props);
@@ -25,6 +50,45 @@ class XiangqiBoard extends Component {
       dragPosition: null,
     };
     this.boardRef = React.createRef();
+    this._snapshot = snapshotBoard(props.board);
+    this._dragDropAt = 0;
+  }
+
+  componentDidUpdate() {
+    const next = snapshotBoard(this.props.board);
+    const move = detectSingleMove(this._snapshot, next);
+    this._snapshot = next;
+    // A piece dropped by dragging is already where it belongs: no slide
+    const droppedByDrag = Date.now() - this._dragDropAt < 600;
+    if (move && !droppedByDrag) this.slidePiece(move);
+  }
+
+  // Slide the piece that just moved from its old square to its new one (FLIP:
+  // it is already rendered at the destination, so animate from the offset back to 0).
+  slidePiece({ from, to }) {
+    if (typeof window === "undefined" || !this.boardRef.current) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = this.boardRef.current.querySelector(`.xiangqi-piece[data-sq="${to.row}-${to.col}"]`);
+    if (!el || typeof el.animate !== "function") return;
+
+    const { width = 450, orientation = "red" } = this.props;
+    const cellSize = width / 9;
+    const flipped = orientation === "black";
+    const dx = ((flipped ? 8 - from.col : from.col) - (flipped ? 8 - to.col : to.col)) * cellSize;
+    const dy = ((flipped ? 9 - from.row : from.row) - (flipped ? 9 - to.row : to.row)) * cellSize;
+
+    el.style.zIndex = 30; // above the pieces it passes over
+    const anim = el.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px) scale(1.08)`, offset: 0 },
+        { transform: "translate(0, 0) scale(1.08)", offset: 0.85 },
+        { transform: "translate(0, 0) scale(1)", offset: 1 },
+      ],
+      { duration: SLIDE_MS, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" }
+    );
+    const done = () => { el.style.zIndex = ""; };
+    anim.onfinish = done;
+    anim.oncancel = done;
   }
 
   // Convert board position to pixel coordinates
@@ -203,6 +267,7 @@ class XiangqiBoard extends Component {
       if (isValidMove && onMove) {
         const from = String.fromCharCode('a'.charCodeAt(0) + dragging.col) + (9 - dragging.row);
         const to = String.fromCharCode('a'.charCodeAt(0) + target.col) + (9 - target.row);
+        this._dragDropAt = Date.now();
         onMove({ from, to });
         this.setState({ selectedSquare: null });
       }
@@ -241,6 +306,7 @@ class XiangqiBoard extends Component {
       if (isValidMove && onMove) {
         const from = String.fromCharCode('a'.charCodeAt(0) + dragging.col) + (9 - dragging.row);
         const to = String.fromCharCode('a'.charCodeAt(0) + target.col) + (9 - target.row);
+        this._dragDropAt = Date.now();
         onMove({ from, to });
         this.setState({ selectedSquare: null });
       }
@@ -290,7 +356,7 @@ class XiangqiBoard extends Component {
         {/* Board SVG */}
         <svg width={width} height={height} className="xiangqi-board-svg">
           {/* Background */}
-          <rect x="0" y="0" width={width} height={height} fill="#f5d6a8" />
+          <rect x="0" y="0" width={width} height={height} fill="#E7CD97" />
 
           {/* Grid lines - vertical */}
           {[...Array(9)].map((_, i) => {
@@ -432,7 +498,7 @@ class XiangqiBoard extends Component {
         </div>
 
         {/* Pieces layer */}
-        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10 }}>
+        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10, '--piece-size': `${pieceSize}px` }}>
           {board && board.map((row, rowIdx) =>
             row.map((piece, colIdx) => {
               if (!piece) return null;
@@ -452,6 +518,7 @@ class XiangqiBoard extends Component {
               return (
                 <div
                   key={`${rowIdx}-${colIdx}`}
+                  data-sq={`${rowIdx}-${colIdx}`}
                   className={`xiangqi-piece ${piece.color === 'r' ? 'red' : 'black'}`}
                   style={{
                     position: 'absolute',

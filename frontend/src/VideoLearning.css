@@ -3,7 +3,7 @@
  */
 
 .video-learning {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  background: linear-gradient(135deg, var(--ink-900) 0%, var(--ink-800) 100%);
   border-radius: 16px;
   padding: 24px;
   color: #fff;
@@ -18,7 +18,7 @@
 .learning-header h2 {
   margin: 0 0 8px;
   font-size: 1.8rem;
-  background: linear-gradient(135deg, #f39c12, #e74c3c);
+  background: var(--grad-accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -49,7 +49,7 @@
 }
 
 .game-type-toggle button.active {
-  background: linear-gradient(135deg, #f39c12, #e74c3c);
+  background: var(--grad-accent);
   border-color: transparent;
 }
 
@@ -144,7 +144,7 @@
 .topic-btn.active {
   background: linear-gradient(135deg, rgba(243, 156, 18, 0.3), rgba(231, 76, 60, 0.3));
   color: #fff;
-  border-left: 3px solid #f39c12;
+  border-left: 3px solid var(--amber-400);
 }
 
 .level-filter {
@@ -255,7 +255,7 @@
 .video-card .video-info .channel {
   margin: 0;
   font-size: 0.8rem;
-  color: #f39c12;
+  color: var(--amber-400);
 }
 
 /* No Videos */
@@ -319,7 +319,7 @@
 }
 
 .video-details .channel {
-  color: #f39c12;
+  color: var(--amber-400);
   margin: 0 0 8px;
 }
 

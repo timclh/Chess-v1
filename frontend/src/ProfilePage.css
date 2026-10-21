@@ -61,12 +61,12 @@
 }
 
 .profile-tab:hover {
-  color: #e94560;
+  color: var(--accent);
 }
 
 .profile-tab.active {
-  color: #e94560;
-  border-bottom-color: #e94560;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 /* Content */
@@ -146,7 +146,7 @@
   padding: 10px 20px;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
   font-weight: 700;
   cursor: pointer;
@@ -170,7 +170,7 @@
 
 .friend-msg.error {
   background: rgba(233, 69, 96, 0.2);
-  color: #e94560;
+  color: var(--accent);
 }
 
 .friends-list {
@@ -209,7 +209,7 @@
 }
 
 .friend-remove:hover {
-  color: #e94560;
+  color: var(--accent);
 }
 
 /* Notifications */
@@ -242,7 +242,7 @@
   padding: 12px 32px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, #e94560, #f39422);
+  background: var(--grad-accent);
   color: white;
   font-size: 1em;
   font-weight: 700;
@@ -271,7 +271,7 @@
 .notif-toggle input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #e94560;
+  accent-color: var(--accent);
 }
 
 .notif-disable-btn {
@@ -286,8 +286,8 @@
 }
 
 .notif-disable-btn:hover {
-  border-color: #e94560;
-  color: #e94560;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Challenge */
@@ -312,7 +312,7 @@
 }
 
 .challenge-select option {
-  background: #1a1a2e;
+  background: var(--ink-900);
 }
 
 .challenge-create-btn {

@@ -300,3 +300,35 @@
 
 /* Legible and tappable on a phone (UI review P0) */
 .wuziqi-btn { font-size: 12px; min-height: 44px; }
+
+/* A new stone drops onto the board; stones are keyed by position, so only new ones animate. */
+.wuziqi-stone {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: wuziqi-stone-drop 180ms var(--ease-decelerate, ease-out);
+}
+@keyframes wuziqi-stone-drop {
+  from { transform: scale(1.4); opacity: 0.35; }
+  to { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wuziqi-stone { animation: none; }
+}
+
+/* Gomoku on the shared tokens (it had its own greys, blue and green) */
+.wuziqi-header h2 { color: var(--gold-400); }
+.wuziqi-subtitle { color: var(--text-500); }
+.wuziqi-section { background: var(--surface-1); border: 1px solid var(--border); }
+.wuziqi-section h4 { color: var(--text-300); }
+.wuziqi-btn { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-100); }
+.wuziqi-btn:hover { background: var(--surface-3); border-color: var(--gold-400); }
+.wuziqi-btn.active { background: var(--accent-fill); border-color: var(--vermilion-500); color: #fff; }
+.wuziqi-btn.action { background: var(--surface-2); }
+.wuziqi-btn.hint-btn,
+.hint-float-btn { background: var(--grad-gold); border-color: transparent; color: var(--ink-950); }
+.wuziqi-btn.hint-btn:hover { background: var(--gold-300); }
+.status-text { color: var(--text-100); }
+.status-text.thinking { color: var(--gold-300); }
+.move-entry.black-move { color: var(--text-300); }
+.move-entry.white-move { color: var(--text-300); }
+.move-entry.empty { color: var(--text-500); }
