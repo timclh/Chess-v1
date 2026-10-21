@@ -79,6 +79,11 @@ export function chessBoardOptions(vw = window.innerWidth) {
   return { hasSubNav: true, extraChrome: wide ? 120 : 260, maxSize: wide ? 580 : 520 };
 }
 
+/** Tilt of the xiangqi board in degrees: gentler on phones, where touch accuracy matters. */
+export function boardTiltDegrees(vw = window.innerWidth) {
+  return vw <= 820 ? 8 : 16;
+}
+
 /**
  * Xiangqi board width (the board is 9:10). On phones it follows the width; on wide
  * screens it is also limited by the viewport height so the whole board is visible
@@ -169,6 +174,7 @@ export default {
   getAvailable,
   fitSquare,
   fitXiangqiBoard,
+  boardTiltDegrees,
   chessBoardOptions,
   fitBoardWidth,
   boardCalcWidth,

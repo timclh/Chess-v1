@@ -5,7 +5,7 @@
  */
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { act } from 'react-dom/test-utils';
+import { act, Simulate } from 'react-dom/test-utils';
 import XiangqiBoard, { detectSingleMove } from './XiangqiBoard';
 
 const empty = () => Array.from({ length: 10 }, () => Array(9).fill(null));
@@ -100,5 +100,101 @@ describe('XiangqiBoard slide animation', () => {
     ref.current._dragDropAt = Date.now();
     render(boardWith(after), ref);
     expect(animateCalls).toHaveLength(0);
+  });
+});
+
+describe('XiangqiBoard tilt and drag-and-drop', () => {
+  let container;
+  const realElementFromPoint = document.elementFromPoint;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    ReactDOM.unmountComponentAtNode(container);
+    container.remove();
+    document.elementFromPoint = realElementFromPoint;
+  });
+
+  const rookBoard = () => boardWith([[9, 0, 'r', 'r'], [9, 4, 'k', 'r'], [0, 4, 'k', 'b']]);
+
+  function render(props) {
+    act(() => {
+      ReactDOM.render(<XiangqiBoard board={rookBoard()} turn="r" playerColor="r" width={450} {...props} />, container);
+    });
+  }
+
+  test('a flat board has no stage perspective or transform', () => {
+    render({});
+    expect(container.querySelector('.xiangqi-board-stage').classList.contains('tilted')).toBe(false);
+    expect(container.querySelector('.xiangqi-board-container').style.transform).toBe('');
+  });
+
+  test('a tilted board is rotated back inside a perspective stage', () => {
+    render({ tilt: 16 });
+    const stage = container.querySelector('.xiangqi-board-stage');
+    expect(stage.classList.contains('tilted')).toBe(true);
+    expect(stage.style.perspective).not.toBe('');
+    expect(container.querySelector('.xiangqi-board-container').style.transform).toBe('rotateX(16deg)');
+  });
+
+  test.each([[0], [16]])('every square, empty or occupied, is addressable by board coordinates (tilt %i)', (tilt) => {
+    render({ tilt });
+    const cells = container.querySelectorAll('[data-sq]');
+    // 3 pieces + 87 empty squares
+    expect(cells).toHaveLength(90);
+    expect(new Set([...cells].map((c) => c.getAttribute('data-sq'))).size).toBe(90);
+  });
+
+  test.each([[0], [16]])('dropping a dragged piece uses the square the browser reports under the pointer (tilt %i)', (tilt) => {
+    const onMove = jest.fn();
+    render({ tilt, onMove, validMoves: [{ row: 5, col: 0 }] });
+    const target = container.querySelector('.xiangqi-click-targets [data-sq="5-0"]');
+    document.elementFromPoint = jest.fn(() => target);
+
+    Simulate.mouseDown(container.querySelector('.xiangqi-piece[data-sq="9-0"]'), { clientX: 10, clientY: 10 });
+    // the dragged piece is drawn on the page, not inside the (possibly tilted) board
+    expect(document.body.querySelector('.xiangqi-piece.dragging')).not.toBeNull();
+    expect(container.querySelector('.xiangqi-piece.dragging')).toBeNull();
+
+    Simulate.mouseUp(container.querySelector('.xiangqi-board-container'), { clientX: 200, clientY: 200 });
+    expect(document.elementFromPoint).toHaveBeenCalledWith(200, 200);
+    expect(onMove).toHaveBeenCalledWith({ from: 'a0', to: 'a4' });
+    expect(document.body.querySelector('.xiangqi-piece.dragging')).toBeNull();
+  });
+
+  test('dropping on something that is not a legal square does nothing', () => {
+    const onMove = jest.fn();
+    render({ tilt: 16, onMove, validMoves: [{ row: 5, col: 0 }] });
+    document.elementFromPoint = jest.fn(() => container.querySelector('.xiangqi-click-targets [data-sq="4-4"]'));
+    Simulate.mouseDown(container.querySelector('.xiangqi-piece[data-sq="9-0"]'), { clientX: 10, clientY: 10 });
+    Simulate.mouseUp(container.querySelector('.xiangqi-board-container'), { clientX: 5, clientY: 5 });
+    expect(onMove).not.toHaveBeenCalled();
+
+    document.elementFromPoint = jest.fn(() => document.body); // off the board entirely
+    Simulate.mouseDown(container.querySelector('.xiangqi-piece[data-sq="9-0"]'), { clientX: 10, clientY: 10 });
+    Simulate.mouseUp(container.querySelector('.xiangqi-board-container'), { clientX: 5, clientY: 5 });
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
+  test('without elementFromPoint the flat maths still finds the square, also for a flipped board', () => {
+    const ref = React.createRef();
+    act(() => {
+      ReactDOM.render(<XiangqiBoard ref={ref} board={rookBoard()} turn="r" playerColor="r" width={450} orientation="black" />, container);
+    });
+    document.elementFromPoint = undefined;
+    ref.current.boardRef.current.getBoundingClientRect = () => ({ left: 100, top: 50, width: 450, height: 500 });
+    // the top-left corner of a flipped board shows board square row 9, col 8
+    expect(ref.current.squareAtPoint(100 + 25, 50 + 25)).toEqual({ row: 9, col: 8 });
+    // and the bottom-right corner shows row 0, col 0
+    expect(ref.current.squareAtPoint(100 + 425, 50 + 475)).toEqual({ row: 0, col: 0 });
+  });
+
+  test('the picked-up piece is marked selected', () => {
+    render({ tilt: 16, validMoves: [] });
+    Simulate.click(container.querySelector('.xiangqi-piece[data-sq="9-0"]'));
+    expect(container.querySelector('.xiangqi-piece[data-sq="9-0"]').classList.contains('selected')).toBe(true);
   });
 });

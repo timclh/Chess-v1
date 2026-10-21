@@ -35,7 +35,12 @@ import {
 } from './services/SoundService';
 import { moveFeedback, selectFeedback } from './services/FeedbackService';
 import { Icon } from './components/Icon';
-import { fitXiangqiBoard } from './services/ViewportService';
+import { fitXiangqiBoard, boardTiltDegrees } from './services/ViewportService';
+
+const TILT_KEY = 'xiangqi_tilt';
+const readTiltPref = () => {
+  try { return localStorage.getItem(TILT_KEY) !== 'off'; } catch (_) { return true; }
+};
 import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
@@ -201,6 +206,7 @@ class XiangqiGame extends Component {
     engineReady: false,
     engineLoading: false,
     networkActive: false, // engine is running with the xiangqi NNUE network
+    tiltOn: readTiltPref(), // 3D (tilted) board or flat
     // Tutorial state
     currentLesson: 0,
     lessonComplete: false,
@@ -761,6 +767,12 @@ class XiangqiGame extends Component {
       // Tutorial lessons are always played as Red by the learner.
       won: this.state.gameMode === 'tutorial' || move.color === this.state.playerColor,
     });
+  };
+
+  toggleTilt = () => {
+    const tiltOn = !this.state.tiltOn;
+    try { localStorage.setItem(TILT_KEY, tiltOn ? 'on' : 'off'); } catch (_) { /* storage blocked */ }
+    this.setState({ tiltOn });
   };
 
   toggleSound = () => {
@@ -1377,6 +1389,15 @@ class XiangqiGame extends Component {
             </button>
             <div className="fs-top-right">
               <button
+                className={`fs-icon-btn fs-tilt-btn ${this.state.tiltOn ? 'active' : ''}`}
+                onClick={this.toggleTilt}
+                title={this.state.tiltOn ? '切换到平面 / Flat board' : '切换到立体 / 3D board'}
+                aria-label={this.state.tiltOn ? 'Switch to flat board' : 'Switch to 3D board'}
+                aria-pressed={this.state.tiltOn}
+              >
+                <Icon name="layers" size={20} />
+              </button>
+              <button
                 className="fs-icon-btn"
                 onClick={this.toggleSound}
                 title={soundMuted ? '开启声音 / Sound on' : '静音 / Mute'}
@@ -1443,6 +1464,7 @@ class XiangqiGame extends Component {
                 validMoves={validMoves}
                 lastMove={lastMove}
                 hintMove={this.state.hintMove}
+                tilt={this.state.tiltOn ? boardTiltDegrees() : 0}
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
                 disabled={aiThinking || (gameOver && !isTutorial) || (isTutorial && lessonComplete)}
@@ -1691,6 +1713,18 @@ class XiangqiGame extends Component {
             </button>
           </div>
 
+          {/* View: tilted 3D board or flat */}
+          <div className="settings-section">
+            <div className="section-label">视角 / View</div>
+            <button
+              className={`toggle-btn ${this.state.tiltOn ? 'active' : ''}`}
+              onClick={this.toggleTilt}
+              aria-pressed={this.state.tiltOn}
+            >
+              <Icon name="layers" size={16} /> {this.state.tiltOn ? '3D 立体' : '2D 平面'}
+            </button>
+          </div>
+
           {/* Game Controls */}
           {gameMode !== 'tutorial' && (
             <div className="settings-section controls-section">
@@ -1736,6 +1770,7 @@ class XiangqiGame extends Component {
                 validMoves={validMoves}
                 lastMove={lastMove}
                 hintMove={this.state.hintMove}
+                tilt={this.state.tiltOn ? boardTiltDegrees() : 0}
                 onMove={this.handleMove}
                 onSquareSelect={this.handleSquareSelect}
                 disabled={aiThinking || (gameOver && gameMode !== 'tutorial') || (gameMode === 'tutorial' && lessonComplete)}

@@ -4,6 +4,7 @@
  */
 
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 
 // Piece display characters
 const PIECE_CHARS = {
@@ -103,6 +104,27 @@ class XiangqiBoard extends Component {
     };
   }
 
+  // The square under a screen point. Asks the browser what element is there (every piece
+  // and empty square carries data-sq), so it stays right when the board is tilted by a CSS
+  // 3D transform, where plain rectangle maths is wrong. Falls back to the flat maths.
+  squareAtPoint(clientX, clientY) {
+    if (typeof document !== 'undefined' && typeof document.elementFromPoint === 'function') {
+      const el = document.elementFromPoint(clientX, clientY);
+      const cell = el && el.closest ? el.closest('[data-sq]') : null;
+      if (cell && this.boardRef.current && this.boardRef.current.contains(cell)) {
+        const [row, col] = cell.getAttribute('data-sq').split('-').map(Number);
+        return { row, col };
+      }
+      if (el) return null; // something else is under the pointer: not on the board
+    }
+    const rect = this.boardRef.current && this.boardRef.current.getBoundingClientRect();
+    if (!rect) return null;
+    const display = this.getSquareFromPixel(clientX - rect.left, clientY - rect.top);
+    if (!display) return null;
+    const flipped = this.props.orientation === 'black';
+    return flipped ? { row: 9 - display.row, col: 8 - display.col } : display;
+  }
+
   // Convert pixel coordinates to board position
   getSquareFromPixel(x, y) {
     const { width = 450 } = this.props;
@@ -190,14 +212,10 @@ class XiangqiBoard extends Component {
 
     const piece = board[row][col];
     if (piece && piece.color === canSelectColor && isPlayerTurn) {
-      const rect = this.boardRef.current.getBoundingClientRect();
       this.setState({
         selectedSquare: { row, col },
         dragging: { row, col, piece },
-        dragPosition: {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        },
+        dragPosition: { x: e.clientX, y: e.clientY },
       });
 
       if (this.props.onSquareSelect) {
@@ -218,14 +236,10 @@ class XiangqiBoard extends Component {
     if (piece && piece.color === canSelectColor && isPlayerTurn) {
       e.preventDefault(); // prevent scroll while dragging a piece
       const touch = e.touches[0];
-      const rect = this.boardRef.current.getBoundingClientRect();
       this.setState({
         selectedSquare: { row, col },
         dragging: { row, col, piece },
-        dragPosition: {
-          x: touch.clientX - rect.left,
-          y: touch.clientY - rect.top,
-        },
+        dragPosition: { x: touch.clientX, y: touch.clientY },
       });
 
       if (this.props.onSquareSelect) {
@@ -238,13 +252,7 @@ class XiangqiBoard extends Component {
     if (!this.state.dragging) return;
     e.preventDefault();
     const touch = e.touches[0];
-    const rect = this.boardRef.current.getBoundingClientRect();
-    this.setState({
-      dragPosition: {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
-      },
-    });
+    this.setState({ dragPosition: { x: touch.clientX, y: touch.clientY } });
   };
 
   handleTouchEnd = (e) => {
@@ -255,10 +263,7 @@ class XiangqiBoard extends Component {
     e.preventDefault();
     // Use last known drag position (changedTouches gives lift-off point)
     const touch = e.changedTouches[0];
-    const rect = this.boardRef.current.getBoundingClientRect();
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    const target = this.getSquareFromPixel(x, y);
+    const target = this.squareAtPoint(touch.clientX, touch.clientY);
 
     if (target) {
       const isValidMove = validMoves.some(
@@ -278,13 +283,7 @@ class XiangqiBoard extends Component {
   handleMouseMove = (e) => {
     if (!this.state.dragging) return;
 
-    const rect = this.boardRef.current.getBoundingClientRect();
-    this.setState({
-      dragPosition: {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      },
-    });
+    this.setState({ dragPosition: { x: e.clientX, y: e.clientY } });
   };
 
   handleMouseUp = (e) => {
@@ -293,10 +292,7 @@ class XiangqiBoard extends Component {
 
     if (!dragging) return;
 
-    const rect = this.boardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const target = this.getSquareFromPixel(x, y);
+    const target = this.squareAtPoint(e.clientX, e.clientY);
 
     if (target) {
       const isValidMove = validMoves.some(
@@ -331,6 +327,7 @@ class XiangqiBoard extends Component {
       lastMove,
       hintMove,
       highlightSquares = {},
+      tilt = 0,
     } = this.props;
     const { selectedSquare, dragging, dragPosition } = this.state;
 
@@ -342,11 +339,24 @@ class XiangqiBoard extends Component {
     // Determine if board should be flipped
     const flipped = orientation === 'black';
 
+    const tilted = tilt > 0;
+
     return (
+      // The stage gives the tilted board its perspective; flat boards render as before
+      <div
+        className={`xiangqi-board-stage ${tilted ? 'tilted' : ''}`}
+        style={tilted ? { width, perspective: width * 2.4, perspectiveOrigin: '50% 30%', paddingBottom: pieceSize * 0.35 } : undefined}
+      >
       <div
         ref={this.boardRef}
         className="xiangqi-board-container"
-        style={{ width, height, position: 'relative', touchAction: 'none' }}
+        style={{
+          width,
+          height,
+          position: 'relative',
+          touchAction: 'none',
+          ...(tilted ? { transform: `rotateX(${tilt}deg)`, transformOrigin: '50% 88%' } : null),
+        }}
         onMouseMove={this.handleMouseMove}
         onMouseUp={this.handleMouseUp}
         onMouseLeave={this.handleMouseLeave}
@@ -498,7 +508,8 @@ class XiangqiBoard extends Component {
         </div>
 
         {/* Pieces layer */}
-        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10, '--piece-size': `${pieceSize}px` }}>
+        {/* The layer itself lets clicks through to the square targets underneath; only the pieces catch them */}
+        <div className="xiangqi-pieces" style={{ position: 'absolute', top: 0, left: 0, width, height, zIndex: 10, pointerEvents: 'none', '--piece-size': `${pieceSize}px` }}>
           {board && board.map((row, rowIdx) =>
             row.map((piece, colIdx) => {
               if (!piece) return null;
@@ -519,7 +530,7 @@ class XiangqiBoard extends Component {
                 <div
                   key={`${rowIdx}-${colIdx}`}
                   data-sq={`${rowIdx}-${colIdx}`}
-                  className={`xiangqi-piece ${piece.color === 'r' ? 'red' : 'black'}`}
+                  className={`xiangqi-piece ${piece.color === 'r' ? 'red' : 'black'}${selectedSquare && selectedSquare.row === rowIdx && selectedSquare.col === colIdx ? ' selected' : ''}`}
                   style={{
                     position: 'absolute',
                     left: padding + displayCol * cellSize - pieceSize / 2,
@@ -527,6 +538,7 @@ class XiangqiBoard extends Component {
                     width: pieceSize,
                     height: pieceSize,
                     cursor: 'pointer',
+                    pointerEvents: 'auto',
                   }}
                   onClick={() => this.handleClick(rowIdx, colIdx)}
                   onMouseDown={(e) => this.handleMouseDown(e, rowIdx, colIdx)}
@@ -538,24 +550,27 @@ class XiangqiBoard extends Component {
             })
           )}
 
-          {/* Dragging piece */}
-          {dragging && dragPosition && PIECE_CHARS[dragging.piece?.type]?.[dragging.piece?.color] && (
-            <div
-              className={`xiangqi-piece ${dragging.piece.color === 'r' ? 'red' : 'black'} dragging`}
-              style={{
-                position: 'absolute',
-                left: dragPosition.x - pieceSize / 2,
-                top: dragPosition.y - pieceSize / 2,
-                width: pieceSize,
-                height: pieceSize,
-                pointerEvents: 'none',
-                zIndex: 100,
-              }}
-            >
-              {PIECE_CHARS[dragging.piece.type][dragging.piece.color]}
-            </div>
-          )}
         </div>
+
+        {/* Dragging piece: drawn on the page (not inside the tilted board) at the pointer */}
+        {dragging && dragPosition && PIECE_CHARS[dragging.piece?.type]?.[dragging.piece?.color] && ReactDOM.createPortal(
+          <div
+            className={`xiangqi-piece ${dragging.piece.color === 'r' ? 'red' : 'black'} dragging`}
+            style={{
+              position: 'fixed',
+              left: dragPosition.x - pieceSize / 2,
+              top: dragPosition.y - pieceSize / 2,
+              width: pieceSize,
+              height: pieceSize,
+              pointerEvents: 'none',
+              zIndex: 1000,
+              '--piece-size': `${pieceSize}px`,
+            }}
+          >
+            {PIECE_CHARS[dragging.piece.type][dragging.piece.color]}
+          </div>,
+          document.body
+        )}
 
         {/* Click targets (invisible) - for empty squares */}
         <div className="xiangqi-click-targets" style={{ position: 'absolute', top: 0, left: 0, width, height, pointerEvents: 'none' }}>
@@ -571,12 +586,13 @@ class XiangqiBoard extends Component {
               return (
                 <div
                   key={`target-${rowIdx}-${colIdx}`}
+                  data-sq={`${actualRow}-${actualCol}`}
                   style={{
                     position: 'absolute',
-                    left: padding + colIdx * cellSize - cellSize / 3,
-                    top: padding + rowIdx * cellSize - cellSize / 3,
-                    width: cellSize * 2 / 3,
-                    height: cellSize * 2 / 3,
+                    left: padding + colIdx * cellSize - cellSize / 2,
+                    top: padding + rowIdx * cellSize - cellSize / 2,
+                    width: cellSize,
+                    height: cellSize,
                     cursor: 'pointer',
                     pointerEvents: 'auto',
                   }}
@@ -586,6 +602,7 @@ class XiangqiBoard extends Component {
             })
           )}
         </div>
+      </div>
       </div>
     );
   }

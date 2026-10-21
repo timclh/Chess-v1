@@ -1,4 +1,4 @@
-import { fitBoardWidth, boardCalcWidth, fitXiangqiBoard, getAvailable, fitSquare, chessBoardOptions } from './ViewportService';
+import { fitBoardWidth, boardCalcWidth, fitXiangqiBoard, getAvailable, fitSquare, chessBoardOptions, boardTiltDegrees } from './ViewportService';
 
 describe('fitBoardWidth', () => {
   test('uses the desktop width when the screen is wide', () => {
@@ -68,5 +68,13 @@ describe('chess board size', () => {
     expect(fitSquare(chessBoardOptions())).toBe(580);
     setViewport(1280, 600);
     expect(fitSquare(chessBoardOptions())).toBe(388); // 600 - 40 - 36 - 16 - 120
+  });
+});
+
+describe('boardTiltDegrees', () => {
+  test('is gentler on phones, where touch accuracy matters', () => {
+    expect(boardTiltDegrees(390)).toBe(8);
+    expect(boardTiltDegrees(820)).toBe(8);
+    expect(boardTiltDegrees(1280)).toBe(16);
   });
 });
