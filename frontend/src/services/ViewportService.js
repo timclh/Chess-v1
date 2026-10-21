@@ -39,6 +39,7 @@ const tabBarHeight = (vw) => (vw >= WIDE_NAV_MIN_WIDTH ? 0 : CHROME.tabBar);
  * @param {Object} opts
  * @param {boolean} opts.hasSubNav - Whether sub-nav is visible (default: false)
  * @param {number}  opts.extraChrome - Additional vertical chrome to subtract (status text, controls)
+ * @param {number}  opts.maxSize - Largest board side fitSquare may return (default 520)
  * @returns {{ width: number, height: number }}
  */
 export function getAvailable(opts = {}) {
@@ -66,7 +67,16 @@ export function getAvailable(opts = {}) {
  */
 export function fitSquare(opts = {}) {
   const { width, height } = getAvailable(opts);
-  return Math.min(width, height, 520); // cap at 520 for desktop
+  const { maxSize = 520 } = opts; // cap for desktop
+  return Math.min(width, height, maxSize);
+}
+
+// Chess on wide screens puts the player bars, toolbar and move list beside the board
+// (see App.css), so the board only has to leave room for the header and padding.
+export const CHESS_SIDE_COLUMN_MIN_WIDTH = 1100;
+export function chessBoardOptions(vw = window.innerWidth) {
+  const wide = vw >= CHESS_SIDE_COLUMN_MIN_WIDTH;
+  return { hasSubNav: true, extraChrome: wide ? 120 : 260, maxSize: wide ? 580 : 520 };
 }
 
 /**
@@ -136,11 +146,12 @@ export function pageMinHeight(opts = {}) {
  *   this._cleanup = autoResize((size) => this.setState({ boardWidth: size }));
  *
  * @param {function} onResize - Called with fitSquare() result on resize
- * @param {Object}   opts     - Options passed to fitSquare
+ * @param {Object|function} opts - Options passed to fitSquare (or a function returning them)
  * @returns {function} cleanup function to call in componentWillUnmount
  */
 export function autoResize(onResize, opts = {}) {
-  const handler = () => onResize(fitSquare(opts));
+  // `opts` may be a function so the options can follow the window (e.g. a layout that changes at a breakpoint)
+  const handler = () => onResize(fitSquare(typeof opts === 'function' ? opts() : opts));
   handler(); // initial call
   window.addEventListener('resize', handler);
   return () => window.removeEventListener('resize', handler);
@@ -158,6 +169,7 @@ export default {
   getAvailable,
   fitSquare,
   fitXiangqiBoard,
+  chessBoardOptions,
   fitBoardWidth,
   boardCalcWidth,
   fitColumns,
