@@ -116,6 +116,14 @@ export function isEngineReady() {
 }
 
 /**
+ * True if the engine is running with the xiangqi NNUE network (much stronger
+ * than the classical evaluation it falls back to).
+ */
+export function isNetworkActive() {
+  return engineReady && fairyStockfishService.nnueActive;
+}
+
+/**
  * Get the top N moves for a position using Fairy-Stockfish.
  *
  * Returns the same format as XiangqiAI.getTopMoves():
@@ -209,6 +217,9 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
       timeMs: timeMs,
       numLines: numLines,
       skillLevel: skillLevel,
+      // Hints and the coach get the strong network evaluation; the opponent AI keeps
+      // its familiar classical-eval strength so the difficulty levels stay beatable.
+      useNNUE: skillLevel >= 15,
     });
 
 

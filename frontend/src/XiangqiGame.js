@@ -18,6 +18,7 @@ import {
 import {
   initCoachEngine,
   isEngineReady,
+  isNetworkActive,
   getTopMovesEngine,
   analyzePositionEngine,
   stopAnalysis,
@@ -199,6 +200,7 @@ class XiangqiGame extends Component {
     // Fairy-Stockfish engine state
     engineReady: false,
     engineLoading: false,
+    networkActive: false, // engine is running with the xiangqi NNUE network
     // Tutorial state
     currentLesson: 0,
     lessonComplete: false,
@@ -543,7 +545,7 @@ class XiangqiGame extends Component {
   // waiting for it, unless the position has moved on since.
   _onEngineSettled = (ok) => {
     if (!this.game) return;
-    this.setState({ engineReady: ok, engineLoading: false }, () => {
+    this.setState({ engineReady: ok, engineLoading: false, networkActive: ok && isNetworkActive() }, () => {
       clearTimeout(this._coachWaitTimer);
       const pending = this._pendingCoach;
       this._pendingCoach = null;
@@ -1769,7 +1771,12 @@ class XiangqiGame extends Component {
             <div className="panel-title">
               {gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}
               {this.state.engineReady && (
-                <span className="engine-badge" title="Fairy-Stockfish WASM engine active">⚡ GM</span>
+                <span
+                  className="engine-badge"
+                  title={this.state.networkActive ? 'Fairy-Stockfish with the xiangqi NNUE network' : 'Fairy-Stockfish (basic evaluation: the network could not be loaded)'}
+                >
+                  {this.state.networkActive ? '⚡ GM' : '⚡'}
+                </span>
               )}
               {this.state.engineLoading && (
                 <span className="engine-badge loading" title="Loading engine...">⏳</span>
