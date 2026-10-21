@@ -332,3 +332,19 @@
 .move-entry.black-move { color: var(--text-300); }
 .move-entry.white-move { color: var(--text-300); }
 .move-entry.empty { color: var(--text-500); }
+
+/* Wide screens: option groups in two columns and panels that scroll inside themselves,
+   so the left column is not twice the height of the board */
+@media (min-width: 901px) {
+  .wuziqi-btn-group.vertical { flex-direction: row; flex-wrap: wrap; }
+  .wuziqi-btn-group.vertical .wuziqi-btn { flex: 1 1 calc(50% - 4px); }
+  .wuziqi-panel {
+    align-self: flex-start;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+}

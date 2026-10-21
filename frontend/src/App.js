@@ -147,6 +147,15 @@ class AppContent extends Component {
     const isGamePage = ['game', 'xiangqi', 'wuziqi'].includes(currentPage);
     const isLearnPage = ['puzzles', 'openings', 'learn', 'coach'].includes(currentPage);
 
+    // One list drives both the bottom tab bar (phones) and the header tabs (wide screens)
+    const tabs = [
+      { key: 'home', icon: 'home', label: 'Home', active: currentPage === 'home', go: 'home' },
+      { key: 'play', icon: 'play', label: 'Play', active: isGamePage, go: isGamePage ? currentPage : 'game' },
+      { key: 'learn', icon: 'learn', label: 'Learn', active: isLearnPage, go: isLearnPage ? currentPage : 'puzzles' },
+      { key: 'online', icon: 'online', label: 'Online', active: currentPage === 'multiplayer', go: 'multiplayer' },
+      { key: 'me', icon: 'profile', label: 'Me', active: ['profile', 'leaderboard'].includes(currentPage), go: 'profile' },
+    ];
+
     return (
       <div className="App has-bottom-nav">
         {/* Offline Indicator */}
@@ -171,6 +180,19 @@ class AppContent extends Component {
         <header className="App-header">
           <div className="header-row">
             <h1 className="App-title" onClick={() => this.navigateTo('home')} style={{ cursor: 'pointer' }}><span className="brush logo-mark">棋</span> Arena</h1>
+            <nav className="top-tabs" aria-label="Main">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  className={`toptab-btn ${t.active ? 'active' : ''}`}
+                  aria-current={t.active ? 'page' : undefined}
+                  onClick={() => this.navigateTo(t.go)}
+                >
+                  <Icon name={t.icon} size={18} />
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </nav>
             <div className="header-right">
               <button
                 className="icon-btn sound-toggle"
@@ -306,42 +328,18 @@ class AppContent extends Component {
         )}
 
         {/* Bottom Tab Bar */}
-        <nav className="bottom-tab-bar">
-          <button
-            className={`btab-btn ${currentPage === 'home' ? 'active' : ''}`}
-            onClick={() => this.navigateTo('home')}
-          >
-            <span className="btab-icon"><Icon name="home" size={22} /></span>
-            <span className="btab-label">Home</span>
-          </button>
-          <button
-            className={`btab-btn ${isGamePage ? 'active' : ''}`}
-            onClick={() => this.navigateTo(isGamePage ? currentPage : 'game')}
-          >
-            <span className="btab-icon"><Icon name="play" size={22} /></span>
-            <span className="btab-label">Play</span>
-          </button>
-          <button
-            className={`btab-btn ${isLearnPage ? 'active' : ''}`}
-            onClick={() => this.navigateTo(isLearnPage ? currentPage : 'puzzles')}
-          >
-            <span className="btab-icon"><Icon name="learn" size={22} /></span>
-            <span className="btab-label">Learn</span>
-          </button>
-          <button
-            className={`btab-btn ${currentPage === 'multiplayer' ? 'active' : ''}`}
-            onClick={() => this.navigateTo('multiplayer')}
-          >
-            <span className="btab-icon"><Icon name="online" size={22} /></span>
-            <span className="btab-label">Online</span>
-          </button>
-          <button
-            className={`btab-btn ${['profile', 'leaderboard'].includes(currentPage) ? 'active' : ''}`}
-            onClick={() => this.navigateTo('profile')}
-          >
-            <span className="btab-icon"><Icon name="profile" size={22} /></span>
-            <span className="btab-label">Me</span>
-          </button>
+        <nav className="bottom-tab-bar" aria-label="Main">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              className={`btab-btn ${t.active ? 'active' : ''}`}
+              aria-current={t.active ? 'page' : undefined}
+              onClick={() => this.navigateTo(t.go)}
+            >
+              <span className="btab-icon"><Icon name={t.icon} size={22} /></span>
+              <span className="btab-label">{t.label}</span>
+            </button>
+          ))}
         </nav>
       </div>
     );

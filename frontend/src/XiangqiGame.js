@@ -36,6 +36,7 @@ import {
 } from './services/SoundService';
 import { moveFeedback, selectFeedback } from './services/FeedbackService';
 import { Icon } from './components/Icon';
+import { fitXiangqiBoard } from './services/ViewportService';
 import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
@@ -211,7 +212,7 @@ class XiangqiGame extends Component {
     // Last move for highlighting
     lastMove: null,
     // Responsive board width
-    boardWidth: Math.min(450, window.innerWidth - 40),
+    boardWidth: fitXiangqiBoard(),
     // Coach hint highlighted on the board ({ fromRow, fromCol, toRow, toCol, key })
     hintMove: null,
     hintRequested: false, // 💡 pressed: highlight the best move as soon as analysis lands
@@ -241,7 +242,7 @@ class XiangqiGame extends Component {
 
     // Listen for window resize to adjust board size
     this._handleResize = () => {
-      const newWidth = Math.min(450, window.innerWidth - 40);
+      const newWidth = fitXiangqiBoard();
       if (newWidth !== this.state.boardWidth) {
         this.setState({ boardWidth: newWidth });
       }
@@ -1716,7 +1717,11 @@ class XiangqiGame extends Component {
         </div>
 
         {/* Center Panel - Board */}
-        <div className="board-panel xiangqi-board-panel">
+        <div
+          className="board-panel xiangqi-board-panel"
+          // the panel hugs the board (board + panel padding) so a smaller board does not leave a gap
+          style={window.innerWidth > 820 ? { flexBasis: this.state.boardWidth + 72, width: this.state.boardWidth + 72 } : undefined}
+        >
           <div className={`game-status ${gameOver ? 'game-over' : ''} ${aiThinking ? 'thinking' : ''}`}>
             {aiThinking ? 'AI 思考中... / AI thinking...' : gameStatus}
           </div>

@@ -8082,3 +8082,174 @@ button:active, .nav-btn:active, .mode-btn:active, .diff-btn:active, .color-btn:a
 .xiangqi-history .move-number { color: var(--text-500); }
 .openings-page .no-moves,
 .puzzles-container .puzzle-num { color: var(--on-paper-700); }
+
+/* ══════════════════════════════════════════
+   Layout cleanup (desktop). The main tabs move into the header on wide screens
+   (the bottom bar covered the board there), the xiangqi/chess side panels share
+   one surface, and their controls become compact segmented buttons.
+   ══════════════════════════════════════════ */
+.top-tabs { display: none; }
+
+@media (min-width: 821px) {
+  .top-tabs { display: flex; gap: 4px; margin: 0 auto 0 28px; }
+  .toptab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--text-300);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--dur-2), color var(--dur-2);
+  }
+  .toptab-btn:hover { background: var(--surface-2); color: var(--text); }
+  .toptab-btn.active { background: rgba(228, 185, 92, 0.14); color: var(--gold-400); }
+
+  .bottom-tab-bar { display: none; }
+  .has-bottom-nav .App-content,
+  .has-bottom-nav .home-page { padding-bottom: 24px; }
+  .header-row { max-width: 1280px; }
+}
+
+@media (min-width: 821px) {
+  /* one surface for the side panels (xiangqi used walnut, chess navy, paper elsewhere) */
+  .xiangqi-game-layout .xiangqi-settings,
+  .xiangqi-game-layout .xiangqi-analysis,
+  .xiangqi-game-layout .xiangqi-tutorial,
+  .chess-app-content .settings-panel,
+  .chess-app-content .analysis-panel-right {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--e2);
+    color: var(--text);
+  }
+
+  /* panels never outgrow the screen: they scroll inside themselves */
+  .xiangqi-game-layout .xiangqi-settings,
+  .xiangqi-game-layout .xiangqi-analysis,
+  .xiangqi-game-layout .xiangqi-tutorial,
+  .chess-app-content .settings-panel,
+  .chess-app-content .analysis-panel-right {
+    align-self: flex-start;
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-3) transparent;
+  }
+
+  .xiangqi-game-layout .panel-title,
+  .chess-app-content .settings-panel .panel-title,
+  .chess-app-content .analysis-panel-right .panel-title {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--gold-400);
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+  .xiangqi-game-layout .section-label,
+  .chess-app-content .settings-panel .section-label {
+    margin-bottom: 6px;
+    color: var(--text-500);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .xiangqi-game-layout .settings-section,
+  .chess-app-content .settings-panel .settings-section { margin-bottom: 14px; }
+
+  /* option groups: one compact row of segmented buttons instead of a tall column of slabs */
+  .xiangqi-settings .mode-selector-vertical,
+  .xiangqi-settings .color-selector-vertical,
+  .xiangqi-settings .difficulty-selector-vertical,
+  .settings-panel .mode-selector-vertical,
+  .settings-panel .color-selector-vertical,
+  .settings-panel .difficulty-selector-vertical {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+    gap: 6px;
+  }
+  .settings-panel .mode-btn,
+  .settings-panel .color-btn,
+  .settings-panel .diff-btn,
+  .settings-panel .toggle-btn {
+    width: 100%;
+    min-height: 38px;
+    padding: 6px 4px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    background: var(--surface-2);
+    color: var(--text-300);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: none;
+  }
+  .settings-panel .mode-btn:not(.active):hover,
+  .settings-panel .color-btn:not(.active):hover,
+  .settings-panel .diff-btn:not(.active):hover,
+  .settings-panel .toggle-btn:not(.active):hover { background: var(--surface-3); color: var(--text); }
+  .settings-panel .mode-btn.active,
+  .settings-panel .color-btn.active,
+  .settings-panel .diff-btn.active {
+    background: var(--accent-fill);
+    border-color: var(--vermilion-500);
+    color: #fff;
+  }
+  /* the colour pickers keep their piece colours; the chosen one is ringed */
+  .settings-panel .color-btn.xiangqi-red { background: var(--grad-accent); color: #fff; }
+  .settings-panel .color-btn.xiangqi-black { background: #15121c; color: #fff; }
+  .settings-panel .color-btn.xiangqi-red,
+  .settings-panel .color-btn.xiangqi-black { opacity: 0.7; }
+  .settings-panel .color-btn.xiangqi-red.active,
+  .settings-panel .color-btn.xiangqi-black.active { opacity: 1; box-shadow: 0 0 0 2px var(--gold-400); }
+
+  /* New / Undo / Hint: one row of three, with New Game on its own full-width line */
+  .settings-panel .controls-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .settings-panel .controls-section .btn { width: 100%; min-height: 38px; margin: 0; font-size: 13px; }
+  .settings-panel .controls-section .btn-primary { grid-column: 1 / -1; background: var(--accent-fill); color: #fff; }
+  .settings-panel .controls-section .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); }
+  .settings-panel .controls-section .btn-secondary:disabled { opacity: 0.45; }
+
+  /* Home on wide screens: use the width instead of a phone-sized column */
+  .home-page { max-width: 980px; padding-left: 24px; padding-right: 24px; gap: 20px; }
+  .home-games { gap: 16px; }
+  .home-game-card { padding: 28px 12px 22px; }
+  .home-features { grid-template-columns: repeat(8, 1fr); }
+}
+
+/* the three xiangqi columns (settings, board, coach) need more than the 1200px page width */
+@media (min-width: 1200px) {
+  .App-content.xiangqi-page { width: min(1400px, 100%); }
+}
+@media (min-width: 821px) {
+  .App-content.xiangqi-page { padding-top: 12px; padding-bottom: 12px; }
+}
+
+@media (min-width: 821px) {
+  .xiangqi-settings .difficulty-selector-vertical { grid-template-columns: repeat(4, 1fr); }
+  .chess-app-content .settings-panel .difficulty-selector-vertical { grid-template-columns: repeat(2, 1fr); }
+  .settings-panel .controls-section .btn { padding: 8px 6px; white-space: nowrap; }
+}
+
+@media (min-width: 821px) {
+  .home-page { padding-top: 28px; }
+}
+
+/* Leaderboard tabs: three buttons share the row instead of overflowing a 375px phone */
+.tab-selector .tab-btn { flex: 1 1 0; min-width: 0; padding-left: 8px; padding-right: 8px; }

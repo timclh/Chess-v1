@@ -27,6 +27,11 @@ const CHROME = {
   padding: 16,
 };
 
+// On wide screens the main tabs live in the header and the bottom bar is hidden
+// (the 821px matches the CSS breakpoint in App.css).
+export const WIDE_NAV_MIN_WIDTH = 821;
+const tabBarHeight = (vw) => (vw >= WIDE_NAV_MIN_WIDTH ? 0 : CHROME.tabBar);
+
 // ─── Public API ──────────────────────────────────────────────────────────
 
 /**
@@ -42,7 +47,7 @@ export function getAvailable(opts = {}) {
   const vh = window.innerHeight;
   const verticalChrome =
     CHROME.header +
-    CHROME.tabBar +
+    tabBarHeight(vw) +
     CHROME.padding +
     extraChrome +
     (hasSubNav ? CHROME.subNav : 0);
@@ -62,6 +67,18 @@ export function getAvailable(opts = {}) {
 export function fitSquare(opts = {}) {
   const { width, height } = getAvailable(opts);
   return Math.min(width, height, 520); // cap at 520 for desktop
+}
+
+/**
+ * Xiangqi board width (the board is 9:10). On phones it follows the width; on wide
+ * screens it is also limited by the viewport height so the whole board is visible
+ * without scrolling (header, sub-nav, page padding, status line and panel padding
+ * take about 270px, plus a little margin below the board).
+ * @returns {number} board width in px
+ */
+export function fitXiangqiBoard(vw = window.innerWidth, vh = window.innerHeight) {
+  if (vw <= 820) return Math.min(450, vw - 40);
+  return Math.max(320, Math.min(540, Math.floor((vh - 290) * 0.9), vw - 40));
 }
 
 /**
@@ -106,7 +123,7 @@ export function pageMinHeight(opts = {}) {
   const { hasSubNav = false, extraChrome = 0 } = opts;
   const chrome =
     CHROME.header +
-    CHROME.tabBar +
+    tabBarHeight(window.innerWidth) +
     CHROME.padding +
     extraChrome +
     (hasSubNav ? CHROME.subNav : 0);
@@ -140,6 +157,7 @@ export function getChromeInfo() {
 export default {
   getAvailable,
   fitSquare,
+  fitXiangqiBoard,
   fitBoardWidth,
   boardCalcWidth,
   fitColumns,
