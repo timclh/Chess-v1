@@ -107,6 +107,7 @@ class FairyStockfishService {
     this._nnueOn = true; // current value of the engine's `Use NNUE` option
     this._evalMode = null; // 'nnue' | 'classical', from the engine's `info string` reports
     this._scoreDivisor = 1; // NNUE_SCORE_DIVISOR while a network search runs
+    this._infoStrings = []; // the engine's latest `info string` lines (diagnostics only)
     this.initializing = false;
     this._initPromise = null;
     this._pendingCallbacks = [];
@@ -256,12 +257,16 @@ class FairyStockfishService {
         this._evalMode = null;
         this._send(`setoption name EvalFile value ${path}`);
         await this._sendAndWait('isready', 'readyok');
+        // The engine only says which evaluation it uses when it next evaluates a
+        // position (not at setoption/isready), so run a one-ply search to find out.
+        this._send('position startpos');
+        await this._sendAndWait('go depth 1', 'bestmove', 20000);
 
         if (this._evalMode === 'nnue') {
           this._nnueOn = true;
           return true;
         }
-        console.warn('[FairyStockfish] network was not accepted, using the classical evaluation');
+        console.warn('[FairyStockfish] network was not accepted, using the classical evaluation. Engine said:', this._infoStrings.slice(-5));
       }
     } catch (err) {
       console.warn('[FairyStockfish] network load failed, using the classical evaluation:', err);
@@ -361,6 +366,8 @@ class FairyStockfishService {
 
     // The engine states which evaluation it uses whenever that changes
     if (line.startsWith('info string')) {
+      this._infoStrings.push(line);
+      if (this._infoStrings.length > 20) this._infoStrings.shift();
       if (/NNUE evaluation using/.test(line)) this._evalMode = 'nnue';
       else if (/classical evaluation enabled/.test(line)) this._evalMode = 'classical';
     }

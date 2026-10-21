@@ -25,6 +25,7 @@ function makeEngine({ accept = true } = {}) {
   const emit = (line) => setTimeout(() => listener && listener(line), 0);
   let useNNUE = true;
   let evalFile = null;
+  let announced = null; // what the engine last said about its evaluation
   const engine = {
     sent,
     written,
@@ -33,15 +34,18 @@ function makeEngine({ accept = true } = {}) {
     postMessage: (cmd) => {
       sent.push(cmd);
       if (cmd.startsWith('setoption name EvalFile value ')) {
+        // like the real engine: nothing is printed here
         evalFile = cmd.slice('setoption name EvalFile value '.length);
-        const base = evalFile.slice(evalFile.lastIndexOf('/') + 1);
-        if (accept && base.startsWith('xiangqi') && written[evalFile]) emit(`info string NNUE evaluation using ${evalFile} enabled`);
-        else emit('info string classical evaluation enabled');
       } else if (cmd.startsWith('setoption name Use NNUE value ')) {
         useNNUE = cmd.endsWith('true');
       } else if (cmd === 'isready') {
         emit('readyok');
       } else if (cmd.startsWith('go ')) {
+        // the real engine states its evaluation when it starts evaluating
+        const base = evalFile ? evalFile.slice(evalFile.lastIndexOf('/') + 1) : '';
+        const usable = useNNUE && accept && base.startsWith('xiangqi') && written[evalFile];
+        const mode = usable ? `info string NNUE evaluation using ${evalFile} enabled` : 'info string classical evaluation enabled';
+        if (mode !== announced) { announced = mode; emit(mode); }
         // The "network" scores everything 1.5x higher than classical, like the real one
         const cp = useNNUE && evalFile && accept ? Math.round(RAW_CP * NNUE_SCORE_DIVISOR) : RAW_CP;
         emit(`info depth 10 multipv 1 score cp ${cp} pv h3e3 h10g8`);
