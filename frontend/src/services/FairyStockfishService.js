@@ -10,6 +10,15 @@
  * Fairy-SF:     r n b a k c p  (rook,    knight, bishop,   advisor, king, cannon, pawn)
  */
 
+import { fetchNetwork, XIANGQI_NET } from './XiangqiNetwork';
+
+// The network reports larger centipawn values than the classical evaluation for the
+// same advantage (measured: up a horse 529 vs 266, up a chariot 1249 vs 945, start
+// position +46 vs +29, about 1.5x on average). Everything downstream (win
+// probability, "Red edge" wording, move explanations) was tuned on classical scores,
+// so network scores are divided by this to stay on the same scale.
+export const NNUE_SCORE_DIVISOR = 1.5;
+
 // ─── FEN Translation ────────────────────────────────────────────────────────
 
 // Our piece letters → Fairy-Stockfish standard
@@ -93,6 +102,11 @@ class FairyStockfishService {
   constructor() {
     this.engine = null;
     this.ready = false;
+    // True once the xiangqi NNUE network is loaded and verified (see XiangqiNetwork.js)
+    this.nnueActive = false;
+    this._nnueOn = true; // current value of the engine's `Use NNUE` option
+    this._evalMode = null; // 'nnue' | 'classical', from the engine's `info string` reports
+    this._scoreDivisor = 1; // NNUE_SCORE_DIVISOR while a network search runs
     this.initializing = false;
     this._initPromise = null;
     this._pendingCallbacks = [];
@@ -211,6 +225,9 @@ class FairyStockfishService {
       this._send('setoption name MultiPV value 3');
       await this._sendAndWait('isready', 'readyok');
 
+      // Stronger evaluation if the network can be had; never fatal
+      this.nnueActive = await this._loadNetwork();
+
       this.ready = true;
       this.initializing = false;
 
@@ -222,6 +239,36 @@ class FairyStockfishService {
       this._initPromise = null;
       return false;
     }
+  }
+
+  /**
+   * Load the xiangqi NNUE network into the engine. Returns true if the engine
+   * reports using it. Any failure leaves the engine on its classical evaluation.
+   */
+  async _loadNetwork() {
+    try {
+      const bytes = this.engine && this.engine.FS ? await fetchNetwork() : null;
+      if (bytes) {
+        // The file name must start with the variant name or the engine ignores it
+        const path = `/${XIANGQI_NET.file}`;
+        this.engine.FS.writeFile(path, bytes);
+
+        this._evalMode = null;
+        this._send(`setoption name EvalFile value ${path}`);
+        await this._sendAndWait('isready', 'readyok');
+
+        if (this._evalMode === 'nnue') {
+          this._nnueOn = true;
+          return true;
+        }
+        console.warn('[FairyStockfish] network was not accepted, using the classical evaluation');
+      }
+    } catch (err) {
+      console.warn('[FairyStockfish] network load failed, using the classical evaluation:', err);
+    }
+    this._nnueOn = false;
+    this._send('setoption name Use NNUE value false');
+    return false;
   }
 
   /**
@@ -312,6 +359,12 @@ class FairyStockfishService {
       cb(line);
     }
 
+    // The engine states which evaluation it uses whenever that changes
+    if (line.startsWith('info string')) {
+      if (/NNUE evaluation using/.test(line)) this._evalMode = 'nnue';
+      else if (/classical evaluation enabled/.test(line)) this._evalMode = 'classical';
+    }
+
     // Parse "info" lines for analysis data
     if (line.startsWith('info')) {
       this._parseInfoLine(line);
@@ -376,9 +429,12 @@ class FairyStockfishService {
     if (depth !== null && pvMoves.length > 0) {
       this._depth = Math.max(this._depth || 0, depth);
 
+      // Keep network scores on the classical scale (mate scores are not centipawns)
+      const cp = scoreType === 'cp' && score !== null ? Math.round(score / this._scoreDivisor) : score;
+
       const lineData = {
         depth,
-        score: scoreType === 'mate' ? (score > 0 ? 100000 - score : -100000 - score) : score,
+        score: scoreType === 'mate' ? (score > 0 ? 100000 - score : -100000 - score) : cp,
         scoreType,
         scoreRaw: score,
         pv: pvMoves,
@@ -452,6 +508,7 @@ class FairyStockfishService {
       timeMs = 3000,
       numLines = 3,
       skillLevel = 20, // Default to max strength (GM level)
+      useNNUE = true, // the opponent AI passes false to keep its familiar strength
     } = options;
 
     // The previous search must be completely finished (its bestmove consumed)
@@ -469,6 +526,13 @@ class FairyStockfishService {
     const clampedSkill = Math.max(0, Math.min(20, Math.round(skillLevel)));
     this._send(`setoption name Skill Level value ${clampedSkill}`);
 
+
+    // Network or classical evaluation for this search (only if the network is loaded)
+    if (this.nnueActive && this._nnueOn !== useNNUE) {
+      this._send(`setoption name Use NNUE value ${useNNUE}`);
+      this._nnueOn = useNNUE;
+    }
+    this._scoreDivisor = this.nnueActive && this._nnueOn ? NNUE_SCORE_DIVISOR : 1;
 
     // Set MultiPV
     this._send(`setoption name MultiPV value ${numLines}`);
@@ -531,6 +595,10 @@ class FairyStockfishService {
     }
     this.engine = null;
     this.ready = false;
+    this.nnueActive = false;
+    this._nnueOn = true;
+    this._evalMode = null;
+    this._scoreDivisor = 1;
     this._initPromise = null;
     this._searching = false;
     const waiters = this._idleWaiters;

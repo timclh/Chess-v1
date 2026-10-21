@@ -25,6 +25,7 @@ jest.mock('./services/SoundService', () => {
 jest.mock('./services/XiangqiCoachService', () => ({
   initCoachEngine: async () => true,
   isEngineReady: () => false,
+  isNetworkActive: () => false,
   getTopMovesEngine: async () => null,
   analyzePositionEngine: async () => null,
   stopAnalysis: () => {},
