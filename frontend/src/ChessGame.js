@@ -10,7 +10,7 @@ import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSaved
 import { getRating, recordResult } from "./services/UserRatingService";
 import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
 import { GAME_TYPE, RESULT } from "./constants";
-import { fitSquare, autoResize } from "./services/ViewportService";
+import { fitSquare, autoResize, chessBoardOptions } from "./services/ViewportService";
 import { initSound } from "./services/SoundService";
 import { chessMoveFeedback, selectFeedback } from "./services/FeedbackService";
 import { RatingDisplay } from "./components/RatingDisplay";
@@ -204,7 +204,7 @@ class ChessGame extends Component {
     // Mobile fullscreen mode — only default on small screens
     isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
-    boardWidth: fitSquare({ hasSubNav: true, extraChrome: 260 }),
+    boardWidth: fitSquare(chessBoardOptions()),
   };
 
   game = null;
@@ -221,7 +221,7 @@ class ChessGame extends Component {
     // Responsive board sizing — auto-fit to available viewport
     this._cleanupResize = autoResize(
       (size) => { if (size !== this.state.boardWidth) this.setState({ boardWidth: size }); },
-      { hasSubNav: true, extraChrome: 260 }
+      chessBoardOptions
     );
   }
 
