@@ -19,6 +19,7 @@ import {
 } from './services/TrainingPlanService';
 import { getRatings } from './services/UserRatingService';
 import { GAME_TYPE } from './constants';
+import { Icon, StoneDot, Stars } from './components/Icon';
 
 // Session storage key
 const SESSION_KEY = 'qi_arena_coach_sessions';
@@ -380,7 +381,7 @@ class AICoach extends Component {
         <div className="messages-container">
           {messages.map((msg, index) => (
             <div key={index} className={'message ' + msg.type}>
-              {msg.type === 'bot' && <span className="avatar">🤖</span>}
+              {msg.type === 'bot' && <span className="avatar"><Icon name="coach" size={16} /></span>}
               <div className="content">
                 {typeof msg.content === 'object' ? (
                   <React.Fragment>
@@ -395,7 +396,7 @@ class AICoach extends Component {
           ))}
           {isTyping && (
             <div className="message bot">
-              <span className="avatar">🤖</span>
+              <span className="avatar"><Icon name="coach" size={16} /></span>
               <div className="typing-indicator">
                 <span></span><span></span><span></span>
               </div>
@@ -406,12 +407,12 @@ class AICoach extends Component {
 
         {/* Quick Actions */}
         <div className="quick-actions">
-          <button onClick={() => this.handleQuickAction('explain')}>📊 Analyze</button>
-          <button onClick={() => this.handleQuickAction('tips')}>💡 Tips</button>
-          <button onClick={() => this.handleQuickAction('plan')}>📋 Plan</button>
-          <button onClick={() => this.handleQuickAction('progress')}>📈 Progress</button>
-          <button onClick={() => this.handleQuickAction('weakness')}>🎯 Weakness</button>
-          <button onClick={this.handleSaveSession}>💾 Save</button>
+          <button onClick={() => this.handleQuickAction('explain')}><Icon name="chart" size={16} /> Analyze</button>
+          <button onClick={() => this.handleQuickAction('tips')}><Icon name="hint" size={16} /> Tips</button>
+          <button onClick={() => this.handleQuickAction('plan')}><Icon name="plan" size={16} /> Plan</button>
+          <button onClick={() => this.handleQuickAction('progress')}><Icon name="trend" size={16} /> Progress</button>
+          <button onClick={() => this.handleQuickAction('weakness')}><Icon name="target" size={16} /> Weakness</button>
+          <button onClick={this.handleSaveSession}><Icon name="save" size={16} /> Save</button>
         </div>
 
         {/* Input */}
@@ -438,7 +439,7 @@ class AICoach extends Component {
       <div className="training-tab">
         {/* Recommended Exercises */}
         <div className="training-section">
-          <h4>🎯 Recommended Exercises 推荐练习</h4>
+          <h4><Icon name="target" size={16} /> Recommended Exercises 推荐练习</h4>
           {exercises.length === 0 ? (
             <p className="empty-text">No exercises available. Generate a training plan first!</p>
           ) : (
@@ -449,7 +450,7 @@ class AICoach extends Component {
                     <strong>{ex.title}</strong>
                     <span className="exercise-title-cn">{ex.titleCn}</span>
                     <span className="exercise-meta">
-                      {'⏱ ' + ex.duration + ' min · ' + '⭐'.repeat(ex.difficulty)}
+                      <><Icon name="clock" size={14} /> {ex.duration} min · <Stars count={ex.difficulty} /></>
                     </span>
                   </div>
                   <span className="exercise-reason">{ex.reason}</span>
@@ -461,7 +462,7 @@ class AICoach extends Component {
 
         {/* Training Plan */}
         <div className="training-section">
-          <h4>📋 Training Plan 训练计划</h4>
+          <h4><Icon name="plan" size={16} /> Training Plan 训练计划</h4>
           {!trainingPlan ? (
             <div className="empty-plan">
               <p>No plan yet. Create one!</p>
@@ -505,22 +506,22 @@ class AICoach extends Component {
         {/* Stats Grid */}
         <div className="progress-stats">
           <div className="stat-card">
-            <span className="stat-icon">🔥</span>
+            <span className="stat-icon"><Icon name="streak" size={16} /></span>
             <span className="stat-value">{progress.streak}</span>
             <span className="stat-label-sm">Day Streak</span>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">📝</span>
+            <span className="stat-icon"><Icon name="terms" size={16} /></span>
             <span className="stat-value">{progress.todayExercises}</span>
             <span className="stat-label-sm">Today</span>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">📅</span>
+            <span className="stat-icon"><Icon name="calendar" size={16} /></span>
             <span className="stat-value">{progress.weekExercises}</span>
             <span className="stat-label-sm">This Week</span>
           </div>
           <div className="stat-card">
-            <span className="stat-icon">✅</span>
+            <span className="stat-icon"><Icon name="done" size={16} /></span>
             <span className="stat-value">{progress.totalExercises}</span>
             <span className="stat-label-sm">Total</span>
           </div>
@@ -528,10 +529,10 @@ class AICoach extends Component {
 
         {/* Ratings */}
         <div className="training-section">
-          <h4>📊 Ratings 棋力</h4>
+          <h4><Icon name="chart" size={16} /> Ratings 棋力</h4>
           <div className="rating-bars">
             <div className="rating-row">
-              <span>♟ Chess</span>
+              <span><Icon name="play" size={16} /> Chess</span>
               <div className="rating-bar-bg">
                 <div className="rating-bar-fill" style={{ width: Math.min(100, (progress.ratings.chess / 2400) * 100) + '%' }} />
               </div>
@@ -545,7 +546,7 @@ class AICoach extends Component {
               <span className="rating-num">{progress.ratings.xiangqi}</span>
             </div>
             <div className="rating-row">
-              <span>⚫ Gomoku</span>
+              <span><StoneDot color="black" /> Gomoku</span>
               <div className="rating-bar-bg">
                 <div className="rating-bar-fill wuziqi-bar" style={{ width: Math.min(100, (progress.ratings.wuziqi / 2400) * 100) + '%' }} />
               </div>
@@ -557,7 +558,7 @@ class AICoach extends Component {
         {/* Plan Progress */}
         {progress.planProgress && (
           <div className="training-section">
-            <h4>📋 Plan Progress</h4>
+            <h4><Icon name="plan" size={16} /> Plan Progress</h4>
             <div className="plan-progress-bar">
               <div className="plan-bar-bg">
                 <div className="plan-bar-fill" style={{ width: progress.planProgress.percent + '%' }} />
@@ -577,19 +578,22 @@ class AICoach extends Component {
       <div className="settings-tab">
         {/* Game Mode */}
         <div className="training-section">
-          <h4>🎮 Active Game 当前游戏</h4>
+          <h4><Icon name="games" size={16} /> Active Game 当前游戏</h4>
           <div className="game-selector">
             {[
-              { key: GAME_TYPE.CHESS, label: '♟ Chess', labelCn: '国际象棋' },
-              { key: GAME_TYPE.XIANGQI, label: '🀄 Xiangqi', labelCn: '象棋' },
-              { key: GAME_TYPE.WUZIQI, label: '⚫ Gomoku', labelCn: '五子棋' },
+              { key: GAME_TYPE.CHESS, icon: 'play', label: 'Chess', labelCn: '国际象棋' },
+              { key: GAME_TYPE.XIANGQI, label: 'Xiangqi', labelCn: '象棋' },
+              { key: GAME_TYPE.WUZIQI, stone: true, label: 'Gomoku', labelCn: '五子棋' },
             ].map(g => (
               <button
                 key={g.key}
                 className={'game-sel-btn ' + (this.state.activeGame === g.key ? 'active' : '')}
                 onClick={() => this.setState({ activeGame: g.key, exercises: getRecommendedExercises(g.key) })}
               >
-                {g.label}
+                {g.icon && <Icon name={g.icon} size={16} />}
+                {g.stone && <StoneDot color="black" />}
+                {g.key === GAME_TYPE.XIANGQI && <span className="brush">象棋</span>}
+                {' '}{g.label}
               </button>
             ))}
           </div>
@@ -597,7 +601,7 @@ class AICoach extends Component {
 
         {/* AI Provider */}
         <div className="training-section">
-          <h4>🧠 AI Provider</h4>
+          <h4><Icon name="brain" size={16} /> AI Provider</h4>
           <div className="game-selector">
             <button
               className={'game-sel-btn ' + (llmProvider.type === 'local' ? 'active' : '')}
@@ -628,7 +632,7 @@ class AICoach extends Component {
 
         {/* Saved Sessions */}
         <div className="training-section">
-          <h4>💾 Saved Sessions 已保存对话</h4>
+          <h4><Icon name="save" size={16} /> Saved Sessions 已保存对话</h4>
           {savedSessions.length === 0 ? (
             <p className="empty-text">No saved sessions yet</p>
           ) : (
@@ -655,16 +659,16 @@ class AICoach extends Component {
   render() {
     const { activeTab, activeGame } = this.state;
     const gameBadge = {
-      [GAME_TYPE.CHESS]: '♟',
-      [GAME_TYPE.XIANGQI]: '🀄',
-      [GAME_TYPE.WUZIQI]: '⚫',
-    }[activeGame] || '♟';
+      [GAME_TYPE.CHESS]: <Icon name="play" size={16} />,
+      [GAME_TYPE.XIANGQI]: <span className="brush">象</span>,
+      [GAME_TYPE.WUZIQI]: <StoneDot color="black" />,
+    }[activeGame] || <Icon name="play" size={16} />;
 
     return (
       <div className="ai-coach">
         {/* Header */}
         <div className="coach-header">
-          <div className="coach-avatar">🤖</div>
+          <div className="coach-avatar"><Icon name="coach" size={16} /></div>
           <div className="coach-info">
             <h3>AI Coach / AI教练 {gameBadge}</h3>
             <span className="status">● Online · {activeGame}</span>
@@ -675,10 +679,10 @@ class AICoach extends Component {
         {/* Tab Bar */}
         <div className="coach-tabs">
           {[
-            { key: TAB.CHAT, label: '💬 Chat' },
-            { key: TAB.TRAINING, label: '📋 Training' },
-            { key: TAB.PROGRESS, label: '📈 Progress' },
-            { key: TAB.SETTINGS, label: '⚙️ Settings' },
+            { key: TAB.CHAT, icon: 'message', label: 'Chat' },
+            { key: TAB.TRAINING, icon: 'plan', label: 'Training' },
+            { key: TAB.PROGRESS, icon: 'trend', label: 'Progress' },
+            { key: TAB.SETTINGS, icon: 'settings', label: 'Settings' },
           ].map(t => (
             <button
               key={t.key}
@@ -693,7 +697,7 @@ class AICoach extends Component {
                 }
               }}
             >
-              {t.label}
+              <Icon name={t.icon} size={16} /> {t.label}
             </button>
           ))}
         </div>

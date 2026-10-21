@@ -1218,7 +1218,7 @@ class XiangqiGame extends Component {
         {/* Threat warnings */}
         {hasThreats && (
           <div className="analysis-section threat-section">
-            <div className="section-label">⚠️ 注意威胁 / Watch Out</div>
+            <div className="section-label"><Icon name="warning" size={16} /> 注意威胁 / Watch Out</div>
             {threatWarning.map((t, i) => (
               <div key={i} className="threat-item">
                 <p>{t.cn}</p>
@@ -1234,10 +1234,10 @@ class XiangqiGame extends Component {
             <div className="section-label">推荐走法 / Suggested Moves</div>
             <div className="coach-analyzing">
               {engineReady
-                ? '⚡ Fairy-Stockfish 分析中... / Engine analyzing...'
+                ? <><Icon name="zap" size={14} /> Fairy-Stockfish 分析中... / Engine analyzing...</>
                 : engineLoading
                   ? '⏳ 引擎启动中，请稍候... / Starting engine...'
-                  : '🔍 教练分析中... / Coach analyzing...'}
+                  : <><Icon name="search" size={14} /> 教练分析中... / Coach analyzing...</>}
             </div>
           </div>
         )}
@@ -1284,7 +1284,7 @@ class XiangqiGame extends Component {
             )}
             {coachSource === 'builtin' && !engineLoading && (
               <div className="coach-source-warning" role="note">
-                ⚠️ 引擎暂不可用，当前为内置教练（强度较弱）<br />
+                <Icon name="warning" size={16} /> 引擎暂不可用，当前为内置教练（强度较弱）<br />
                 Engine unavailable — basic coach, treat with caution
               </div>
             )}
@@ -1316,7 +1316,7 @@ class XiangqiGame extends Component {
 
         {!hasAnything && (
           <div className="analysis-empty">
-            点 💡 获取教练建议<br />Tap 💡 for coach advice
+            点 <Icon name="hint" size={14} /> 获取教练建议<br />Tap <Icon name="hint" size={14} /> for coach advice
           </div>
         )}
       </>
@@ -1425,7 +1425,7 @@ class XiangqiGame extends Component {
             {isTutorial && currentTutorialLesson && (
               <span className="fs-status-sub">
                 {showTutorialHint
-                  ? `💡 ${currentTutorialLesson.hint} / ${currentTutorialLesson.hintEn}`
+                  ? <><Icon name="hint" size={14} /> {currentTutorialLesson.hint} / {currentTutorialLesson.hintEn}</>
                   : currentTutorialLesson.objectiveEn}
               </span>
             )}
@@ -1533,7 +1533,7 @@ class XiangqiGame extends Component {
           {showFullscreenCoach && !isTutorial && (
             <div className="fullscreen-coach-panel">
               <div className="fullscreen-coach-header">
-                <span>💡 教练 / Coach</span>
+                <span><Icon name="hint" size={16} /> 教练 / Coach</span>
                 <button
                   className="coach-close-btn"
                   onClick={() => this.setState({ showFullscreenCoach: false })}
@@ -1672,7 +1672,7 @@ class XiangqiGame extends Component {
                     className={`toggle-btn coach-hint-btn ${this.state.showCoachInAI ? 'active' : ''}`}
                     onClick={this.toggleCoachInAI}
                   >
-                    {this.state.showCoachInAI ? '💡 已开启' : '💡 获取提示'}
+                    {this.state.showCoachInAI ? <><Icon name="hint" size={16} /> 已开启</> : <><Icon name="hint" size={16} /> 获取提示</>}
                   </button>
                 </div>
               )}
@@ -1709,7 +1709,7 @@ class XiangqiGame extends Component {
                 onClick={this.requestHint}
                 disabled={aiThinking || gameOver || !this.game || this.game.turn !== playerColor}
               >
-                💡 提示 / Hint
+                <Icon name="hint" size={16} /> 提示 / Hint
               </button>
             </div>
           )}
@@ -1744,7 +1744,7 @@ class XiangqiGame extends Component {
           </div>
 
           <button className="fullscreen-toggle-btn" onClick={() => this.setState({ isFullscreen: true })}>
-            ⛶ Fullscreen
+            <Icon name="expand" size={16} /> Fullscreen
           </button>
 
           {/* Move History */}
@@ -1773,13 +1773,13 @@ class XiangqiGame extends Component {
         {(gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI)) && (
           <div className="analysis-panel-right xiangqi-analysis">
             <div className="panel-title">
-              {gameMode === 'coach' ? 'AI 分析' : '💡 教练提示'}
+              {gameMode === 'coach' ? 'AI 分析' : <><Icon name="hint" size={16} /> 教练提示</>}
               {this.state.engineReady && (
                 <span
                   className="engine-badge"
                   title={this.state.networkActive ? 'Fairy-Stockfish with the xiangqi NNUE network' : 'Fairy-Stockfish (basic evaluation: the network could not be loaded)'}
                 >
-                  {this.state.networkActive ? '⚡ GM' : '⚡'}
+                  {this.state.networkActive ? <><Icon name="zap" size={12} /> GM</> : <Icon name="zap" size={12} />}
                 </span>
               )}
               {this.state.engineLoading && (

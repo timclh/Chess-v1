@@ -30,6 +30,7 @@ import { getRating } from './services/UserRatingService';
 import { deleteAccount, isFirebaseConfigured } from './firebase';
 import { GAME_TYPE } from './constants';
 import './ProfilePage.css';
+import { Icon, StoneDot } from './components/Icon';
 
 class ProfilePage extends Component {
   state = {
@@ -198,9 +199,9 @@ class ProfilePage extends Component {
           <div className="friends-list">
             {friends.map((f) => (
               <div key={f.id} className="friend-item">
-                <span className="friend-name">👤 {f.displayName}</span>
+                <span className="friend-name"><Icon name="profile" size={16} /> {f.displayName}</span>
                 <span className="friend-added">Added {new Date(f.addedAt).toLocaleDateString()}</span>
-                <button className="friend-remove" onClick={() => this.handleRemoveFriend(f.id)}>✕</button>
+                <button className="friend-remove" onClick={() => this.handleRemoveFriend(f.id)}><Icon name="close" size={16} /></button>
               </div>
             ))}
           </div>
@@ -226,12 +227,12 @@ class ProfilePage extends Component {
         <div className="notif-enable">
           <p>Enable notifications to receive:</p>
           <ul className="notif-list">
-            <li>🧩 Daily puzzle reminders</li>
-            <li>🔥 Streak reminders</li>
-            <li>⚔️ Game invitations</li>
+            <li><Icon name="puzzles" size={16} /> Daily puzzle reminders</li>
+            <li><Icon name="streak" size={16} /> Streak reminders</li>
+            <li><Icon name="challenge" size={16} /> Game invitations</li>
           </ul>
           <button className="notif-enable-btn" onClick={this.handleEnableNotifications}>
-            🔔 Enable Notifications
+            <Icon name="bell" size={16} /> Enable Notifications
           </button>
         </div>
       );
@@ -245,7 +246,7 @@ class ProfilePage extends Component {
             checked={notifPrefs.dailyPuzzle}
             onChange={() => this.handleToggleNotifPref('dailyPuzzle')}
           />
-          <span>🧩 Daily puzzle reminder</span>
+          <span><Icon name="puzzles" size={16} /> Daily puzzle reminder</span>
         </label>
         <label className="notif-toggle">
           <input
@@ -253,7 +254,7 @@ class ProfilePage extends Component {
             checked={notifPrefs.streakReminder}
             onChange={() => this.handleToggleNotifPref('streakReminder')}
           />
-          <span>🔥 Streak reminder</span>
+          <span><Icon name="streak" size={16} /> Streak reminder</span>
         </label>
         <label className="notif-toggle">
           <input
@@ -261,7 +262,7 @@ class ProfilePage extends Component {
             checked={notifPrefs.gameInvites}
             onChange={() => this.handleToggleNotifPref('gameInvites')}
           />
-          <span>⚔️ Game invitations</span>
+          <span><Icon name="challenge" size={16} /> Game invitations</span>
         </label>
         <button
           className="notif-disable-btn"
@@ -287,11 +288,11 @@ class ProfilePage extends Component {
             value={challengeGameType}
             onChange={(e) => this.setState({ challengeGameType: e.target.value })}
           >
-            <option value="chess">♟ Chess</option>
+            <option value="chess">Chess</option>
             <option value="xiangqi">象棋 Xiangqi</option>
           </select>
           <button className="challenge-create-btn" onClick={this.handleCreateChallenge}>
-            ⚔️ Create Challenge
+            <Icon name="challenge" size={16} /> Create Challenge
           </button>
         </div>
         {challengeUrl && (
@@ -315,7 +316,7 @@ class ProfilePage extends Component {
         {user && configured ? (
           <>
             <div className="account-action-btn" style={{ cursor: 'default' }}>
-              <span>📧</span>
+              <span><Icon name="email" size={16} /></span>
               <span>{user.email}</span>
             </div>
 
@@ -323,7 +324,7 @@ class ProfilePage extends Component {
               className="account-action-btn"
               onClick={() => window.location.hash = '/privacy'}
             >
-              <span>🔒</span>
+              <span><Icon name="privacy" size={16} /></span>
               <span>Privacy Policy</span>
             </button>
 
@@ -331,7 +332,7 @@ class ProfilePage extends Component {
               className="account-action-btn"
               onClick={() => window.location.hash = '/terms'}
             >
-              <span>📄</span>
+              <span><Icon name="terms" size={16} /></span>
               <span>Terms of Service</span>
             </button>
 
@@ -339,13 +340,13 @@ class ProfilePage extends Component {
               className="account-action-btn danger"
               onClick={() => this.setState({ showDeleteConfirm: !showDeleteConfirm })}
             >
-              <span>🗑️</span>
+              <span><Icon name="delete" size={16} /></span>
               <span>Delete Account</span>
             </button>
 
             {showDeleteConfirm && (
               <div className="delete-confirm-dialog">
-                <p>⚠️ This will permanently delete your account and all data. This cannot be undone.</p>
+                <p><Icon name="warning" size={16} /> This will permanently delete your account and all data. This cannot be undone.</p>
                 {isEmailUser && (
                   <div className="form-group">
                     <label>Confirm your password</label>
@@ -386,7 +387,7 @@ class ProfilePage extends Component {
               className="account-action-btn"
               onClick={() => window.location.hash = '/privacy'}
             >
-              <span>🔒</span>
+              <span><Icon name="privacy" size={16} /></span>
               <span>Privacy Policy</span>
             </button>
 
@@ -394,7 +395,7 @@ class ProfilePage extends Component {
               className="account-action-btn"
               onClick={() => window.location.hash = '/terms'}
             >
-              <span>📄</span>
+              <span><Icon name="terms" size={16} /></span>
               <span>Terms of Service</span>
             </button>
           </>
@@ -409,11 +410,11 @@ class ProfilePage extends Component {
     return (
       <div className="profile-page">
         <div className="profile-header">
-          <h2>👤 Profile & Social</h2>
+          <h2><Icon name="profile" size={16} /> Profile & Social</h2>
           <div className="profile-ratings">
-            <span className="profile-rating">♟ Chess: {chessRating}</span>
+            <span className="profile-rating"><Icon name="play" size={16} /> Chess: {chessRating}</span>
             <span className="profile-rating">象棋 Xiangqi: {xiangqiRating}</span>
-            <span className="profile-rating">⚫ Gomoku: {wuziqiRating}</span>
+            <span className="profile-rating"><StoneDot color="black" /> Gomoku: {wuziqiRating}</span>
           </div>
         </div>
 
@@ -424,11 +425,11 @@ class ProfilePage extends Component {
               className={`profile-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => this.setState({ activeTab: tab })}
             >
-              {tab === 'activity' && '📊 Activity'}
-              {tab === 'friends' && '👥 Friends'}
-              {tab === 'notifications' && '🔔 Notifications'}
-              {tab === 'challenge' && '⚔️ Challenge'}
-              {tab === 'account' && '⚙️ Account'}
+              {tab === 'activity' && <><Icon name="chart" size={16} /> Activity</>}
+              {tab === 'friends' && <><Icon name="friends" size={16} /> Friends</>}
+              {tab === 'notifications' && <><Icon name="bell" size={16} /> Notifications</>}
+              {tab === 'challenge' && <><Icon name="challenge" size={16} /> Challenge</>}
+              {tab === 'account' && <><Icon name="settings" size={16} /> Account</>}
             </button>
           ))}
         </div>

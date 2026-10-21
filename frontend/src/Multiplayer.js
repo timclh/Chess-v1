@@ -7,6 +7,7 @@ import { RatingDisplay } from "./components/RatingDisplay";
 import { getRating, recordResult } from "./services/UserRatingService";
 import { GAME_TYPE, RESULT } from "./constants";
 import { MessageActions, SafetyFooter } from "./components/ChatSafety";
+import { Icon } from './components/Icon';
 import {
   filterText,
   getBlockedUsers,
@@ -612,7 +613,7 @@ class Multiplayer extends Component {
                 className={`btn btn-copy full-width ${copySuccess ? 'success' : ''}`}
                 onClick={this.copyInviteLink}
               >
-                {copySuccess ? '✓ Link Copied!' : '🔗 Copy Invite Link'}
+                {copySuccess ? <><Icon name="done" size={16} /> Link Copied!</> : <><Icon name="link" size={16} /> Copy Invite Link</>}
               </button>
             </div>
           )}
@@ -649,10 +650,10 @@ class Multiplayer extends Component {
                 onClick={this.offerDraw}
                 disabled={drawOffered}
               >
-                {drawOffered ? 'Draw Offered' : '🤝 Offer Draw'}
+                {drawOffered ? 'Draw Offered' : <><Icon name="handshake" size={16} /> Offer Draw</>}
               </button>
               <button className="btn btn-danger full-width" onClick={this.resign}>
-                🏳️ Resign
+                <Icon name="flag" size={16} /> Resign
               </button>
             </div>
           )}
@@ -676,7 +677,7 @@ class Multiplayer extends Component {
           {gameOver && inGame && (
             <div className="settings-section">
               <button className="btn btn-primary full-width" onClick={this.requestRematch}>
-                🔄 Rematch
+                <Icon name="reset" size={16} /> Rematch
               </button>
             </div>
           )}

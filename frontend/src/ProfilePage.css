@@ -376,3 +376,6 @@
     flex-direction: column;
   }
 }
+
+/* the active tab's border overlaps the bar by 2px; without this the row grew a vertical scrollbar */
+.profile-tabs { overflow-y: hidden; }

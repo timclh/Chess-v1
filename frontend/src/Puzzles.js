@@ -4,6 +4,7 @@ import { boardCalcWidth, fitBoardWidth } from "./services/ViewportService";
 import Chess from "chess.js";
 import Xiangqi from "./xiangqi";
 import XiangqiBoard from "./XiangqiBoard";
+import { Icon, Stars } from './components/Icon';
 import {
   getStreak,
   recordPuzzleCompletion,
@@ -826,7 +827,7 @@ class Puzzles extends Component {
       <div className="puzzles-container">
         {/* Left Panel - Stats & Navigation */}
         <div className="puzzles-sidebar">
-          <div className="panel-title">🧩 Puzzles / 谜题</div>
+          <div className="panel-title"><Icon name="puzzles" size={16} /> Puzzles / 谜题</div>
 
           {/* Game Type Tabs */}
           <div className="game-type-tabs">
@@ -834,7 +835,7 @@ class Puzzles extends Component {
               className={`game-type-tab ${gameType === 'chess' ? 'active' : ''}`}
               onClick={() => this.switchGameType('chess')}
             >
-              ♟ Chess
+              <Icon name="play" size={16} /> Chess
             </button>
             <button
               className={`game-type-tab ${gameType === 'xiangqi' ? 'active' : ''}`}
@@ -846,7 +847,7 @@ class Puzzles extends Component {
 
           {/* Streak Display */}
           <div className="streak-display">
-            <div className="streak-icon">🔥</div>
+            <div className="streak-icon"><Icon name="streak" size={16} /></div>
             <div className="streak-info">
               <div className="streak-number">{streak}</div>
               <div className="streak-label">Day Streak / 连续天数</div>
@@ -879,19 +880,19 @@ class Puzzles extends Component {
               className={`mode-tab ${viewMode === 'daily' ? 'active' : ''}`}
               onClick={() => this.setViewMode('daily')}
             >
-              📅 Daily / 每日
+              <Icon name="calendar" size={16} /> Daily / 每日
             </button>
             <button
               className={`mode-tab ${viewMode === 'practice' ? 'active' : ''}`}
               onClick={() => this.setViewMode('practice')}
             >
-              🎯 Practice / 练习
+              <Icon name="target" size={16} /> Practice / 练习
             </button>
             <button
               className={`mode-tab ${viewMode === 'stats' ? 'active' : ''}`}
               onClick={() => this.setViewMode('stats')}
             >
-              📊 Stats / 统计
+              <Icon name="chart" size={16} /> Stats / 统计
             </button>
           </div>
 
@@ -932,7 +933,7 @@ class Puzzles extends Component {
                   <span className="puzzle-num">#{index + 1}</span>
                   <span className="puzzle-title">{p.title}</span>
                   <span className="puzzle-difficulty">
-                    {'⭐'.repeat(p.difficulty)}
+                    <Stars count={p.difficulty} />
                   </span>
                   {solvedToday.includes(p.id) && <span className="solved-check">✓</span>}
                 </div>
@@ -951,7 +952,7 @@ class Puzzles extends Component {
                   {category?.icon} {puzzle.title}
                 </div>
                 <div className="puzzle-meta">
-                  <span className="difficulty">{'⭐'.repeat(puzzle.difficulty)}</span>
+                  <span className="difficulty"><Stars count={puzzle.difficulty} /></span>
                   <span className="category-badge">{category?.name}</span>
                 </div>
               </div>
@@ -959,14 +960,14 @@ class Puzzles extends Component {
               {/* Status Message */}
               <div className={`puzzle-status ${puzzleSolved ? 'solved' : ''} ${puzzleFailed ? 'failed' : ''}`}>
                 {puzzleSolved && (
-                  <span>🎉 Solved! / 完成！{ratingDelta !== null && (
+                  <span><Icon name="sparkles" size={16} /> Solved! / 完成！{ratingDelta !== null && (
                     <span className={`rating-delta ${ratingDelta >= 0 ? 'positive' : 'negative'}`}>
                       {' '}({ratingDelta >= 0 ? '+' : ''}{ratingDelta})
                     </span>
                   )}</span>
                 )}
                 {puzzleFailed && (
-                  <span>❌ Wrong! Try again / 错误！再试一次{ratingDelta !== null && (
+                  <span><Icon name="wrong" size={16} /> Wrong! Try again / 错误！再试一次{ratingDelta !== null && (
                     <span className={`rating-delta negative`}>
                       {' '}({ratingDelta})
                     </span>
@@ -1027,13 +1028,13 @@ class Puzzles extends Component {
                   className="btn btn-hint"
                   onClick={this.toggleHint}
                 >
-                  💡 Hint
+                  <Icon name="hint" size={16} /> Hint
                 </button>
                 <button
                   className="btn btn-primary"
                   onClick={this.retryPuzzle}
                 >
-                  🔄 Retry
+                  <Icon name="reset" size={16} /> Retry
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -1057,7 +1058,7 @@ class Puzzles extends Component {
           {/* Stats View */}
           {viewMode === 'stats' && (
             <div className="stats-view">
-              <h2>📊 Puzzle Statistics / 谜题统计</h2>
+              <h2><Icon name="chart" size={16} /> Puzzle Statistics / 谜题统计</h2>
 
               <div className="stats-overview">
                 <div className="stat-card">
@@ -1069,7 +1070,7 @@ class Puzzles extends Component {
                   <div className="stat-big-label">Total Solved / 总完成数</div>
                 </div>
                 <div className="stat-card streak-card">
-                  <div className="stat-big-number">🔥 {streak}</div>
+                  <div className="stat-big-number"><Icon name="streak" size={16} /> {streak}</div>
                   <div className="stat-big-label">Day Streak / 连续天数</div>
                   <div className="stat-sub-label">Best: {streakData.best} / 最高: {streakData.best}</div>
                 </div>
@@ -1095,7 +1096,7 @@ class Puzzles extends Component {
         {/* Right Panel - Progress & Tips */}
         {viewMode !== 'stats' && puzzle && (
           <div className="puzzle-info-panel">
-            <div className="panel-title">💡 About This Puzzle</div>
+            <div className="panel-title"><Icon name="hint" size={16} /> About This Puzzle</div>
 
             {/* Category Info */}
             <div className="category-info">

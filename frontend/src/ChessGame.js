@@ -15,6 +15,7 @@ import { initSound } from "./services/SoundService";
 import { chessMoveFeedback, selectFeedback } from "./services/FeedbackService";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
+import { Icon } from './components/Icon';
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -1094,7 +1095,7 @@ class ChessGame extends Component {
       const modeShort = { ai: 'AI', coach: 'Coach', tutorial: 'Tutorial', human: 'Human' };
       // opponent color/avatar
       const oppColor = playerColor === 'w' ? 'b' : 'w';
-      const oppIcon = gameMode === 'tutorial' ? '📚' : (gameMode === 'human' ? '👤' : '🤖');
+      const oppIcon = <Icon name={gameMode === 'tutorial' ? 'learn' : (gameMode === 'human' ? 'profile' : 'coach')} size={18} />;
       const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `${modeShort[gameMode] || 'AI'} · ${diffLabels[aiDifficulty] || 'Medium'}`;
       const turn = this.game ? this.game.turn() : 'w';
       const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
@@ -1114,7 +1115,7 @@ class ChessGame extends Component {
               title="Exit fullscreen"
               aria-label="Exit fullscreen"
             >
-              ✕
+              <Icon name="close" size={16} />
             </button>
             <div className="fs-top-right">
               {hasCoachContent && (
@@ -1124,7 +1125,7 @@ class ChessGame extends Component {
                   title="Coach"
                   aria-label="Toggle coach"
                 >
-                  💡
+                  <Icon name="hint" size={16} />
                 </button>
               )}
               <button
@@ -1133,7 +1134,7 @@ class ChessGame extends Component {
                 title="Settings"
                 aria-label="Settings"
               >
-                ⚙️
+                <Icon name="settings" size={16} />
               </button>
             </div>
           </div>
@@ -1156,7 +1157,7 @@ class ChessGame extends Component {
               : gameOver
                 ? gameStatus
                 : isPlayerTurn
-                  ? '✋ Your turn'
+                  ? <><Icon name="hand" size={16} /> Your turn</>
                   : `${turn === 'w' ? 'White' : 'Black'} to move`}
           </div>
 
@@ -1181,7 +1182,7 @@ class ChessGame extends Component {
           {/* Self player bar (with turn indicator + rating) */}
           <div className={`fs-player-bar self ${turn === playerColor ? 'active-turn' : ''}`}>
             <span className={`fs-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} />
-            <span className="fs-player-icon">👤</span>
+            <span className="fs-player-icon"><Icon name="profile" size={16} /></span>
             <span className="fs-player-name">You</span>
             <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
           </div>
@@ -1204,7 +1205,7 @@ class ChessGame extends Component {
               title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'Hint'}
               aria-label="Hint"
             >
-              <span className="fs-act-icon">💡</span>
+              <span className="fs-act-icon"><Icon name="hint" size={16} /></span>
             </button>
             <button
               className="fs-action-btn"
@@ -1212,7 +1213,7 @@ class ChessGame extends Component {
               title="New game"
               aria-label="New game"
             >
-              <span className="fs-act-icon">🔄</span>
+              <span className="fs-act-icon"><Icon name="reset" size={16} /></span>
             </button>
           </div>
 
@@ -1220,8 +1221,8 @@ class ChessGame extends Component {
           {showFullscreenCoach && (
             <div className="fullscreen-coach-panel">
               <div className="fullscreen-coach-header">
-                <span>💡 Coach</span>
-                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}>✕</button>
+                <span><Icon name="hint" size={16} /> Coach</span>
+                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}><Icon name="close" size={16} /></button>
               </div>
               <div className="fullscreen-coach-body">
                 {analysis && (
@@ -1242,7 +1243,7 @@ class ChessGame extends Component {
                 )}
                 {lastAIExplanation && (
                   <div className="analysis-section">
-                    <div className="section-label">🤖 AI Move</div>
+                    <div className="section-label"><Icon name="coach" size={16} /> AI Move</div>
                     <div className="ai-explanation-box">{lastAIExplanation}</div>
                   </div>
                 )}
@@ -1317,23 +1318,23 @@ class ChessGame extends Component {
                 className={`mode-btn ${gameMode === "ai" ? "active" : ""}`}
                 onClick={() => this.setGameMode("ai")}
               >
-                🤖 vs AI
+                <Icon name="coach" size={16} /> vs AI
               </button>
               <button
                 className={`mode-btn ${gameMode === "coach" ? "active" : ""}`}
                 onClick={() => this.setGameMode("coach")}
               >
-                📚 Coach
+                <Icon name="learn" size={16} /> Coach
               </button>
               <button
                 className={`mode-btn tutorial-btn ${gameMode === "tutorial" ? "active" : ""}`}
                 onClick={() => this.setGameMode("tutorial")}
               >
-                🎓 Tutorial
+                <Icon name="graduate" size={16} /> Tutorial
               </button>
             </div>
             <div className="online-hint">
-              👥 Want to play vs Human?
+              <Icon name="friends" size={16} /> Want to play vs Human?
               <br />
               Use <strong>Online</strong> mode in the navbar!
             </div>
@@ -1408,7 +1409,7 @@ class ChessGame extends Component {
                   onClick={this.enterRetrospect}
                   disabled={history.length < 4}
                 >
-                  📈 Analyze Game
+                  <Icon name="trend" size={16} /> Analyze Game
                 </button>
               )}
             </div>
@@ -1424,7 +1425,7 @@ class ChessGame extends Component {
                 className="btn btn-secondary full-width"
                 onClick={this.togglePatternLibrary}
               >
-                {showPatternLibrary ? '📊 Show Analysis' : '📚 Pattern Library'}
+                {showPatternLibrary ? <><Icon name="chart" size={16} /> Show Analysis</> : <><Icon name="learn" size={16} /> Pattern Library</>}
               </button>
             </div>
           )}
@@ -1438,7 +1439,7 @@ class ChessGame extends Component {
                 onClick={this.saveCurrentGame}
                 disabled={gameOver || history.length === 0}
               >
-                💾 Save Game
+                <Icon name="save" size={16} /> Save Game
               </button>
               {hasSavedGame && (
                 <>
@@ -1452,7 +1453,7 @@ class ChessGame extends Component {
                     className="btn btn-delete full-width"
                     onClick={this.clearSavedGame}
                   >
-                    🗑️ Delete Save
+                    <Icon name="delete" size={16} /> Delete Save
                   </button>
                 </>
               )}
@@ -1470,7 +1471,7 @@ class ChessGame extends Component {
             const oppColor = playerColor === 'w' ? 'b' : 'w';
             const diffLabels = { 1: 'Easy', 2: 'Medium', 3: 'Hard', 4: 'Expert' };
             const oppName = gameMode === 'tutorial' ? 'Tutorial' : gameMode === 'human' ? 'Opponent' : `AI · ${diffLabels[aiDifficulty] || 'Medium'}`;
-            const oppIcon = gameMode === 'tutorial' ? '📚' : gameMode === 'human' ? '👤' : '🤖';
+            const oppIcon = <Icon name={gameMode === 'tutorial' ? 'learn' : gameMode === 'human' ? 'profile' : 'coach'} size={16} />;
             const lastMove = history.length > 0 ? history[history.length - 1] : null;
             const lastMoveText = lastMove ? `${Math.floor((history.length - 1) / 2) + 1}${history.length % 2 === 1 ? '.' : '…'} ${lastMove.san}` : '';
             const isPlayerTurn = turn === playerColor && !aiThinking && !gameOver;
@@ -1523,7 +1524,7 @@ class ChessGame extends Component {
               title="Enter fullscreen mode"
               aria-label="Enter fullscreen mode"
             >
-              ⛶ Fullscreen
+              <Icon name="expand" size={16} /> Fullscreen
             </button>
           </div>
 
@@ -1534,10 +1535,10 @@ class ChessGame extends Component {
             return (
               <div className={`desk-player-bar self ${turn === playerColor && !gameOver ? 'active-turn' : ''}`}>
                 <span className={`desk-color-dot ${playerColor === 'w' ? 'white' : 'black'}`} aria-hidden="true" />
-                <span className="desk-player-icon" aria-hidden="true">👤</span>
+                <span className="desk-player-icon" aria-hidden="true"><Icon name="profile" size={16} /></span>
                 <span className="desk-player-name">You</span>
                 {isPlayerTurn && (
-                  <span className="desk-your-turn" role="status" aria-live="polite">✋ Your turn</span>
+                  <span className="desk-your-turn" role="status" aria-live="polite"><Icon name="hand" size={16} /> Your turn</span>
                 )}
                 <RatingDisplay gameType={GAME_TYPE.CHESS} compact />
               </div>
@@ -1552,7 +1553,7 @@ class ChessGame extends Component {
                 onClick={this.resetGame}
                 title="New Game"
               >
-                🔄 New
+                <Icon name="reset" size={16} /> New
               </button>
               <button
                 className="tb-btn"
@@ -1568,7 +1569,7 @@ class ChessGame extends Component {
                 disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
                 title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
               >
-                💡 Hint
+                <Icon name="hint" size={16} /> Hint
               </button>
               {(gameOver || history.length >= 4) && (
                 <button
@@ -1577,7 +1578,7 @@ class ChessGame extends Component {
                   disabled={history.length < 4}
                   title="Analyze Game"
                 >
-                  📈 Analyze
+                  <Icon name="trend" size={16} /> Analyze
                 </button>
               )}
             </div>
@@ -1659,7 +1660,7 @@ class ChessGame extends Component {
             {/* AI Explanation */}
             {lastAIExplanation && (
               <div className="analysis-section">
-                <div className="section-label">🤖 AI Move Explanation</div>
+                <div className="section-label"><Icon name="coach" size={16} /> AI Move Explanation</div>
                 <div className="ai-explanation-box">
                   {lastAIExplanation}
                 </div>
@@ -1669,7 +1670,7 @@ class ChessGame extends Component {
             {/* Suggested Moves */}
             {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
               <div className="analysis-section">
-                <div className="section-label">💡 Recommended Moves</div>
+                <div className="section-label"><Icon name="hint" size={16} /> Recommended Moves</div>
                 <div className="suggested-moves-list">
                   {suggestedMoves.map((item, index) => (
                     <div
@@ -1692,7 +1693,7 @@ class ChessGame extends Component {
             {/* Strategic Advice */}
             {strategicAdvice && strategicAdvice.length > 0 && (
               <div className="analysis-section">
-                <div className="section-label">🧠 Strategic Advice / 战略建议</div>
+                <div className="section-label"><Icon name="brain" size={16} /> Strategic Advice / 战略建议</div>
                 <div className="strategic-advice-list">
                   {strategicAdvice.map((advice, index) => (
                     <div key={index} className={`advice-item priority-${advice.priority}`}>
@@ -1718,7 +1719,7 @@ class ChessGame extends Component {
         {/* Right Panel - Tutorial Mode */}
         {gameMode === "tutorial" && currentTutorialLesson && (
           <div className="tutorial-panel-right">
-            <div className="panel-title">🎓 Chess Tutorial</div>
+            <div className="panel-title"><Icon name="graduate" size={16} /> Chess Tutorial</div>
 
             {/* Progress */}
             <div className="tutorial-progress">
@@ -1747,7 +1748,7 @@ class ChessGame extends Component {
               </div>
 
               <div className="lesson-objective">
-                <strong>🎯 目标 / Objective:</strong>
+                <strong><Icon name="target" size={16} /> 目标 / Objective:</strong>
                 <p>{currentTutorialLesson.objective}</p>
                 <p className="objective-en">{currentTutorialLesson.objectiveEn}</p>
               </div>
@@ -1758,7 +1759,7 @@ class ChessGame extends Component {
                   className="hint-toggle-btn"
                   onClick={this.toggleTutorialHint}
                 >
-                  {showTutorialHint ? "🙈 Hide Hint" : "💡 Show Hint"}
+                  {showTutorialHint ? <><Icon name="eye" size={16} /> Hide Hint</> : <><Icon name="hint" size={16} /> Show Hint</>}
                 </button>
                 {showTutorialHint && (
                   <div className="lesson-hint">
@@ -1771,7 +1772,7 @@ class ChessGame extends Component {
               {/* Lesson Complete */}
               {lessonComplete && (
                 <div className="lesson-complete">
-                  <div className="complete-icon">🎉</div>
+                  <div className="complete-icon"><Icon name="sparkles" size={16} /></div>
                   <p>恭喜！你完成了这个课程！</p>
                   <p>Congratulations! You completed this lesson!</p>
                 </div>
@@ -1791,7 +1792,7 @@ class ChessGame extends Component {
                 className="btn btn-primary"
                 onClick={() => this.startTutorial(currentLesson)}
               >
-                🔄 Retry
+                <Icon name="reset" size={16} /> Retry
               </button>
               <button
                 className="btn btn-primary"
@@ -1824,7 +1825,7 @@ class ChessGame extends Component {
         {/* Right Panel - Retrospect Mode */}
         {showRetrospect && !showPatternLibrary && (
           <div className="retrospect-panel-right">
-            <div className="panel-title">📈 Game Analysis / 复盘分析</div>
+            <div className="panel-title"><Icon name="trend" size={16} /> Game Analysis / 复盘分析</div>
 
             {/* Win Probability Timeline */}
             <div className="retrospect-section">
@@ -1937,7 +1938,7 @@ class ChessGame extends Component {
             {/* Best Move Comparison */}
             {retrospectMoveIndex >= 0 && (
               <div className="retrospect-section">
-                <div className="section-label">🎯 Best Move Analysis / 最佳着法分析</div>
+                <div className="section-label"><Icon name="target" size={16} /> Best Move Analysis / 最佳着法分析</div>
                 {retrospectAnalyzing ? (
                   <div className="analyzing-indicator">
                     Analyzing... / 分析中...
@@ -2022,7 +2023,7 @@ class ChessGame extends Component {
                       <div className="moment-change">
                         {moment.change > 0 ? '↑' : '↓'}
                         {Math.round(Math.abs(moment.change) * 100)}%
-                        {moment.isTurningPoint && ' ⚡ Turning Point'}
+                        {moment.isTurningPoint && <> <Icon name="zap" size={14} /> Turning Point</>}
                       </div>
                     </div>
                   ))
@@ -2033,7 +2034,7 @@ class ChessGame extends Component {
             {/* Learning Tips */}
             {learningTips.length > 0 && (
               <div className="retrospect-section">
-                <div className="section-label">💡 Learning Tips / 学习建议</div>
+                <div className="section-label"><Icon name="hint" size={16} /> Learning Tips / 学习建议</div>
                 <div className="learning-tips-list">
                   {learningTips.map((tip, index) => (
                     <div key={index} className={`learning-tip priority-${tip.priority}`}>
@@ -2050,7 +2051,7 @@ class ChessGame extends Component {
         {/* Right Panel - Pattern Library */}
         {showRetrospect && showPatternLibrary && (
           <div className="retrospect-panel-right pattern-library">
-            <div className="panel-title">📚 Pattern Library / 棋型库</div>
+            <div className="panel-title"><Icon name="learn" size={16} /> Pattern Library / 棋型库</div>
 
             <div className="pattern-intro">
               <p>学习这些常见模式可以提升你的棋艺</p>

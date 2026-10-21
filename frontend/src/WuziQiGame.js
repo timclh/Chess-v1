@@ -19,6 +19,7 @@ import { GAME_TYPE, DIFFICULTY, DIFFICULTY_LABEL, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
 import './WuziQiGame.css';
+import { Icon, StoneDot } from './components/Icon';
 
 const MODE = {
   VS_AI: 'vsAI',
@@ -301,7 +302,7 @@ class WuziQiGame extends Component {
       analysis, hintMove,
     } = this.state;
 
-    const turnLabel = turn === BLACK ? '⚫ Black' : '⚪ White';
+    const turnLabel = <><StoneDot color={turn === BLACK ? 'black' : 'white'} /> {turn === BLACK ? 'Black' : 'White'}</>;
     const isPlayerTurn = mode === MODE.VS_HUMAN || turn === playerColor;
 
     return (
@@ -328,13 +329,13 @@ class WuziQiGame extends Component {
                   className={`wuziqi-btn ${mode === MODE.VS_AI ? 'active' : ''}`}
                   onClick={() => this.setMode(MODE.VS_AI)}
                 >
-                  🤖 vs AI
+                  <Icon name="coach" size={16} /> vs AI
                 </button>
                 <button
                   className={`wuziqi-btn ${mode === MODE.VS_HUMAN ? 'active' : ''}`}
                   onClick={() => this.setMode(MODE.VS_HUMAN)}
                 >
-                  👤 vs Human
+                  <Icon name="profile" size={16} /> vs Human
                 </button>
               </div>
             </div>
@@ -366,13 +367,13 @@ class WuziQiGame extends Component {
                     className={`wuziqi-btn ${playerColor === BLACK ? 'active' : ''}`}
                     onClick={() => this.setPlayerColor(BLACK)}
                   >
-                    ⚫ Black (First)
+                    <StoneDot color="black" /> Black (First)
                   </button>
                   <button
                     className={`wuziqi-btn ${playerColor === WHITE ? 'active' : ''}`}
                     onClick={() => this.setPlayerColor(WHITE)}
                   >
-                    ⚪ White
+                    <StoneDot color="white" /> White
                   </button>
                 </div>
               </div>
@@ -381,7 +382,7 @@ class WuziQiGame extends Component {
             {/* Actions */}
             <div className="wuziqi-section">
               <div className="wuziqi-btn-group vertical">
-                <button className="wuziqi-btn action" onClick={this.handleNewGame}>🔄 New Game</button>
+                <button className="wuziqi-btn action" onClick={this.handleNewGame}><Icon name="reset" size={16} /> New Game</button>
                 <button
                   className="wuziqi-btn action"
                   onClick={this.handleUndo}
@@ -390,14 +391,14 @@ class WuziQiGame extends Component {
                   ↩️ Undo
                 </button>
                 <button className="wuziqi-btn action" onClick={this.handleAnalyze}>
-                  📊 Analyze
+                  <Icon name="chart" size={16} /> Analyze
                 </button>
                 <button
                   className="wuziqi-btn action hint-btn"
                   onClick={this.handleHint}
                   disabled={aiThinking || gameOver}
                 >
-                  💡 Hint
+                  <Icon name="hint" size={16} /> Hint
                 </button>
               </div>
             </div>
@@ -425,7 +426,7 @@ class WuziQiGame extends Component {
                 disabled={aiThinking || gameOver}
                 title="Get AI hint"
               >
-                💡 Hint
+                <Icon name="hint" size={16} /> Hint
               </button>
             </div>
 
@@ -450,7 +451,7 @@ class WuziQiGame extends Component {
                   const rowLabel = BOARD_SIZE - m.row;
                   return (
                     <span key={i} className={`move-entry ${m.color === BLACK ? 'black-move' : 'white-move'}`}>
-                      {i + 1}. {m.color === BLACK ? '⚫' : '⚪'}{colLabel}{rowLabel}
+                      {i + 1}. <StoneDot color={m.color === BLACK ? 'black' : 'white'} />{colLabel}{rowLabel}
                     </span>
                   );
                 })}
@@ -463,19 +464,19 @@ class WuziQiGame extends Component {
             {/* Analysis */}
             {analysis && (
               <div className="wuziqi-section analysis-section">
-                <h4>📊 Analysis</h4>
+                <h4><Icon name="chart" size={16} /> Analysis</h4>
                 <p>{analysis.advantage.en}</p>
                 <p>{analysis.advantage.cn}</p>
                 <div className="score-bar">
-                  <span>⚫ {analysis.blackScore}</span>
-                  <span>⚪ {analysis.whiteScore}</span>
+                  <span><StoneDot color="black" /> {analysis.blackScore}</span>
+                  <span><StoneDot color="white" /> {analysis.whiteScore}</span>
                 </div>
               </div>
             )}
 
             {/* Rules */}
             <div className="wuziqi-section rules-section">
-              <h4>📖 Rules 规则</h4>
+              <h4><Icon name="learn" size={16} /> Rules 规则</h4>
               <ul>
                 <li>Black moves first 黑先行</li>
                 <li>Place stones on intersections 落子在交叉点</li>
