@@ -16,6 +16,7 @@ import { chessMoveFeedback, selectFeedback } from "./services/FeedbackService";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
 import { Icon } from './components/Icon';
+import CoachSheet from './components/CoachSheet';
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -530,6 +531,22 @@ class ChessGame extends Component {
     // Tutorial lessons are always played as the side to move, so the learner "wins" them
     const playerColor = this.state.gameMode === "tutorial" ? move.color : this.state.playerColor;
     chessMoveFeedback(this.game, move, playerColor);
+  };
+
+  // One line for the collapsed coach sheet: the best move and who is ahead
+  renderCoachSummary = () => {
+    const { suggestedMoves, analysis, aiThinking } = this.state;
+    if (aiThinking) return <span className="chip">Opponent thinking…</span>;
+    const best = suggestedMoves[0];
+    if (!best || !this.isPlayerTurn()) return analysis ? <span className="chip">{analysis.evaluation}</span> : null;
+    const white = this.state.playerColor === 'w';
+    const chance = analysis ? Math.round((white ? analysis.winProbability.white : analysis.winProbability.black) * 100) : null;
+    return (
+      <>
+        <span className="chip gold">{best.san}</span>
+        {chance !== null && <span className="chip">{chance}%</span>}
+      </>
+    );
   };
 
   isPlayerTurn = () => {
@@ -1219,12 +1236,12 @@ class ChessGame extends Component {
 
           {/* Slide-in Coach Panel */}
           {showFullscreenCoach && (
-            <div className="fullscreen-coach-panel">
-              <div className="fullscreen-coach-header">
-                <span><Icon name="hint" size={16} /> Coach</span>
-                <button className="coach-close-btn" onClick={() => this.setState({ showFullscreenCoach: false })}><Icon name="close" size={16} /></button>
-              </div>
-              <div className="fullscreen-coach-body">
+            <CoachSheet
+              title="Coach"
+              summary={this.renderCoachSummary()}
+              onClose={() => this.setState({ showFullscreenCoach: false })}
+            >
+              <>
                 {analysis && (
                   <div className="analysis-section">
                     <div className="section-label">Win Probability</div>
@@ -1280,8 +1297,8 @@ class ChessGame extends Component {
                 {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
                   <div className="analysis-empty">Play a move to see coach analysis</div>
                 )}
-              </div>
-            </div>
+              </>
+            </CoachSheet>
           )}
 
           {/* Game Result Dialog */}

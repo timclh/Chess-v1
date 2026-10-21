@@ -35,6 +35,7 @@ import {
 } from './services/SoundService';
 import { moveFeedback, selectFeedback } from './services/FeedbackService';
 import { Icon } from './components/Icon';
+import CoachSheet from './components/CoachSheet';
 import { fitXiangqiBoard, boardTiltDegrees } from './services/ViewportService';
 
 const TILT_KEY = 'xiangqi_tilt';
@@ -512,6 +513,21 @@ class XiangqiGame extends Component {
   // Run heavy synchronous work after the browser has painted the "analyzing" state
   _defer = (fn) => {
     requestAnimationFrame(() => setTimeout(fn, 20));
+  };
+
+  // One line for the collapsed coach sheet: the best move and its win chance, or what is happening
+  renderCoachSummary = () => {
+    const { suggestedMoves, coachAnalyzing, engineLoading, aiThinking, playerColor } = this.state;
+    if (aiThinking || !this.game || this.game.turn !== playerColor) return <span className="chip">对手走棋 / Opponent</span>;
+    if (coachAnalyzing) return <span className="chip">{engineLoading ? '引擎启动中…' : '分析中…'}</span>;
+    const best = suggestedMoves[0];
+    if (!best) return null;
+    return (
+      <>
+        <span className="chip gold">{best.san}</span>
+        <span className="chip">{Math.round(best.winProbability * 100)}%</span>
+      </>
+    );
   };
 
   // Shared by coach mode and on-demand hints in AI mode
@@ -1553,19 +1569,13 @@ class XiangqiGame extends Component {
 
           {/* Slide-in coach panel */}
           {showFullscreenCoach && !isTutorial && (
-            <div className="fullscreen-coach-panel">
-              <div className="fullscreen-coach-header">
-                <span><Icon name="hint" size={16} /> 教练 / Coach</span>
-                <button
-                  className="coach-close-btn"
-                  onClick={() => this.setState({ showFullscreenCoach: false })}
-                  aria-label="Close coach"
-                >
-                  <Icon name="close" size={20} />
-                </button>
-              </div>
-              <div className="fullscreen-coach-body">{this.renderCoachBody()}</div>
-            </div>
+            <CoachSheet
+              title="教练 / Coach"
+              summary={this.renderCoachSummary()}
+              onClose={() => this.setState({ showFullscreenCoach: false })}
+            >
+              {this.renderCoachBody()}
+            </CoachSheet>
           )}
 
           {showResultDialog && (
