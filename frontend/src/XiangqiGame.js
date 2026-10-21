@@ -22,7 +22,6 @@ import {
   getTopMovesEngine,
   analyzePositionEngine,
   stopAnalysis,
-  destroyEngine,
   clearAnalysisCache,
 } from './services/XiangqiCoachService';
 import { getRating, recordResult } from './services/UserRatingService';
@@ -305,8 +304,8 @@ class XiangqiGame extends Component {
     if (this._unsubscribeMuted) this._unsubscribeMuted();
     // Save state before unmount
     this.saveGameState();
+    // The engine stays alive for the next visit (start-up is the slow part); just stop searching
     stopAnalysis();
-    destroyEngine();
     this.game = null;
   }
 
