@@ -100,6 +100,7 @@ export async function initCoachEngine() {
     const ok = await fairyStockfishService.init();
     engineReady = ok;
     if (!ok) engineInitFailed = true;
+    if (ok) rememberEngineUse();
     return ok;
   } catch (err) {
     console.error('[XiangqiCoach] Engine init error:', err);
@@ -107,6 +108,52 @@ export async function initCoachEngine() {
     return false;
   }
 }
+
+// ─── Start-up ───────────────────────────────────────────────────────────────
+//
+// Starting the engine downloads the WASM and the 11 MB network and compiles both
+// (about 2 s warm, 13 s cold on the live site). The engine now stays alive after
+// leaving the xiangqi page, and can be started early on signs that it is wanted.
+
+const WARM_FLAG = 'xiangqi_engine_warm';
+let prewarming = false;
+
+function rememberEngineUse() {
+  try { localStorage.setItem(WARM_FLAG, '1'); } catch (_) { /* storage blocked */ }
+}
+
+/** True if this device has used the engine before (so the network is already cached). */
+export function shouldPrewarmOnStart() {
+  try { return localStorage.getItem(WARM_FLAG) === '1'; } catch (_) { return false; }
+}
+
+/**
+ * Start the engine in the background so the first hint does not wait for it.
+ * Does nothing (and costs nothing) if it is already running or cannot run here:
+ * not cross-origin isolated, offline, data saver on, or a slow connection.
+ */
+export function prewarmEngine() {
+  try {
+    if (prewarming || engineReady || engineInitFailed) return;
+    if (typeof window === 'undefined' || !window.crossOriginIsolated) return;
+    if (typeof navigator !== 'undefined') {
+      if (navigator.onLine === false) return;
+      const conn = navigator.connection;
+      if (conn && (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || ''))) return;
+    }
+    prewarming = true;
+    initCoachEngine()
+      .catch(() => {})
+      .then(() => { prewarming = false; });
+  } catch (_) { prewarming = false; }
+}
+
+/** Props for an element that suggests the user is about to play xiangqi (hover, touch, focus). */
+export const prewarmOnIntent = {
+  onPointerEnter: prewarmEngine,
+  onTouchStart: prewarmEngine,
+  onFocus: prewarmEngine,
+};
 
 /**
  * Check if the engine is ready.

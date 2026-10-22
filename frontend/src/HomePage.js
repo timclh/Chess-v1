@@ -8,6 +8,7 @@ import { getStreak, isTodayCompleted } from './services/DailyPuzzleService';
 import { getRating } from './services/UserRatingService';
 import { GAME_TYPE } from './constants';
 import { Icon } from './components/Icon';
+import { prewarmOnIntent } from './services/XiangqiCoachService';
 
 class HomePage extends Component {
   render() {
@@ -28,7 +29,7 @@ class HomePage extends Component {
               <span className="hgc-rating">ELO {chessRating}</span>
             </div>
           </div>
-          <div className="home-game-card hgc-xiangqi" onClick={() => onNavigate('xiangqi')}>
+          <div className="home-game-card hgc-xiangqi" onClick={() => onNavigate('xiangqi')} {...prewarmOnIntent}>
             <div className="hgc-pieces" aria-hidden="true"><span className="hgc-coin r brush">帥</span><span className="hgc-coin b brush">將</span></div>
             <div className="hgc-info">
               <span className="hgc-title brush">象棋</span>

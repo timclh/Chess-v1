@@ -16,6 +16,7 @@ import { PrivacyPolicy, TermsOfService } from "./LegalPages";
 import { AuthProvider } from "./AuthContext";
 import UiFeedbackLoop from "./UiFeedbackLoop";
 import { Icon } from "./components/Icon";
+import { prewarmEngine, shouldPrewarmOnStart, prewarmOnIntent } from "./services/XiangqiCoachService";
 import { isMuted, toggleMuted, onMutedChange, initSound, playSound, SOUND } from "./services/SoundService";
 import { onAuthChange, logout, isFirebaseConfigured } from "./firebase";
 
@@ -62,6 +63,8 @@ class AppContent extends Component {
 
   componentDidMount() {
     initSound();
+    // Returning xiangqi players: start the engine once the app has settled
+    if (shouldPrewarmOnStart()) this.prewarmTimer = setTimeout(prewarmEngine, 3000);
     this.unsubscribeMuted = onMutedChange((soundMuted) => this.setState({ soundMuted }));
 
     // Listen for auth changes
@@ -85,6 +88,7 @@ class AppContent extends Component {
       this.unsubscribe();
     }
     if (this.unsubscribeMuted) this.unsubscribeMuted();
+    clearTimeout(this.prewarmTimer);
     window.removeEventListener('hashchange', this.handleHashChange);
     window.removeEventListener('beforeinstallprompt', this.handleInstallPrompt);
     window.removeEventListener('online', this.handleOnline);
@@ -233,7 +237,7 @@ class AppContent extends Component {
         {isGamePage && (
           <div className="sub-nav-bar">
             <button className={`sub-nav-btn ${currentPage === 'game' ? 'active' : ''}`} onClick={() => this.navigateTo('game')}><Icon name="play" size={16} /> Chess</button>
-            <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')}><span className="brush">象棋</span> Xiangqi</button>
+            <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')} {...prewarmOnIntent}><span className="brush">象棋</span> Xiangqi</button>
             <button className={`sub-nav-btn ${currentPage === 'wuziqi' ? 'active' : ''}`} onClick={() => this.navigateTo('wuziqi')}><Icon name="games" size={16} /> Gomoku</button>
           </div>
         )}
