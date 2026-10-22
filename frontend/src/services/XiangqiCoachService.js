@@ -16,6 +16,7 @@ import fairyStockfishService, {
   toUCIMove,
 } from './FairyStockfishService';
 import { PIECE_NAMES } from '../xiangqi';
+import { canRunEngine } from './EngineSupport';
 
 // Whether the engine has been successfully initialized
 let engineReady = false;
@@ -24,7 +25,16 @@ let engineInitFailed = false;
 // ─── Position Cache (LRU) ───────────────────────────────────────────────────
 
 const CACHE_MAX_SIZE = 200;   // Max cached positions
-const CACHE_DEEP_THRESHOLD = 14; // Only cache results >= this depth (reliable)
+const CACHE_DEEP_THRESHOLD = 12; // Only cache results >= this depth (reliable); a settled coach search stops at 12+
+
+// The coach's search budget. With the xiangqi network the best move after 0.5 s matched
+// the one after 10 s in 93 % of 30 positions, so the search ends as soon as the best move
+// has been the same for 3 depths (never before 0.6 s / depth 12) and is capped at 2.5 s
+// for positions where it keeps changing. It used to always run the full 6 s.
+export const COACH_SEARCH = {
+  maxMs: 2500,
+  earlyStop: { minMs: 600, minDepth: 12, stableDepths: 3 },
+};
 
 class PositionCache {
   constructor(maxSize = CACHE_MAX_SIZE) {
@@ -135,12 +145,7 @@ export function shouldPrewarmOnStart() {
 export function prewarmEngine() {
   try {
     if (prewarming || engineReady || engineInitFailed) return;
-    if (typeof window === 'undefined' || !window.crossOriginIsolated) return;
-    if (typeof navigator !== 'undefined') {
-      if (navigator.onLine === false) return;
-      const conn = navigator.connection;
-      if (conn && (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || ''))) return;
-    }
+    if (!canRunEngine()) return;
     prewarming = true;
     initCoachEngine()
       .catch(() => {})
@@ -182,7 +187,7 @@ export function isNetworkActive() {
  * @param {object} options - { skillLevel: 0-20 (default 20 = GM strength) }
  * @returns {Promise<Array>} Suggested moves
  */
-export async function getTopMovesEngine(game, n = 3, moveHistory = [], options = {}) {
+export async function getTopMovesEngine(game, n = 2, moveHistory = [], options = {}) {
   if (!engineReady) {
     return []; // Caller should fall back to built-in AI
   }
@@ -190,6 +195,27 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
   const {
     skillLevel = 20, // Default to max strength for coach mode
   } = options;
+
+  // A hint asked for while the same position is already being analysed (a prefetch
+  // after the opponent's move, or a double tap) joins that search instead of
+  // restarting it - a restart would throw away what the engine has found so far.
+  if (skillLevel >= 15) {
+    const key = `${game.toFEN()}|${game.turn}|${n}`;
+    const running = inflight.get(key);
+    if (running) return running;
+    const search = computeTopMovesEngine(game, n, options);
+    inflight.set(key, search);
+    const done = () => { if (inflight.get(key) === search) inflight.delete(key); };
+    search.then(done, done);
+    return search;
+  }
+  return computeTopMovesEngine(game, n, options);
+}
+
+const inflight = new Map();
+
+async function computeTopMovesEngine(game, n, options) {
+  const { skillLevel = 20 } = options;
 
   const fen = game.toFEN();
   const turn = game.turn;
@@ -242,28 +268,30 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
     // Adjust depth/time based on skill level
     // WASM is single-threaded, so depth ≈ time-limited.
     // The key is keeping a big gap between AI opponent and coach.
-    // Coach (skill 20): depth 30 cap, 6s — still far deeper than the opponent
+    // Coach (skill 20): stops as soon as its answer has settled (usually about a second),
+    // at most COACH_SEARCH.maxMs — still far deeper than the opponent
     // AI opponent (skill 1-9): depth 10-12, 0.5-1.5s — intentionally shallow
-    // (15s made every hint feel hung: the panel sat on "analyzing" for a quarter of a minute)
-    let depth, timeMs;
+    // (15s made every hint feel hung: the panel sat on "analyzing" for a quarter of a minute;
+    // 6s with the network still did, and measurably bought nothing — see COACH_SEARCH)
+    let depth, timeMs, earlyStop = null;
     if (skillLevel >= 15) {
-      // Coach mode — deep analysis, but bounded so the hint panel stays responsive
       depth = 30;
-      timeMs = 6000;
+      timeMs = COACH_SEARCH.maxMs;
+      earlyStop = COACH_SEARCH.earlyStop;
     } else {
       // AI opponent — keep shallow so coach is noticeably stronger
       depth = 8 + Math.floor(skillLevel / 2);   // skill 1→8, skill 7→11
       timeMs = 500 + skillLevel * 100;            // skill 1→600ms, skill 7→1200ms
     }
     
-    const numLines = n === 1 ? 1 : Math.min(n, legalMoves.length);
+    const numLines = Math.max(1, Math.min(n, legalMoves.length));
 
-    
     const result = await fairyStockfishService.analyze(fen, turn, {
       depth: depth,
       timeMs: timeMs,
       numLines: numLines,
       skillLevel: skillLevel,
+      earlyStop,
       // Hints and the coach get the strong network evaluation; the opponent AI keeps
       // its familiar classical-eval strength so the difficulty levels stay beatable.
       useNNUE: skillLevel >= 15,
@@ -274,6 +302,11 @@ export async function getTopMovesEngine(game, n = 3, moveHistory = [], options =
     // A newer request replaced this one before it started. Not an engine
     // failure: signal "drop it" (null) rather than "fall back" ([]).
     if (result && result.superseded) {
+      return null;
+    }
+
+    // The board moved on while the engine was thinking: this answer is for another position
+    if (game.toFEN() !== fen || game.turn !== turn) {
       return null;
     }
 

@@ -8466,3 +8466,58 @@ svg.lucide { vertical-align: -0.2em; flex: none; }
 @media (prefers-reduced-motion: reduce) {
   .coach-sheet { animation: none; transition: none; }
 }
+
+/* ── Chess 3D: the same tilt as xiangqi, via TiltStage around the chessboardjsx board ── */
+.tilt-stage { position: relative; }
+.tilt-stage.tilted .tilt-stage-board { transition: transform var(--dur-4) var(--ease-decelerate); }
+/* each piece stands a little off the board: a short stack of hard shadows for its edge,
+   then a soft one on the squares */
+.tilt-stage.tilted [data-squareid] svg {
+  filter:
+    drop-shadow(0 1px 0 rgba(30, 18, 8, 0.7))
+    drop-shadow(0 2px 0 rgba(30, 18, 8, 0.55))
+    drop-shadow(0 5px 3px rgba(0, 0, 0, 0.45));
+}
+.fs-tilt-btn.active { color: var(--gold-400); }
+
+/* "Analyzing…" while the recommended moves are worked out */
+.analysis-pending {
+  color: var(--text-muted, #94a3b8);
+  font-style: italic;
+  padding: 6px 2px;
+  animation: analysis-pending-pulse 1.2s ease-in-out infinite;
+}
+@keyframes analysis-pending-pulse { 50% { opacity: 0.45; } }
+@media (prefers-reduced-motion: reduce) {
+  .tilt-stage.tilted .tilt-stage-board { transition: none; }
+  .analysis-pending { animation: none; }
+}
+
+/* ── Coach panel: nothing moves while the coach thinks ──
+   Placeholder cards have the size of real suggestions, and the win bar keeps its place,
+   so the panel (and the page, when it is scrolled to the bottom) does not jump. */
+.suggestion.skeleton { cursor: default; pointer-events: none; }
+.skeleton-text {
+  color: transparent !important;
+  background: rgba(120, 130, 150, 0.24) !important;
+  border-radius: 4px;
+  user-select: none;
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+}
+.suggestion.skeleton .suggestion-move .san { flex: 0 1 auto; }
+.suggestion.skeleton .suggestion-move .win-prob { margin-left: auto; }
+@keyframes skeleton-pulse { 50% { opacity: 0.5; } }
+.analysis-section.pending .win-probability { opacity: 0.55; }
+.coach-status {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-text, .coach-status { animation: none; }
+}
+.analysis-section.pending .ai-explanation-box { opacity: 0.55; }
+.analysis-section.pending .threat-item { opacity: 0.55; }

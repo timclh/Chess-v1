@@ -1,7 +1,7 @@
 /**
  * Fairy-Stockfish WASM Service
  * 
- * Wraps the Fairy-Stockfish WASM engine for Xiangqi analysis.
+ * Wraps the Fairy-Stockfish WASM engine for Xiangqi analysis (and standard chess hints).
  * Uses a Web Worker to avoid blocking the UI thread.
  * Handles FEN translation between our notation (h/e/s) and
  * standard Xiangqi notation used by Fairy-Stockfish (n/b/p).
@@ -123,18 +123,46 @@ class FairyStockfishService {
     this._idleWaiters = [];
     this._analysisChain = Promise.resolve();
     this._requestSeq = 0;
+    this._variant = 'xiangqi'; // what the engine is currently set to play (see _analyzeNow)
+    this._networkPromise = null; // the one attempt to load the xiangqi network
+    this._networkLoading = null; // set while that attempt is running
+    this._early = null; // early-stop bookkeeping of the running search (see _maybeStopEarly)
   }
 
   /**
    * Initialize the engine. Returns a promise that resolves when ready.
    * Safe to call multiple times — only initializes once.
+   *
+   * The xiangqi network (11 MB) is only fetched when `network` is true, so a game
+   * that does not need it (chess) can have the engine without the download. A later
+   * call with `network: true` loads it then.
    */
-  async init() {
-    if (this.ready) return true;
-    if (this._initPromise) return this._initPromise;
+  async init({ network = true } = {}) {
+    if (!this.ready) {
+      if (!this._initPromise) this._initPromise = this._doInit();
+      if (!(await this._initPromise)) return false;
+    }
+    if (network) await this._ensureNetwork();
+    return true;
+  }
 
-    this._initPromise = this._doInit();
-    return this._initPromise;
+  /** Load the xiangqi network once; resolves to whether the engine is using it. */
+  _ensureNetwork() {
+    if (!this._networkPromise) {
+      this._networkLoading = (async () => {
+        // Never in the middle of someone else's search, and only the xiangqi engine says
+        // whether it took the network
+        await this._waitUntilIdle();
+        await this._useVariant('xiangqi');
+        const ok = await this._loadNetwork();
+        this.nnueActive = ok;
+        return ok;
+      })();
+      this._networkPromise = this._networkLoading;
+      const done = () => { this._networkLoading = null; };
+      this._networkLoading.then(done, done);
+    }
+    return this._networkPromise;
   }
 
   async _doInit() {
@@ -226,9 +254,6 @@ class FairyStockfishService {
       this._send('setoption name MultiPV value 3');
       await this._sendAndWait('isready', 'readyok');
 
-      // Stronger evaluation if the network can be had; never fatal
-      this.nnueActive = await this._loadNetwork();
-
       this.ready = true;
       this.initializing = false;
 
@@ -286,8 +311,10 @@ class FairyStockfishService {
    */
   _loadEngineScript() {
     return new Promise(async (resolve, reject) => {
-      // Check if already loaded
-      if (window.Stockfish) {
+      // Already loaded by this instance. (A script left on the page by an earlier instance,
+      // e.g. after a hot reload in development, is not enough: the engine's worker needs
+      // this instance's blob URL, or it tries to import a relative URL and never starts.)
+      if (window.Stockfish && this._engineScriptBlobUrl) {
         resolve(window.Stockfish);
         return;
       }
@@ -382,6 +409,7 @@ class FairyStockfishService {
       const parts = line.split(' ');
       this._bestMove = parts[1] || null;
       this._searching = false;
+      this._early = null;
 
       // Resolve the current analysis promise
       if (this._currentAnalysis) {
@@ -412,9 +440,14 @@ class FairyStockfishService {
     let scoreType = 'cp'; // cp or mate
     let pvMoves = [];
     let multipv = 1;
+    let isBound = false;
 
     for (let i = 0; i < tokens.length; i++) {
       switch (tokens[i]) {
+        case 'lowerbound':
+        case 'upperbound':
+          isBound = true; // a re-search is still narrowing this score: not a result yet
+          break;
         case 'depth':
           depth = parseInt(tokens[i + 1]);
           break;
@@ -433,7 +466,7 @@ class FairyStockfishService {
       }
     }
 
-    if (depth !== null && pvMoves.length > 0) {
+    if (depth !== null && pvMoves.length > 0 && !isBound) {
       this._depth = Math.max(this._depth || 0, depth);
 
       // Keep network scores on the classical scale (mate scores are not centipawns)
@@ -454,6 +487,35 @@ class FairyStockfishService {
       if (multipv === 1) {
         this._score = lineData.score;
       }
+
+      // The engine reports all lines of an iteration together, so the last one means
+      // every line is now at this depth
+      if (multipv === (this._early ? this._early.numLines : 1)) {
+        this._maybeStopEarly(depth);
+      }
+    }
+  }
+
+  /**
+   * Cut a search short once more thinking is unlikely to change the answer: the best
+   * move was the same for the last `stableDepths` completed depths, the search ran for
+   * at least `minMs` and reached `minDepth`. Measured with the xiangqi network on 30
+   * middlegame positions, the best move after 0.5 s matched the one after 10 s in 93 %
+   * of them (10 s itself differed from 5 s in 13 %: near-equal moves swap places), so
+   * the extra seconds mostly bought nothing.
+   */
+  _maybeStopEarly(depth) {
+    const e = this._early;
+    if (!e || e.stopped) return;
+    const line = this._multiPVLines[0];
+    if (!line || !line.pv || line.pv.length === 0) return;
+
+    e.history.push(line.pv[0]);
+    if (Date.now() - e.startedAt < e.minMs || depth < e.minDepth) return;
+    const recent = e.history.slice(-e.stableDepths);
+    if (recent.length === e.stableDepths && recent.every((m) => m === recent[0])) {
+      e.stopped = true;
+      this._send('stop');
     }
   }
 
@@ -462,13 +524,16 @@ class FairyStockfishService {
    *
    * @param {string} ourFen - FEN in our notation (rheakaehr…)
    * @param {string} turn - 'r' or 'b'
-   * @param {object} options - { depth, timeMs, numLines, skillLevel }
+   * @param {object} options - { depth, timeMs, numLines, skillLevel, useNNUE, variant, earlyStop }
    *   - skillLevel: 0-20 (0=weakest, 20=strongest), default 20 for full strength
+   *   - variant: 'xiangqi' (default, `ourFen` in our notation) or 'chess' (a standard FEN)
+   *   - earlyStop: { minMs, minDepth, stableDepths } stops before `timeMs` once the best
+   *     move has stayed the same for `stableDepths` depths (see _maybeStopEarly)
    * @returns {Promise<{bestMove, lines, depth, score}>}
    */
   async analyze(ourFen, turn = 'r', options = {}) {
     if (!this.ready) {
-      const ok = await this.init();
+      const ok = await this.init({ network: options.variant !== 'chess' });
       if (!ok) throw new Error('Engine failed to initialize');
     }
 
@@ -476,7 +541,7 @@ class FairyStockfishService {
     // cut the running search short so its (now stale) result comes back fast,
     // and run requests strictly one at a time so replies cannot be mixed up.
     const id = ++this._requestSeq;
-    this.stop();
+    if (!this._networkLoading) this.stop(); // loading the network is not a search to cut short
     const run = () => {
       if (id !== this._requestSeq) {
         // A newer request was queued while we waited; it is in charge now.
@@ -509,6 +574,20 @@ class FairyStockfishService {
     });
   }
 
+  /**
+   * Point the engine at a variant. The transposition table is shared by all of them,
+   * so it is cleared on a switch: entries left by the other variant skew the first
+   * search (measured: a xiangqi search right after a chess one scored +53 instead of
+   * +7 with the network).
+   */
+  async _useVariant(variant) {
+    if (variant === this._variant) return;
+    this._send(`setoption name UCI_Variant value ${variant}`);
+    this._send('ucinewgame');
+    await this._sendAndWait('isready', 'readyok');
+    this._variant = variant;
+  }
+
   async _analyzeNow(ourFen, turn, options) {
     const {
       depth = 18,
@@ -516,17 +595,24 @@ class FairyStockfishService {
       numLines = 3,
       skillLevel = 20, // Default to max strength (GM level)
       useNNUE = true, // the opponent AI passes false to keep its familiar strength
+      variant = 'xiangqi', // 'chess' takes a standard FEN as is
+      earlyStop = null, // { minMs, minDepth, stableDepths }: stop once the best move has settled
     } = options;
 
     // The previous search must be completely finished (its bestmove consumed)
     // before we reset state and start ours.
     await this._waitUntilIdle();
+    // A network is still being loaded: it owns the engine until it is done
+    if (this._networkLoading) await this._networkLoading.catch(() => {});
+
+    await this._useVariant(variant);
 
     // Reset analysis state
     this._multiPVLines = [];
     this._bestMove = null;
     this._depth = 0;
     this._score = null;
+    this._early = earlyStop ? { ...earlyStop, numLines, startedAt: Date.now(), history: [], stopped: false } : null;
 
     // Set skill level (0-20, where 20 is strongest)
     // Skill level controls how "human-like" the engine plays
@@ -534,18 +620,20 @@ class FairyStockfishService {
     this._send(`setoption name Skill Level value ${clampedSkill}`);
 
 
-    // Network or classical evaluation for this search (only if the network is loaded)
-    if (this.nnueActive && this._nnueOn !== useNNUE) {
+    // Network or classical evaluation for this search (only if the network is loaded;
+    // it is a xiangqi network, chess always searches with the classical evaluation)
+    const xiangqi = variant === 'xiangqi';
+    if (xiangqi && this.nnueActive && this._nnueOn !== useNNUE) {
       this._send(`setoption name Use NNUE value ${useNNUE}`);
       this._nnueOn = useNNUE;
     }
-    this._scoreDivisor = this.nnueActive && this._nnueOn ? NNUE_SCORE_DIVISOR : 1;
+    this._scoreDivisor = xiangqi && this.nnueActive && this._nnueOn ? NNUE_SCORE_DIVISOR : 1;
 
     // Set MultiPV
     this._send(`setoption name MultiPV value ${numLines}`);
 
     // Set position
-    const fairyFen = toFairySF_FEN(ourFen, turn);
+    const fairyFen = xiangqi ? toFairySF_FEN(ourFen, turn) : ourFen;
 
     this._send(`position fen ${fairyFen}`);
 
@@ -607,6 +695,10 @@ class FairyStockfishService {
     this._evalMode = null;
     this._scoreDivisor = 1;
     this._initPromise = null;
+    this._variant = 'xiangqi';
+    this._networkPromise = null;
+    this._networkLoading = null;
+    this._early = null;
     this._searching = false;
     const waiters = this._idleWaiters;
     this._idleWaiters = [];

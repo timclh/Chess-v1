@@ -10,13 +10,32 @@ import { saveGameResult, saveGameState, loadGameState, hasSavedGame, deleteSaved
 import { getRating, recordResult } from "./services/UserRatingService";
 import { getOpeningBookMoves, detectOpening } from "./services/PatternService";
 import { GAME_TYPE, RESULT } from "./constants";
-import { fitSquare, autoResize, chessBoardOptions } from "./services/ViewportService";
+import { fitSquare, autoResize, chessBoardOptions, boardTiltDegrees } from "./services/ViewportService";
 import { initSound } from "./services/SoundService";
 import { chessMoveFeedback, selectFeedback } from "./services/FeedbackService";
 import { RatingDisplay } from "./components/RatingDisplay";
 import { GameResultDialog } from "./components/GameResultDialog";
 import { Icon } from './components/Icon';
 import CoachSheet from './components/CoachSheet';
+import TiltStage from './components/TiltStage';
+import { SuggestionSkeleton, StableHeight } from './components/CoachLayout';
+import { prewarmChessEngine, isChessEngineReady, getTopMovesEngineChess } from './services/ChessCoachService';
+
+// How long a recommendation waits for the engine to finish starting before the
+// built-in search answers instead (the engine then refreshes it)
+const ENGINE_WAIT_MS = 4000;
+
+// 3D (tilted) or flat board; 3D unless the player switched it off
+const TILT_KEY = 'chess_tilt';
+const readTiltPref = () => {
+  try { return localStorage.getItem(TILT_KEY) !== 'off'; } catch (_) { return true; }
+};
+
+// The board's edge and the shadow it casts on the table, when tilted
+const TILTED_BOARD_STYLE = {
+  borderRadius: '4px',
+  boxShadow: '0 0 0 6px var(--walnut-700), 0 14px 0 2px var(--walnut-900), 0 30px 34px rgba(0, 0, 0, 0.55)',
+};
 
 // Tutorial lessons for beginners
 const TUTORIAL_LESSONS = [
@@ -207,9 +226,13 @@ class ChessGame extends Component {
     isFullscreen: typeof window !== 'undefined' && window.innerWidth <= 820,
     showFullscreenCoach: false,
     boardWidth: fitSquare(chessBoardOptions()),
+    coachAnalyzing: false, // the recommended moves are being worked out
+    tiltOn: readTiltPref(),
   };
 
   game = null;
+  _engineLoading = false;
+  _pendingAnalysis = false;
 
   componentDidMount() {
     this.game = new Chess();
@@ -219,6 +242,15 @@ class ChessGame extends Component {
       hasSavedGame: hasSavedGame(),
     });
     this.updateGameStatus();
+    // Start the engine that works out the recommended moves (does nothing where it cannot run)
+    this._engineLoading = true;
+    prewarmChessEngine().then((ok) => {
+      this._engineLoading = false;
+      if (!this.game) return;
+      // Something was waiting for the engine: redo it now, with the engine or, if it could
+      // not start, with the built-in search straight away
+      if (this._pendingAnalysis) this.updateAnalysis();
+    });
     this.updateAnalysis();
     // Responsive board sizing — auto-fit to available viewport
     this._cleanupResize = autoResize(
@@ -229,6 +261,7 @@ class ChessGame extends Component {
 
   componentWillUnmount() {
     this.game = null;
+    clearTimeout(this._engineWaitTimer);
     if (this._cleanupResize) {
       this._cleanupResize();
     }
@@ -238,47 +271,12 @@ class ChessGame extends Component {
     if (!this.game) return;
     if (this.state.gameMode !== "coach" && this.state.gameMode !== "ai") return;
 
-    const analysis = analyzePosition(this.game);
-    // Use at least depth 3 for decent suggestions
-    const depth = Math.max(3, this.state.aiDifficulty);
-    let suggestedMoves = getTopMoves(this.game, 3, depth);
+    // The quick built-in read of the position shows at once; the recommended moves follow
+    // from the engine (or the built-in search) a moment later
     const strategicAdvice = getStrategicAdvice(this.game);
 
-    // Enhance with opening book in the first 12 moves
     const historyMoves = this.game.history();
     if (historyMoves.length < 12) {
-      const bookMoves = getOpeningBookMoves(historyMoves);
-      if (bookMoves.length > 0) {
-        // Boost book moves to the top if they appear in suggestions
-        const boosted = [];
-        const remaining = [];
-        for (const sm of suggestedMoves) {
-          if (bookMoves.includes(sm.san?.replace(/[+#!?]/g, ''))) {
-            sm.explanation = '📖 Opening book: ' + (sm.explanation || sm.san);
-            boosted.push(sm);
-          } else {
-            remaining.push(sm);
-          }
-        }
-        // If no engine moves match the book, add the first book move as a suggestion
-        if (boosted.length === 0 && bookMoves.length > 0) {
-          const legalMoves = this.game.moves({ verbose: true });
-          const bookLegal = legalMoves.find(m => bookMoves.includes(m.san.replace(/[+#!?]/g, '')));
-          if (bookLegal) {
-            boosted.push({
-              rank: 0,
-              san: bookLegal.san,
-              move: bookLegal,
-              winProbability: 0.55,
-              explanation: '📖 Opening book move',
-            });
-          }
-        }
-        suggestedMoves = [...boosted, ...remaining].slice(0, 3);
-        // Re-number ranks
-        suggestedMoves.forEach((m, i) => m.rank = i + 1);
-      }
-
       // Detect current opening
       const opening = detectOpening(GAME_TYPE.CHESS, historyMoves);
       if (opening && !strategicAdvice.find(a => a.type === 'opening')) {
@@ -291,12 +289,122 @@ class ChessGame extends Component {
       }
     }
 
-    this.setState({ analysis, suggestedMoves, strategicAdvice });
+    clearTimeout(this._engineWaitTimer);
+    this._pendingAnalysis = false;
 
-    // Highlight suggested move squares (coach mode only, to avoid clutter in AI)
-    if (this.state.gameMode === "coach" && this.state.showHints && suggestedMoves.length > 0) {
+    // Recommendations are for the player to move; while the opponent thinks there is nothing to show
+    if (!this.isPlayerTurn() || this.game.game_over()) {
+      this.setState({ analysis: analyzePosition(this.game), strategicAdvice, suggestedMoves: [], coachAnalyzing: false });
+      return;
+    }
+
+    // With the engine on its way its evaluation replaces the previous one when it arrives;
+    // the built-in guess in between made the win bar swing. Without it the guess is the answer.
+    const engineComing = isChessEngineReady() || this._engineLoading;
+    this.setState({
+      ...(engineComing ? null : { analysis: analyzePosition(this.game) }),
+      strategicAdvice,
+      suggestedMoves: [],
+      coachAnalyzing: true,
+    });
+    const key = this.game.fen();
+
+    if (isChessEngineReady()) {
+      this._suggestWithEngine(key);
+    } else if (this._engineLoading) {
+      // The engine is still starting. Give it a few seconds rather than answering with
+      // the much weaker built-in search. If it is slower than that, show the built-in
+      // answer meanwhile; _pendingAnalysis stays set so the engine redoes it once it is up.
+      this._pendingAnalysis = true;
+      this._engineWaitTimer = setTimeout(() => this._suggestBuiltin(key), ENGINE_WAIT_MS);
+    } else {
+      // No engine here: the built-in search is synchronous, so let "analyzing" paint first
+      requestAnimationFrame(() => setTimeout(() => this._suggestBuiltin(key), 20));
+    }
+  };
+
+  _suggestWithEngine = async (key) => {
+    let engineMoves;
+    try {
+      engineMoves = await getTopMovesEngineChess(this.game, 2);
+    } catch (err) {
+      engineMoves = [];
+    }
+    // Unmounted, the board moved on, or a newer request replaced this one
+    if (!this.game || this.game.fen() !== key || engineMoves === null) return;
+    if (!engineMoves || engineMoves.length === 0) {
+      this._suggestBuiltin(key);
+      return;
+    }
+    // The position's evaluation comes from the same search as the moves (White's view)
+    const analysis = analyzePosition(this.game, engineMoves[0].score);
+    this._finishSuggestions(key, engineMoves, { analysis });
+  };
+
+  // The built-in search looks only two moves ahead: three took 5-50 s and froze the page.
+  // It is the fallback where the engine cannot run.
+  _suggestBuiltin = (key) => {
+    if (!this.game || this.game.fen() !== key) return;
+    this._finishSuggestions(key, getTopMoves(this.game, 2, 2), { analysis: analyzePosition(this.game) });
+  };
+
+  _finishSuggestions = (key, found, extra = {}) => {
+    if (!this.game || this.game.fen() !== key) return;
+    let suggestedMoves = found;
+
+    // Enhance with opening book in the first 12 moves
+    const historyMoves = this.game.history();
+    if (historyMoves.length < 12) {
+      const bookMoves = getOpeningBookMoves(historyMoves);
+      if (bookMoves.length > 0) {
+        // Boost book moves to the top if they appear in suggestions
+        const boosted = [];
+        const remaining = [];
+        for (const sm of suggestedMoves) {
+          if (bookMoves.includes(sm.san?.replace(/[+#!?]/g, ''))) {
+            boosted.push({ ...sm, explanation: '📖 Opening book: ' + (sm.explanation || sm.san) });
+          } else {
+            remaining.push(sm);
+          }
+        }
+        // If no engine moves match the book, add the first book move as a suggestion
+        if (boosted.length === 0) {
+          const legalMoves = this.game.moves({ verbose: true });
+          const bookLegal = legalMoves.find(m => bookMoves.includes(m.san.replace(/[+#!?]/g, '')));
+          if (bookLegal) {
+            boosted.push({
+              rank: 0,
+              san: bookLegal.san,
+              move: bookLegal,
+              winProbability: 0.55,
+              explanation: '📖 Opening book move',
+            });
+          }
+        }
+        suggestedMoves = [...boosted, ...remaining].slice(0, 2);
+        // Re-number ranks
+        suggestedMoves = suggestedMoves.map((m, i) => ({ ...m, rank: i + 1 }));
+      }
+    }
+
+    this.setState({ ...extra, suggestedMoves, coachAnalyzing: false }, () => this.refreshSuggestionHighlight());
+  };
+
+  toggleTilt = () => {
+    const tiltOn = !this.state.tiltOn;
+    try { localStorage.setItem(TILT_KEY, tiltOn ? 'on' : 'off'); } catch (_) { /* storage blocked */ }
+    this.setState({ tiltOn });
+  };
+
+  // Highlight the best move's squares (coach mode only, to avoid clutter in AI), or clear
+  refreshSuggestionHighlight = () => {
+    const { gameMode, showHints, suggestedMoves, pieceSquare } = this.state;
+    if (pieceSquare) return; // a selected piece's moves are showing
+    if (gameMode === "coach" && showHints && suggestedMoves.length > 0 && this.isPlayerTurn()) {
       const bestMove = suggestedMoves[0].move;
       this.highlightSuggestedMove(bestMove.from, bestMove.to);
+    } else {
+      this.removeHighlightSquare();
     }
   };
 
@@ -535,8 +643,9 @@ class ChessGame extends Component {
 
   // One line for the collapsed coach sheet: the best move and who is ahead
   renderCoachSummary = () => {
-    const { suggestedMoves, analysis, aiThinking } = this.state;
+    const { suggestedMoves, analysis, aiThinking, coachAnalyzing } = this.state;
     if (aiThinking) return <span className="chip">Opponent thinking…</span>;
+    if (coachAnalyzing && this.isPlayerTurn()) return <span className="chip">Analyzing…</span>;
     const best = suggestedMoves[0];
     if (!best || !this.isPlayerTurn()) return analysis ? <span className="chip">{analysis.evaluation}</span> : null;
     const white = this.state.playerColor === 'w';
@@ -560,72 +669,76 @@ class ChessGame extends Component {
     if (this.state.gameMode === "tutorial" && this.state.lessonComplete) return;
     if (!this.isPlayerTurn()) return;
 
-    this.setState(({ pieceSquare }) => {
-      if (pieceSquare === square) {
+    // Side effects (moving, highlighting, sound) happen here, not inside a state updater,
+    // which React expects to be pure
+    const { pieceSquare } = this.state;
+
+    if (pieceSquare === square) {
+      this.removeHighlightSquare();
+      if (this.state.gameMode === "coach") {
+        setTimeout(this.refreshSuggestionHighlight, 0);
+      }
+      this.setState({ pieceSquare: "" });
+      return;
+    }
+
+    if (pieceSquare) {
+      const move = this.game.move({
+        from: pieceSquare,
+        to: square,
+        promotion: "q",
+      });
+
+      if (move !== null) {
+        this.playMoveFeedback(move);
         this.removeHighlightSquare();
-        if (this.state.gameMode === "coach") {
-          this.updateAnalysis();
-        }
-        return { pieceSquare: "" };
-      }
 
-      if (pieceSquare) {
-        const move = this.game.move({
-          from: pieceSquare,
-          to: square,
-          promotion: "q",
-        });
-
-        if (move !== null) {
-          this.playMoveFeedback(move);
-          this.removeHighlightSquare();
-
-          // Handle tutorial mode
-          if (this.state.gameMode === "tutorial") {
-            this.checkTutorialMove(move);
-            return {
-              fen: this.game.fen(),
-              pieceSquare: "",
-            };
-          }
-
-          this.recordEvaluation();
-
-          const newState = {
+        // Handle tutorial mode
+        if (this.state.gameMode === "tutorial") {
+          this.checkTutorialMove(move);
+          this.setState({
             fen: this.game.fen(),
-            history: this.game.history({ verbose: true }),
             pieceSquare: "",
-            lastAIExplanation: "",
-          };
-
-          // Defer updateGameStatus and AI move to after setState completes
-          setTimeout(() => {
-            this.updateGameStatus();
-            if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
-              setTimeout(() => this.makeAIMove(), 300);
-            }
-            // Update analysis for both AI and coach mode (for hint button)
-            setTimeout(() => this.updateAnalysis(), 100);
-          }, 0);
-
-          return newState;
+          });
+          return;
         }
-      }
 
-      const piece = this.game.get(square);
-      if (piece && piece.color === this.game.turn()) {
-        const moves = this.game.moves({
-          square: square,
-          verbose: true,
+        this.recordEvaluation();
+
+        this.setState({
+          fen: this.game.fen(),
+          history: this.game.history({ verbose: true }),
+          pieceSquare: "",
+          lastAIExplanation: "",
         });
-        const squaresToHighlight = moves.map((move) => move.to);
-        this.highlightSquare(square, squaresToHighlight);
-        selectFeedback();
-        return { pieceSquare: square };
-      }
 
-      return { pieceSquare: "" };
-    });
+        // Defer updateGameStatus and AI move to after setState completes
+        setTimeout(() => {
+          this.updateGameStatus();
+          if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
+            setTimeout(() => this.makeAIMove(), 300);
+          }
+          // Update analysis for both AI and coach mode (for hint button)
+          setTimeout(() => this.updateAnalysis(), 100);
+        }, 0);
+        return;
+      }
+    }
+
+    const piece = this.game.get(square);
+    if (piece && piece.color === this.game.turn()) {
+      const moves = this.game.moves({
+        square: square,
+        verbose: true,
+      });
+      const squaresToHighlight = moves.map((move) => move.to);
+      this.highlightSquare(square, squaresToHighlight);
+      selectFeedback();
+      this.setState({ pieceSquare: square });
+      return;
+    }
+
+    this.setState({ pieceSquare: "" });
   };
 
   onDrop = ({ sourceSquare, targetSquare }) => {
@@ -699,7 +812,7 @@ class ChessGame extends Component {
   onMouseOutSquare = () => {
     if (!this.state.pieceSquare) {
       if (this.state.gameMode === "coach" && this.state.showHints) {
-        this.updateAnalysis();
+        this.refreshSuggestionHighlight();
       } else {
         this.removeHighlightSquare();
       }
@@ -724,6 +837,7 @@ class ChessGame extends Component {
       lastAIExplanation: "",
       analysis: null,
       suggestedMoves: [],
+      coachAnalyzing: false,
       gameStartTime: Date.now(),
       gameSaved: false,
       // Reset retrospect state
@@ -1098,8 +1212,15 @@ class ChessGame extends Component {
       showRetrospect, evaluations, criticalMoments, learningTips,
       retrospectMoveIndex, showPatternLibrary,
       retrospectBestMove, retrospectAnalyzing,
-      isFullscreen, boardWidth,
+      isFullscreen, boardWidth, coachAnalyzing,
     } = this.state;
+
+    // The coach has nothing final to show yet: the previous evaluation stays (dimmed) or an empty
+    // bar holds its place, so the panel does not change size under the player
+    const opponentToMove = !!this.game && !this.isPlayerTurn();
+    const working = !!coachAnalyzing || !!aiThinking || (opponentToMove && !gameOver);
+    const statusText = coachAnalyzing && !aiThinking && !opponentToMove ? 'Analyzing…' : 'Opponent…';
+    const winShown = analysis ? analysis.winProbability : { white: 0.5, black: 0.5 };
 
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
@@ -1135,6 +1256,15 @@ class ChessGame extends Component {
               <Icon name="close" size={16} />
             </button>
             <div className="fs-top-right">
+              <button
+                className={`fs-icon-btn fs-tilt-btn ${this.state.tiltOn ? 'active' : ''}`}
+                onClick={this.toggleTilt}
+                title={this.state.tiltOn ? 'Flat board' : '3D board'}
+                aria-label={this.state.tiltOn ? 'Switch to flat board' : 'Switch to 3D board'}
+                aria-pressed={this.state.tiltOn}
+              >
+                <Icon name="layers" size={16} />
+              </button>
               {hasCoachContent && (
                 <button
                   className={`fs-icon-btn ${showFullscreenCoach ? 'active' : ''}`}
@@ -1180,6 +1310,7 @@ class ChessGame extends Component {
 
           {/* Board */}
           <div className="fullscreen-board-area">
+            <TiltStage width={fsBoardWidth} tilt={this.state.tiltOn ? boardTiltDegrees() : 0} className="chess-board-stage">
             <Chessboard
               id="chessboard-fullscreen"
               position={fen}
@@ -1188,12 +1319,13 @@ class ChessGame extends Component {
               onDrop={this.onDrop}
               onSquareClick={this.onSquareClick}
               squareStyles={squareStyles}
-              boardStyle={{ borderRadius: '4px' }}
+              boardStyle={this.state.tiltOn ? TILTED_BOARD_STYLE : { borderRadius: '4px' }}
               lightSquareStyle={{ backgroundColor: '#f0d9b5' }}
               darkSquareStyle={{ backgroundColor: '#b58863' }}
               dropSquareStyle={{ boxShadow: 'inset 0 0 1px 4px rgb(255, 255, 0)' }}
               draggable={!aiThinking && (!gameOver || gameMode === 'tutorial') && !(gameMode === 'tutorial' && lessonComplete)}
             />
+            </TiltStage>
           </div>
 
           {/* Self player bar (with turn indicator + rating) */}
@@ -1219,7 +1351,7 @@ class ChessGame extends Component {
               className="fs-action-btn hint"
               onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
               disabled={suggestedMoves.length === 0 || aiThinking || !isPlayerTurn}
-              title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'Hint'}
+              title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : (coachAnalyzing ? 'Analyzing…' : 'Hint')}
               aria-label="Hint"
             >
               <span className="fs-act-icon"><Icon name="hint" size={16} /></span>
@@ -1242,26 +1374,33 @@ class ChessGame extends Component {
               onClose={() => this.setState({ showFullscreenCoach: false })}
             >
               <>
-                {analysis && (
-                  <div className="analysis-section">
+                {(analysis || working) && (
+                  <div className={`analysis-section ${working || !analysis ? 'pending' : ''}`}>
                     <div className="section-label">Win Probability</div>
                     <div className="win-probability">
                       <div className="prob-bar">
-                        <div className="prob-white" style={{ width: `${analysis.winProbability.white * 100}%` }}>
-                          {analysis.winProbability.white >= 0.15 && <span>{Math.round(analysis.winProbability.white * 100)}%</span>}
+                        <div className="prob-white" style={{ width: `${winShown.white * 100}%` }}>
+                          {analysis && winShown.white >= 0.15 && <span>{Math.round(winShown.white * 100)}%</span>}
                         </div>
-                        <div className="prob-black" style={{ width: `${analysis.winProbability.black * 100}%` }}>
-                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
+                        <div className="prob-black" style={{ width: `${winShown.black * 100}%` }}>
+                          {analysis && winShown.black >= 0.15 && <span>{Math.round(winShown.black * 100)}%</span>}
                         </div>
                       </div>
-                      <div className="evaluation-text">{analysis.evaluation}</div>
+                      <div className="evaluation-text">{analysis ? analysis.evaluation : '\u00a0'}</div>
                     </div>
                   </div>
                 )}
-                {lastAIExplanation && (
-                  <div className="analysis-section">
+                {(lastAIExplanation || (working && history.length > 0)) && (
+                  <div className={`analysis-section ${lastAIExplanation ? '' : 'pending'}`}>
                     <div className="section-label"><Icon name="coach" size={16} /> AI Move</div>
-                    <div className="ai-explanation-box">{lastAIExplanation}</div>
+                    <div className="ai-explanation-box">{lastAIExplanation || '…'}</div>
+                  </div>
+                )}
+                {working && (
+                  <div className="analysis-section">
+                    <div className="section-label">Recommended Moves <span className="coach-status" role="status">{statusText}</span></div>
+                    <SuggestionSkeleton count={2} label="Analyzing" />
+                    <div className="suggestion-footnote" style={{ visibility: 'hidden' }}>.</div>
                   </div>
                 )}
                 {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
@@ -1294,7 +1433,7 @@ class ChessGame extends Component {
                     </div>
                   </div>
                 )}
-                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+                {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && !coachAnalyzing && (
                   <div className="analysis-empty">Play a move to see coach analysis</div>
                 )}
               </>
@@ -1407,6 +1546,18 @@ class ChessGame extends Component {
             </>
           )}
 
+          {/* View: tilted 3D board or flat */}
+          <div className="settings-section">
+            <div className="section-label">View</div>
+            <button
+              className={`toggle-btn ${this.state.tiltOn ? "active" : ""}`}
+              onClick={this.toggleTilt}
+              aria-pressed={this.state.tiltOn}
+            >
+              <Icon name="layers" size={16} /> {this.state.tiltOn ? "3D" : "2D"}
+            </button>
+          </div>
+
           {/* Game Controls in Settings */}
           {gameMode !== "tutorial" && !showRetrospect && (
             <div className="settings-section controls-section">
@@ -1515,6 +1666,7 @@ class ChessGame extends Component {
 
           {/* Chess Board */}
           <div className="board-container" style={{ touchAction: 'none' }}>
+            <TiltStage width={boardWidth} tilt={this.state.tiltOn ? boardTiltDegrees() : 0} className="chess-board-stage">
             <Chessboard
               id="chessboard"
               position={fen}
@@ -1525,7 +1677,7 @@ class ChessGame extends Component {
               onMouseOverSquare={this.onMouseOverSquare}
               onMouseOutSquare={this.onMouseOutSquare}
               squareStyles={squareStyles}
-              boardStyle={{
+              boardStyle={this.state.tiltOn ? TILTED_BOARD_STYLE : {
                 borderRadius: "8px",
                 boxShadow: "0 5px 20px rgba(0, 0, 0, 0.3)",
               }}
@@ -1534,6 +1686,7 @@ class ChessGame extends Component {
               dropSquareStyle={{ boxShadow: "inset 0 0 1px 4px rgb(255, 255, 0)" }}
               draggable={!aiThinking && (!gameOver || gameMode === "tutorial") && !(gameMode === "tutorial" && lessonComplete)}
             />
+            </TiltStage>
             {/* Fullscreen button — shown on smaller screens */}
             <button
               className="fullscreen-toggle-btn"
@@ -1584,7 +1737,7 @@ class ChessGame extends Component {
                 className="tb-btn hint"
                 onClick={() => suggestedMoves.length > 0 && this.playSuggestedMove(suggestedMoves[0].move)}
                 disabled={suggestedMoves.length === 0 || aiThinking || !this.isPlayerTurn()}
-                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : 'No hint available'}
+                title={suggestedMoves.length > 0 ? `Hint: ${suggestedMoves[0].san}` : (coachAnalyzing ? 'Analyzing…' : 'No hint available')}
               >
                 <Icon name="hint" size={16} /> Hint
               </button>
@@ -1643,48 +1796,54 @@ class ChessGame extends Component {
 
         {/* Right Panel - Analysis (Coach Mode) */}
         {gameMode === "coach" && (
-          <div className="analysis-panel-right">
+          <StableHeight className="analysis-panel-right" resetKey={`${gameMode}|${playerColor}|${this.state.gameStartTime}`}>
             <div className="panel-title">AI Analysis</div>
 
             {/* Win Probability */}
-            {analysis && (
-              <div className="analysis-section">
+            {(analysis || working) && (
+              <div className={`analysis-section ${working || !analysis ? 'pending' : ''}`}>
                 <div className="section-label">Win Probability</div>
                 <div className="win-probability">
                   <div className="prob-bar">
                     <div
                       className="prob-white"
-                      style={{ width: `${analysis.winProbability.white * 100}%` }}
+                      style={{ width: `${winShown.white * 100}%` }}
                     >
-                      {analysis.winProbability.white >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.white * 100)}%</span>
+                      {analysis && winShown.white >= 0.15 && (
+                        <span>{Math.round(winShown.white * 100)}%</span>
                       )}
                     </div>
                     <div
                       className="prob-black"
-                      style={{ width: `${analysis.winProbability.black * 100}%` }}
+                      style={{ width: `${winShown.black * 100}%` }}
                     >
-                      {analysis.winProbability.black >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                      {analysis && winShown.black >= 0.15 && (
+                        <span>{Math.round(winShown.black * 100)}%</span>
                       )}
                     </div>
                   </div>
-                  <div className="evaluation-text">{analysis.evaluation}</div>
+                  <div className="evaluation-text">{analysis ? analysis.evaluation : '\u00a0'}</div>
                 </div>
               </div>
             )}
 
             {/* AI Explanation */}
-            {lastAIExplanation && (
-              <div className="analysis-section">
+            {(lastAIExplanation || (working && history.length > 0)) && (
+              <div className={`analysis-section ${lastAIExplanation ? '' : 'pending'}`}>
                 <div className="section-label"><Icon name="coach" size={16} /> AI Move Explanation</div>
                 <div className="ai-explanation-box">
-                  {lastAIExplanation}
+                  {lastAIExplanation || '…'}
                 </div>
               </div>
             )}
 
             {/* Suggested Moves */}
+            {working && (
+              <div className="analysis-section">
+                <div className="section-label"><Icon name="hint" size={16} /> Recommended Moves <span className="coach-status" role="status">{statusText}</span></div>
+                <SuggestionSkeleton count={2} label="Analyzing" />
+              </div>
+            )}
             {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
               <div className="analysis-section">
                 <div className="section-label"><Icon name="hint" size={16} /> Recommended Moves</div>
@@ -1723,14 +1882,14 @@ class ChessGame extends Component {
             )}
 
             {/* Empty state when no analysis yet */}
-            {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && (
+            {!analysis && !lastAIExplanation && suggestedMoves.length === 0 && !coachAnalyzing && (
               <div className="analysis-empty">
                 开始下棋查看AI分析和建议
                 <br />
                 Start playing to see AI analysis and recommendations
               </div>
             )}
-          </div>
+          </StableHeight>
         )}
 
         {/* Right Panel - Tutorial Mode */}

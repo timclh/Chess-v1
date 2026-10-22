@@ -37,6 +37,7 @@ import { moveFeedback, selectFeedback } from './services/FeedbackService';
 import { Icon } from './components/Icon';
 import CoachSheet from './components/CoachSheet';
 import { fitXiangqiBoard, boardTiltDegrees } from './services/ViewportService';
+import { SuggestionSkeleton, StableHeight } from './components/CoachLayout';
 
 const TILT_KEY = 'xiangqi_tilt';
 const readTiltPref = () => {
@@ -45,6 +46,28 @@ const readTiltPref = () => {
 import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
+
+/**
+ * Put `game` back to a saved game. The saved moves are replayed from the starting position,
+ * so the move list and "undo" cover the whole game. Loading only the position (what this did
+ * before) left both empty: after a reload the list started again at "1." with the board in the
+ * middle of a game, which made a long game look like it had just begun.
+ *
+ * If the moves do not lead to the saved position (a game saved by an older version, or one that
+ * began from a set-up position) only the position is loaded. Returns true if the whole game
+ * was replayed.
+ */
+export function restoreSavedGame(game, saved) {
+  const turn = saved.turn || 'r';
+  const moves = Array.isArray(saved.history) ? saved.history : [];
+  game.reset();
+  const replayed = moves.length > 0 && moves.every((m) => m && m.from && m.to && game.move({ from: m.from, to: m.to }));
+  if (replayed && game.toFEN() === saved.fen && game.turn === turn) return true;
+  game.reset();
+  game.loadFEN(saved.fen);
+  game.turn = turn;
+  return false;
+}
 
 // How long the coach waits for a still-starting engine before showing preliminary suggestions
 const COACH_ENGINE_WAIT_MS = 6000;
@@ -200,6 +223,7 @@ class XiangqiGame extends Component {
     showHints: true,
     showCoachInAI: false, // Show coach hints in AI mode
     coachAnalyzing: false, // Coach is computing suggestions
+    gameSeq: 0, // counts games, so the coach panel can start from its natural height again
     coachSource: null, // 'engine' | 'builtin': where the current suggestions came from
     threatWarning: null, // Warning about opponent threats
     lastAIExplanation: '',
@@ -262,14 +286,13 @@ class XiangqiGame extends Component {
     const savedState = this.loadGameState();
     // Don't restore tutorial mode from saved state - it has specific FENs
     if (savedState && savedState.fen && savedState.gameMode !== 'tutorial') {
-      this.game.loadFEN(savedState.fen);
-      this.game.turn = savedState.turn || 'r';
+      const wholeGame = restoreSavedGame(this.game, savedState);
       this.setState({
         fen: this.game.toFEN(),
         gameMode: savedState.gameMode || 'ai',
         playerColor: savedState.playerColor || 'r',
         aiDifficulty: savedState.aiDifficulty || 2,
-        history: savedState.history || [],
+        history: wholeGame ? this.game.history_moves() : (savedState.history || []),
         showCoachInAI: savedState.showCoachInAI || false,
       }, () => {
         this.updateGameStatus();
@@ -536,9 +559,8 @@ class XiangqiGame extends Component {
     const key = this._positionKey();
 
     // Show fast built-in analysis immediately
-    const analysis = analyzePosition(this.game);
     const strategicAdvice = getStrategicAdvice(this.game);
-    this.setState({ analysis, strategicAdvice, coachAnalyzing: true });
+    this.setState({ ...this._provisionalAnalysis(), strategicAdvice, coachAnalyzing: true });
 
     // Use Fairy-Stockfish engine if available, else fall back to built-in AI
     if (this.state.engineReady && isEngineReady()) {
@@ -556,11 +578,19 @@ class XiangqiGame extends Component {
     }
   };
 
+  // The evaluation shown while the coach thinks. With the engine on its way, keep the
+  // previous one (dimmed) until the engine's arrives: showing the built-in guess in between
+  // swung the win bar (62% to 92%) and moved everything below it. Without the engine the
+  // built-in evaluation is the answer.
+  _provisionalAnalysis = () => (
+    this.state.engineReady && isEngineReady() ? {} : { analysis: analyzePosition(this.game) }
+  );
+
   _applyBuiltinCoach = (key, source) => {
     if (!this.game || this._positionKey() !== key) return;
     const history = this.game.history_moves();
-    const suggestedMoves = getTopMoves(this.game, 3, history);
-    this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: source });
+    const suggestedMoves = getTopMoves(this.game, 2, history);
+    this.setState({ analysis: analyzePosition(this.game), suggestedMoves, coachAnalyzing: false, coachSource: source });
   };
 
   // The engine finished starting (or failed to). Redo the analysis that was
@@ -584,7 +614,7 @@ class XiangqiGame extends Component {
     try {
       // Run engine analysis - get moves first (this also gives us the score)
       // DON'T run in parallel - they share singleton state and would race!
-      const engineMoves = await getTopMovesEngine(this.game, 3);
+      const engineMoves = await getTopMovesEngine(this.game, 2);
 
       // Component unmounted, or the position changed while the engine was thinking
       if (!this.game || this._positionKey() !== key) return;
@@ -641,16 +671,16 @@ class XiangqiGame extends Component {
       } else {
         // Engine returned no moves — fall back to built-in
         const history = this.game.history_moves();
-        const suggestedMoves = getTopMoves(this.game, 3, history);
-        this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
+        const suggestedMoves = getTopMoves(this.game, 2, history);
+        this.setState({ analysis: analyzePosition(this.game), suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
       }
     } catch (err) {
       console.error('[XiangqiGame] Engine analysis error:', err);
       // Fallback to built-in AI
       if (!this.game) return;
       const history = this.game.history_moves();
-      const suggestedMoves = getTopMoves(this.game, 3, history);
-      this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
+      const suggestedMoves = getTopMoves(this.game, 2, history);
+      this.setState({ analysis: analyzePosition(this.game), suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
     }
   };
 
@@ -766,10 +796,24 @@ class XiangqiGame extends Component {
         }, 50);
       } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
         this.updateAnalysisForAI();
+      } else if (this.state.gameMode === 'ai') {
+        this._prefetchHint();
       }
     } else {
       this.setState({ aiThinking: false });
     }
+  };
+
+  // The engine is idle while the player thinks, so work out the hint for their move now:
+  // pressing 💡 then answers at once from the cache (or joins the search still running).
+  _prefetchHint = () => {
+    const game = this.game;
+    if (!game || !this.state.engineReady || !isEngineReady() || (typeof document !== 'undefined' && document.hidden)) return;
+    setTimeout(() => {
+      if (this.game === game && !this.state.gameOver && game.turn === this.state.playerColor) {
+        getTopMovesEngine(game, 2).catch(() => {});
+      }
+    }, 300);
   };
 
   // Sound for the move that was just played (this.game already reflects it)
@@ -890,9 +934,8 @@ class XiangqiGame extends Component {
     // Update coach analysis after player move (position eval + strategic advice)
     if (this.state.gameMode === 'coach') {
       // Clear stale suggestions immediately, show fresh analysis after AI responds
-      const analysis = analyzePosition(this.game);
       const strategicAdvice = getStrategicAdvice(this.game);
-      this.setState({ analysis, strategicAdvice, suggestedMoves: [], coachAnalyzing: true });
+      this.setState({ ...this._provisionalAnalysis(), strategicAdvice, suggestedMoves: [], coachAnalyzing: true });
     }
 
     // Update analysis for AI mode with coach hints
@@ -911,6 +954,7 @@ class XiangqiGame extends Component {
     // Clear saved state when starting new game
     this.clearSavedState();
 
+    this.setState((prev) => ({ gameSeq: prev.gameSeq + 1 }));
     this.setState({
       fen: this.game.toFEN(),
       history: [],
@@ -1210,42 +1254,47 @@ class XiangqiGame extends Component {
       aiThinking, playerColor, coachAnalyzing, engineReady, engineLoading, hintMove, coachSource,
     } = this.state;
     const isPlayerTurn = !!this.game && this.game.turn === playerColor;
-    const hasThreats = threatWarning && threatWarning.length > 0 && !aiThinking;
+    // Threats stay (dimmed) while the opponent moves instead of vanishing and coming back,
+    // which moved everything below them twice per move
+    const hasThreats = threatWarning && threatWarning.length > 0;
+    const working = !!coachAnalyzing || !!aiThinking; // the coach has nothing final to show yet
+    const shown = analysis || { winProbability: { red: 0.5, black: 0.5 } };
     const hasAnything = analysis || lastAIExplanation || suggestedMoves.length > 0
       || coachAnalyzing || hasThreats || (strategicAdvice && strategicAdvice.length > 0);
 
     return (
       <>
-        {/* Win probability */}
-        {analysis && (
-          <div className="analysis-section">
+        {/* Win probability. While the coach is working the last one stays, dimmed, or an
+            empty bar of the same size holds its place, so nothing below it moves. */}
+        {(analysis || working) && (
+          <div className={`analysis-section ${working || !analysis ? 'pending' : ''}`}>
             <div className="section-label">
               胜率 / Win Probability
-              {analysis.enginePowered && analysis.depth && (
+              {analysis && analysis.enginePowered && analysis.depth && (
                 <span className="engine-depth"> (depth {analysis.depth})</span>
               )}
             </div>
             <div className="win-probability">
               <div className="prob-bar">
-                <div className="prob-red" style={{ width: `${analysis.winProbability.red * 100}%` }}>
-                  {analysis.winProbability.red >= 0.15 && (
-                    <span>{Math.round(analysis.winProbability.red * 100)}%</span>
+                <div className="prob-red" style={{ width: `${shown.winProbability.red * 100}%` }}>
+                  {analysis && shown.winProbability.red >= 0.15 && (
+                    <span>{Math.round(shown.winProbability.red * 100)}%</span>
                   )}
                 </div>
-                <div className="prob-black-xiangqi" style={{ width: `${analysis.winProbability.black * 100}%` }}>
-                  {analysis.winProbability.black >= 0.15 && (
-                    <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                <div className="prob-black-xiangqi" style={{ width: `${shown.winProbability.black * 100}%` }}>
+                  {analysis && shown.winProbability.black >= 0.15 && (
+                    <span>{Math.round(shown.winProbability.black * 100)}%</span>
                   )}
                 </div>
               </div>
-              <div className="evaluation-text">{analysis.evaluation}</div>
+              <div className="evaluation-text">{analysis ? analysis.evaluation : '\u00a0'}</div>
             </div>
           </div>
         )}
 
         {/* Threat warnings */}
         {hasThreats && (
-          <div className="analysis-section threat-section">
+          <div className={`analysis-section threat-section ${working ? 'pending' : ''}`}>
             <div className="section-label"><Icon name="warning" size={16} /> 注意威胁 / Watch Out</div>
             {threatWarning.map((t, i) => (
               <div key={i} className="threat-item">
@@ -1256,17 +1305,23 @@ class XiangqiGame extends Component {
           </div>
         )}
 
-        {/* Suggested moves */}
-        {coachAnalyzing && !aiThinking && (
+        {/* Suggested moves: placeholder cards of the same size while the coach thinks */}
+        {working && (
           <div className="analysis-section">
-            <div className="section-label">推荐走法 / Suggested Moves</div>
-            <div className="coach-analyzing">
-              {engineReady
-                ? <><Icon name="zap" size={14} /> Fairy-Stockfish 分析中... / Engine analyzing...</>
-                : engineLoading
-                  ? '⏳ 引擎启动中，请稍候... / Starting engine...'
-                  : <><Icon name="search" size={14} /> 教练分析中... / Coach analyzing...</>}
+            <div className="section-label">
+              推荐走法 / Suggested Moves
+              <span className="coach-status" role="status">
+                {aiThinking
+                  ? '对手走棋… / Opponent…'
+                  : engineReady
+                    ? <><Icon name="zap" size={12} /> 分析中… / Analyzing…</>
+                    : engineLoading
+                      ? '⏳ 引擎启动中… / Starting engine…'
+                      : <><Icon name="search" size={12} /> 分析中… / Analyzing…</>}
+              </span>
             </div>
+            <SuggestionSkeleton count={2} label="Analyzing" />
+            <div className="suggestion-footnote" style={{ visibility: 'hidden' }}>点击在棋盘上查看 / Tap to preview on the board</div>
           </div>
         )}
         {suggestedMoves.length > 0 && !aiThinking && !coachAnalyzing && isPlayerTurn && (
@@ -1320,10 +1375,10 @@ class XiangqiGame extends Component {
         )}
 
         {/* What the AI just played and why */}
-        {lastAIExplanation && (
-          <div className="analysis-section">
+        {(lastAIExplanation || (working && this.state.history.length > 0)) && (
+          <div className={`analysis-section ${lastAIExplanation ? '' : 'pending'}`}>
             <div className="section-label">AI 走法说明</div>
-            <div className="ai-explanation-box">{lastAIExplanation}</div>
+            <div className="ai-explanation-box">{lastAIExplanation || '…'}</div>
           </div>
         )}
 
@@ -1816,7 +1871,10 @@ class XiangqiGame extends Component {
 
         {/* Right Panel - Analysis (Coach Mode or AI with hints) */}
         {(gameMode === 'coach' || (gameMode === 'ai' && this.state.showCoachInAI)) && (
-          <div className="analysis-panel-right xiangqi-analysis">
+          <StableHeight
+            className="analysis-panel-right xiangqi-analysis"
+            resetKey={`${gameMode}|${this.state.playerColor}|${this.state.gameSeq}`}
+          >
             <div className="panel-title">
               {gameMode === 'coach' ? 'AI 分析' : <><Icon name="hint" size={16} /> 教练提示</>}
               {this.state.engineReady && (
@@ -1832,7 +1890,7 @@ class XiangqiGame extends Component {
               )}
             </div>
             {this.renderCoachBody()}
-          </div>
+          </StableHeight>
         )}
 
         {/* Right Panel - Tutorial */}
