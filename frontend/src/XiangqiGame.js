@@ -47,6 +47,28 @@ import { GAME_TYPE, RESULT } from './constants';
 import { RatingDisplay } from './components/RatingDisplay';
 import { GameResultDialog } from './components/GameResultDialog';
 
+/**
+ * Put `game` back to a saved game. The saved moves are replayed from the starting position,
+ * so the move list and "undo" cover the whole game. Loading only the position (what this did
+ * before) left both empty: after a reload the list started again at "1." with the board in the
+ * middle of a game, which made a long game look like it had just begun.
+ *
+ * If the moves do not lead to the saved position (a game saved by an older version, or one that
+ * began from a set-up position) only the position is loaded. Returns true if the whole game
+ * was replayed.
+ */
+export function restoreSavedGame(game, saved) {
+  const turn = saved.turn || 'r';
+  const moves = Array.isArray(saved.history) ? saved.history : [];
+  game.reset();
+  const replayed = moves.length > 0 && moves.every((m) => m && m.from && m.to && game.move({ from: m.from, to: m.to }));
+  if (replayed && game.toFEN() === saved.fen && game.turn === turn) return true;
+  game.reset();
+  game.loadFEN(saved.fen);
+  game.turn = turn;
+  return false;
+}
+
 // How long the coach waits for a still-starting engine before showing preliminary suggestions
 const COACH_ENGINE_WAIT_MS = 6000;
 
@@ -264,14 +286,13 @@ class XiangqiGame extends Component {
     const savedState = this.loadGameState();
     // Don't restore tutorial mode from saved state - it has specific FENs
     if (savedState && savedState.fen && savedState.gameMode !== 'tutorial') {
-      this.game.loadFEN(savedState.fen);
-      this.game.turn = savedState.turn || 'r';
+      const wholeGame = restoreSavedGame(this.game, savedState);
       this.setState({
         fen: this.game.toFEN(),
         gameMode: savedState.gameMode || 'ai',
         playerColor: savedState.playerColor || 'r',
         aiDifficulty: savedState.aiDifficulty || 2,
-        history: savedState.history || [],
+        history: wholeGame ? this.game.history_moves() : (savedState.history || []),
         showCoachInAI: savedState.showCoachInAI || false,
       }, () => {
         this.updateGameStatus();
