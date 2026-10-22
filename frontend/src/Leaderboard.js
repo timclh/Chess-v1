@@ -4,6 +4,7 @@ import { getRating } from "./services/UserRatingService";
 import EloService from "./services/EloService";
 import { GAME_TYPE, RANK_THRESHOLDS } from "./constants";
 import { RatingHistoryGraph, RatingTrend } from "./components/RatingHistoryGraph";
+import { Icon, StoneDot } from './components/Icon';
 
 class Leaderboard extends Component {
   state = {
@@ -101,7 +102,7 @@ class Leaderboard extends Component {
     return (
       <div className="leaderboard-container">
         <div className="leaderboard-header">
-          <h2>🏆 Leaderboard & History</h2>
+          <h2><Icon name="rankings" size={16} /> Leaderboard & History</h2>
           <div className="tab-selector">
             <button
               className={`tab-btn ${activeTab === "leaderboard" ? "active" : ""}`}
@@ -127,11 +128,11 @@ class Leaderboard extends Component {
         {/* My Ratings Section */}
         {activeTab === "ratings" && (
           <div className="ratings-section">
-            <h3>📊 Your ELO Ratings / 你的等级分</h3>
+            <h3><Icon name="chart" size={16} /> Your ELO Ratings / 你的等级分</h3>
             <div className="ratings-grid">
               {/* Chess Rating */}
               <div className="rating-card">
-                <div className="rating-game-icon">♟️</div>
+                <div className="rating-game-icon"><Icon name="play" size={16} /></div>
                 <div className="rating-game-name">Chess / 国际象棋</div>
                 <div className="rating-value">
                   {chessRating}
@@ -177,7 +178,7 @@ class Leaderboard extends Component {
               </div>
               {/* Wuziqi Rating */}
               <div className="rating-card">
-                <div className="rating-game-icon">⚫</div>
+                <div className="rating-game-icon"><StoneDot color="black" /></div>
                 <div className="rating-game-name">Gomoku / 五子棋</div>
                 <div className="rating-value">
                   {wuziqiRating}
@@ -221,12 +222,12 @@ class Leaderboard extends Component {
         <div className="scoring-rules">
           <div className="rule-title">积分规则 / Scoring Rules:</div>
           <div className="rules-grid">
-            <span>🤖 AI Easy: +1</span>
-            <span>🤖 AI Medium: +2</span>
-            <span>🤖 AI Hard: +3</span>
-            <span>🤖 AI Expert: +5</span>
-            <span>👥 Human Win: +5</span>
-            <span>🤝 Draw: Half points</span>
+            <span><Icon name="coach" size={16} /> AI Easy: +1</span>
+            <span><Icon name="coach" size={16} /> AI Medium: +2</span>
+            <span><Icon name="coach" size={16} /> AI Hard: +3</span>
+            <span><Icon name="coach" size={16} /> AI Expert: +5</span>
+            <span><Icon name="friends" size={16} /> Human Win: +5</span>
+            <span><Icon name="handshake" size={16} /> Draw: Half points</span>
           </div>
         </div>
         )}
@@ -257,8 +258,8 @@ class Leaderboard extends Component {
                       )}
                       <div className="top-player-score">{player.score} pts</div>
                       <div className="top-player-stats">
-                        <span title="vs AI">🤖 {player.aiStats?.wins || 0}W</span>
-                        <span title="vs Human">👥 {player.humanStats?.wins || 0}W</span>
+                        <span title="vs AI"><Icon name="coach" size={16} /> {player.aiStats?.wins || 0}W</span>
+                        <span title="vs Human"><Icon name="friends" size={16} /> {player.humanStats?.wins || 0}W</span>
                       </div>
                     </div>
                   ))}
@@ -309,7 +310,7 @@ class Leaderboard extends Component {
                           <span className="draws">{player.humanStats?.draws || 0}</span>
                         </td>
                         <td className="win-rate">{player.winRate}%</td>
-                        <td className="streak">{player.bestWinStreak}🔥</td>
+                        <td className="streak">{player.bestWinStreak} <Icon name="streak" size={14} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -333,13 +334,13 @@ class Leaderboard extends Component {
                 className={`filter-btn ${historyFilter === 'ai' ? 'active' : ''}`}
                 onClick={() => this.setState({ historyFilter: 'ai' })}
               >
-                🤖 vs AI
+                <Icon name="coach" size={16} /> vs AI
               </button>
               <button
                 className={`filter-btn ${historyFilter === 'human' ? 'active' : ''}`}
                 onClick={() => this.setState({ historyFilter: 'human' })}
               >
-                👥 vs Human
+                <Icon name="friends" size={16} /> vs Human
               </button>
             </div>
 
@@ -359,7 +360,7 @@ class Leaderboard extends Component {
                         {game.result === "win" ? "Won" : game.result === "loss" ? "Lost" : "Draw"}
                       </span>
                       <span className="game-opponent">
-                        vs {game.opponent === "human" ? "👥 Human" : `🤖 AI (${this.getDifficultyLabel(game.difficulty)})`}
+                        vs {game.opponent === "human" ? <><Icon name="friends" size={14} /> Human</> : <><Icon name="coach" size={14} /> AI ({this.getDifficultyLabel(game.difficulty)})</>}
                       </span>
                       <span className={`game-points ${game.result}`}>
                         {this.getPointsLabel(game)}

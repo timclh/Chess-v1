@@ -4,6 +4,7 @@ import { boardCalcWidth, fitBoardWidth } from "./services/ViewportService";
 import Chess from "chess.js";
 import Xiangqi from "./xiangqi";
 import XiangqiBoard from "./XiangqiBoard";
+import { Icon, Stars } from './components/Icon';
 
 // Opening Database with ECO codes, names, and variations
 const OPENING_DATABASE = [
@@ -965,7 +966,7 @@ class OpeningExplorer extends Component {
       <div className="opening-explorer-container">
         {/* Left Panel - Opening List */}
         <div className="opening-sidebar">
-          <div className="panel-title">📖 Opening Explorer / 开局库</div>
+          <div className="panel-title"><Icon name="learn" size={16} /> Opening Explorer / 开局库</div>
 
           {/* Game Type Tabs */}
           <div className="game-type-tabs">
@@ -973,7 +974,7 @@ class OpeningExplorer extends Component {
               className={`game-type-tab ${gameType === 'chess' ? 'active' : ''}`}
               onClick={() => this.switchGameType('chess')}
             >
-              ♟ Chess
+              <Icon name="play" size={16} /> Chess
             </button>
             <button
               className={`game-type-tab ${gameType === 'xiangqi' ? 'active' : ''}`}
@@ -989,13 +990,13 @@ class OpeningExplorer extends Component {
               className={`mode-tab ${viewMode === 'explore' ? 'active' : ''}`}
               onClick={() => this.setState({ viewMode: 'explore' })}
             >
-              🔍 Explore
+              <Icon name="search" size={16} /> Explore
             </button>
             <button
               className={`mode-tab ${viewMode === 'repertoire' ? 'active' : ''}`}
               onClick={() => this.setState({ viewMode: 'repertoire' })}
             >
-              ⭐ My Repertoire ({repertoire.length})
+              <Icon name="star" size={16} /> My Repertoire ({repertoire.length})
             </button>
           </div>
 
@@ -1019,7 +1020,7 @@ class OpeningExplorer extends Component {
                   className={`filter-btn ${filterDifficulty === d ? 'active' : ''}`}
                   onClick={() => this.setState({ filterDifficulty: d })}
                 >
-                  {d === null ? 'All' : '⭐'.repeat(d)}
+                  {d === null ? 'All' : <Stars count={d} />}
                 </button>
               ))}
             </div>
@@ -1046,8 +1047,8 @@ class OpeningExplorer extends Component {
                     </div>
                   </div>
                   <div className="opening-meta">
-                    <span className="opening-difficulty">{'⭐'.repeat(opening.difficulty)}</span>
-                    {this.isInRepertoire(opening) && <span className="in-repertoire">⭐</span>}
+                    <span className="opening-difficulty"><Stars count={opening.difficulty} /></span>
+                    {this.isInRepertoire(opening) && <span className="in-repertoire"><Icon name="star" size={16} /></span>}
                   </div>
                 </div>
 
@@ -1080,7 +1081,7 @@ class OpeningExplorer extends Component {
                         ▶ Play
                       </button>
                       <button className="btn btn-sm" onClick={() => this.startTraining(opening)}>
-                        🎯 Train
+                        <Icon name="target" size={16} /> Train
                       </button>
                       <button
                         className={`btn btn-sm ${this.isInRepertoire(opening) ? 'active' : ''}`}
@@ -1101,7 +1102,7 @@ class OpeningExplorer extends Component {
           {viewMode === "train" && trainingOpening ? (
             <>
               <div className="training-header">
-                <h3>🎯 Training: {trainingOpening.name}</h3>
+                <h3><Icon name="target" size={16} /> Training: {trainingOpening.name}</h3>
                 <p>{trainingOpening.nameCn}</p>
               </div>
 
@@ -1120,7 +1121,7 @@ class OpeningExplorer extends Component {
 
               {trainingStep >= (training?.length || 0) ? (
                 <div className="training-complete">
-                  <h3>🎉 Training Complete!</h3>
+                  <h3><Icon name="sparkles" size={16} /> Training Complete!</h3>
                   <p>Correct: {trainingCorrect} | Wrong: {trainingWrong}</p>
                   <button className="btn btn-primary" onClick={this.exitTraining}>
                     Back to Explorer
@@ -1162,7 +1163,7 @@ class OpeningExplorer extends Component {
                       className="btn btn-hint"
                       onClick={() => this.setState({ showTrainingHint: true })}
                     >
-                      💡 Hint
+                      <Icon name="hint" size={16} /> Hint
                     </button>
                     <button className="btn btn-secondary" onClick={this.exitTraining}>
                       Exit Training
@@ -1231,7 +1232,7 @@ class OpeningExplorer extends Component {
                   ← Undo
                 </button>
                 <button className="btn btn-primary" onClick={this.resetExplorer}>
-                  🔄 Reset
+                  <Icon name="reset" size={16} /> Reset
                 </button>
               </div>
 
@@ -1263,7 +1264,7 @@ class OpeningExplorer extends Component {
               <p className="opening-detail-cn">{selectedOpening.nameCn}</p>
 
               <div className="key-ideas">
-                <div className="section-label">💡 Key Ideas / 关键思路</div>
+                <div className="section-label"><Icon name="hint" size={16} /> Key Ideas / 关键思路</div>
                 {selectedOpening.keyIdeas.map((idea, i) => (
                   <div key={i} className="key-idea">
                     <p>{idea.cn}</p>
@@ -1273,7 +1274,7 @@ class OpeningExplorer extends Component {
               </div>
 
               <div className="opening-moves-section">
-                <div className="section-label">📝 Moves / 着法</div>
+                <div className="section-label"><Icon name="terms" size={16} /> Moves / 着法</div>
                 <div className="moves-display">
                   {selectedOpening.moves.map((m, i) => (
                     <span key={i} className="move-item">
@@ -1285,7 +1286,7 @@ class OpeningExplorer extends Component {
               </div>
 
               <div className="vip-promo">
-                <div className="vip-badge">💎 VIP</div>
+                <div className="vip-badge"><Icon name="gem" size={16} /> VIP</div>
                 <p>Get full opening database with 1000+ variations!</p>
                 <p>获取完整开局库，包含1000+变例！</p>
                 <button className="btn btn-vip" disabled>Coming Soon</button>
@@ -1301,8 +1302,8 @@ class OpeningExplorer extends Component {
                 <li>在棋盘上走子来探索</li>
                 <li>Use ▶ Play to load an opening</li>
                 <li>使用 ▶ Play 加载开局</li>
-                <li>Use 🎯 Train to practice</li>
-                <li>使用 🎯 Train 来练习</li>
+                <li>Use <Icon name="target" size={14} /> Train to practice</li>
+                <li>使用 <Icon name="target" size={14} /> Train 来练习</li>
               </ul>
             </div>
           )}

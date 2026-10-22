@@ -165,14 +165,14 @@ class AppContent extends Component {
         {/* Offline Indicator */}
         {isOffline && (
           <div className="offline-banner">
-            <span>⚡ You're offline — local features still work!</span>
+            <span><Icon name="zap" size={16} /> You're offline — local features still work!</span>
           </div>
         )}
 
         {/* PWA Install Prompt */}
         {showInstallPrompt && (
           <div className="pwa-install-banner">
-            <span>📱 Install 棋 Arena for the best experience!</span>
+            <span><Icon name="phone" size={16} /> Install 棋 Arena for the best experience!</span>
             <div className="install-actions">
               <button className="install-btn" onClick={this.handleInstallClick}>Install</button>
               <button className="dismiss-btn" onClick={this.dismissInstallPrompt}>×</button>

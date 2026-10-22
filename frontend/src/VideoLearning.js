@@ -6,6 +6,7 @@
 import React, { Component } from 'react';
 import { VIDEO_LIBRARY, getVideosByTopic, searchVideos, getTopics } from './data/VideoLibrary';
 import './VideoLearning.css';
+import { Icon } from './components/Icon';
 
 class VideoLearning extends Component {
   state = {
@@ -142,7 +143,7 @@ class VideoLearning extends Component {
       <div className="video-learning">
         {/* Header */}
         <div className="learning-header">
-          <h2>📺 Video Library / 视频教程</h2>
+          <h2><Icon name="videos" size={16} /> Video Library / 视频教程</h2>
           <p>Learn from the best chess teachers on YouTube</p>
         </div>
 
@@ -152,7 +153,7 @@ class VideoLearning extends Component {
             className={gameType === 'chess' ? 'active' : ''}
             onClick={() => this.handleGameTypeChange('chess')}
           >
-            ♟️ Chess
+            <Icon name="play" size={16} /> Chess
           </button>
           <button
             className={gameType === 'xiangqi' ? 'active' : ''}
@@ -170,10 +171,10 @@ class VideoLearning extends Component {
             onChange={(e) => this.setState({ searchQuery: e.target.value })}
             placeholder="Search videos... 搜索视频..."
           />
-          <button type="submit">🔍</button>
+          <button type="submit"><Icon name="search" size={16} /></button>
           {searchResults !== null && (
             <button type="button" className="clear-btn" onClick={this.clearSearch}>
-              ✕ Clear
+              <Icon name="close" size={16} /> Clear
             </button>
           )}
         </form>
@@ -199,7 +200,7 @@ class VideoLearning extends Component {
                 className={`topic-btn ${showBookmarks ? 'active' : ''}`}
                 onClick={() => this.setState({ showBookmarks: !showBookmarks, selectedVideo: null, searchResults: null })}
               >
-                ⭐ Bookmarks ({this.state.bookmarkedVideos.length})
+                <Icon name="star" size={16} /> Bookmarks ({this.state.bookmarkedVideos.length})
               </button>
               {topics.map(topic => (
                 <button
@@ -207,11 +208,12 @@ class VideoLearning extends Component {
                   className={`topic-btn ${!showBookmarks && currentTopic === topic ? 'active' : ''}`}
                   onClick={() => this.setState({ currentTopic: topic, selectedVideo: null, searchResults: null, showBookmarks: false })}
                 >
-                  {topic === 'openings' && '📖 '}
-                  {topic === 'tactics' && '⚔️ '}
-                  {topic === 'endgame' && '🏁 '}
-                  {topic === 'strategy' && '🧠 '}
-                  {topic === 'basics' && '📚 '}
+                  {topic === 'openings' && <Icon name="learn" size={16} />}
+                  {topic === 'tactics' && <Icon name="challenge" size={16} />}
+                  {topic === 'endgame' && <Icon name="flag" size={16} />}
+                  {topic === 'strategy' && <Icon name="brain" size={16} />}
+                  {topic === 'basics' && <Icon name="graduate" size={16} />}
+                  {' '}
                   {topic.charAt(0).toUpperCase() + topic.slice(1)}
                 </button>
               ))}
@@ -271,7 +273,7 @@ class VideoLearning extends Component {
                       {this.isBookmarked(selectedVideo.id) ? '★ Bookmarked' : '☆ Bookmark'}
                     </button>
                   </div>
-                  <p className="channel">📺 {selectedVideo.channel}</p>
+                  <p className="channel"><Icon name="videos" size={16} /> {selectedVideo.channel}</p>
                   <p className="duration">⏱️ {selectedVideo.duration} min</p>
                   <p className="description">{selectedVideo.description}</p>
                   <div className="topics-tags">
@@ -326,7 +328,7 @@ class VideoLearning extends Component {
                               onClick={(e) => this.toggleWatched(video.id, e)}
                               title="Mark as watched"
                             >
-                              {this.isWatched(video.id) ? '👁' : '○'}
+                              {this.isWatched(video.id) ? <Icon name="eye" size={14} /> : '○'}
                             </button>
                           </div>
                         </div>

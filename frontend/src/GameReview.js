@@ -7,6 +7,7 @@ import React, { Component } from 'react';
 import Chessboard from 'chessboardjsx';
 import { getAnalysisService } from './services/ChessAnalysisService';
 import './GameReview.css';
+import { Icon } from './components/Icon';
 
 class GameReview extends Component {
   state = {
@@ -244,7 +245,7 @@ class GameReview extends Component {
       <div className="game-review">
         {/* Header */}
         <div className="review-header">
-          <h2>🔍 Game Review / 对局复盘</h2>
+          <h2><Icon name="search" size={16} /> Game Review / 对局复盘</h2>
           {this.props.onClose && (
             <button className="close-btn" onClick={this.props.onClose}>×</button>
           )}
@@ -268,7 +269,7 @@ class GameReview extends Component {
         {/* Error State */}
         {error && (
           <div className="analysis-error">
-            <p>❌ {error}</p>
+            <p><Icon name="wrong" size={16} /> {error}</p>
             <button onClick={() => this.analyzeGame(this.props.game)}>Retry</button>
           </div>
         )}
@@ -305,7 +306,7 @@ class GameReview extends Component {
                 const insights = this.generateInsights();
                 return insights.length > 0 && (
                   <div className="game-insights">
-                    <h4>💡 Insights / 分析</h4>
+                    <h4><Icon name="hint" size={16} /> Insights / 分析</h4>
                     {insights.map((insight, i) => (
                       <div key={i} className="insight-item">
                         <p className="insight-cn">{insight.cn}</p>
@@ -319,7 +320,7 @@ class GameReview extends Component {
               {/* Critical Moments Timeline */}
               {summary.criticalMoments && summary.criticalMoments.length > 0 && (
                 <div className="critical-moments">
-                  <h4>⚡ Critical Moments / 关键转折</h4>
+                  <h4><Icon name="zap" size={16} /> Critical Moments / 关键转折</h4>
                   <div className="timeline">
                     <div className="timeline-bar">
                       {analysis.moves.map((move, idx) => {
@@ -363,7 +364,7 @@ class GameReview extends Component {
 
               {/* Save Button */}
               <button className="save-review-btn" onClick={this.saveReview}>
-                💾 Save Review / 保存复盘
+                <Icon name="save" size={16} /> Save Review / 保存复盘
               </button>
             </div>
 
