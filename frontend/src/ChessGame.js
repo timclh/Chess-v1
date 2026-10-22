@@ -305,12 +305,10 @@ class ChessGame extends Component {
       this._suggestWithEngine(key);
     } else if (this._engineLoading) {
       // The engine is still starting. Give it a few seconds rather than answering with
-      // the much weaker built-in search; redo the analysis once it is up.
+      // the much weaker built-in search. If it is slower than that, show the built-in
+      // answer meanwhile; _pendingAnalysis stays set so the engine redoes it once it is up.
       this._pendingAnalysis = true;
-      this._engineWaitTimer = setTimeout(() => {
-        this._pendingAnalysis = false;
-        this._suggestBuiltin(key);
-      }, ENGINE_WAIT_MS);
+      this._engineWaitTimer = setTimeout(() => this._suggestBuiltin(key), ENGINE_WAIT_MS);
     } else {
       // No engine here: the built-in search is synchronous, so let "analyzing" paint first
       requestAnimationFrame(() => setTimeout(() => this._suggestBuiltin(key), 20));
@@ -663,72 +661,76 @@ class ChessGame extends Component {
     if (this.state.gameMode === "tutorial" && this.state.lessonComplete) return;
     if (!this.isPlayerTurn()) return;
 
-    this.setState(({ pieceSquare }) => {
-      if (pieceSquare === square) {
+    // Side effects (moving, highlighting, sound) happen here, not inside a state updater,
+    // which React expects to be pure
+    const { pieceSquare } = this.state;
+
+    if (pieceSquare === square) {
+      this.removeHighlightSquare();
+      if (this.state.gameMode === "coach") {
+        setTimeout(this.refreshSuggestionHighlight, 0);
+      }
+      this.setState({ pieceSquare: "" });
+      return;
+    }
+
+    if (pieceSquare) {
+      const move = this.game.move({
+        from: pieceSquare,
+        to: square,
+        promotion: "q",
+      });
+
+      if (move !== null) {
+        this.playMoveFeedback(move);
         this.removeHighlightSquare();
-        if (this.state.gameMode === "coach") {
-          setTimeout(this.refreshSuggestionHighlight, 0);
-        }
-        return { pieceSquare: "" };
-      }
 
-      if (pieceSquare) {
-        const move = this.game.move({
-          from: pieceSquare,
-          to: square,
-          promotion: "q",
-        });
-
-        if (move !== null) {
-          this.playMoveFeedback(move);
-          this.removeHighlightSquare();
-
-          // Handle tutorial mode
-          if (this.state.gameMode === "tutorial") {
-            this.checkTutorialMove(move);
-            return {
-              fen: this.game.fen(),
-              pieceSquare: "",
-            };
-          }
-
-          this.recordEvaluation();
-
-          const newState = {
+        // Handle tutorial mode
+        if (this.state.gameMode === "tutorial") {
+          this.checkTutorialMove(move);
+          this.setState({
             fen: this.game.fen(),
-            history: this.game.history({ verbose: true }),
             pieceSquare: "",
-            lastAIExplanation: "",
-          };
-
-          // Defer updateGameStatus and AI move to after setState completes
-          setTimeout(() => {
-            this.updateGameStatus();
-            if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
-              setTimeout(() => this.makeAIMove(), 300);
-            }
-            // Update analysis for both AI and coach mode (for hint button)
-            setTimeout(() => this.updateAnalysis(), 100);
-          }, 0);
-
-          return newState;
+          });
+          return;
         }
-      }
 
-      const piece = this.game.get(square);
-      if (piece && piece.color === this.game.turn()) {
-        const moves = this.game.moves({
-          square: square,
-          verbose: true,
+        this.recordEvaluation();
+
+        this.setState({
+          fen: this.game.fen(),
+          history: this.game.history({ verbose: true }),
+          pieceSquare: "",
+          lastAIExplanation: "",
         });
-        const squaresToHighlight = moves.map((move) => move.to);
-        this.highlightSquare(square, squaresToHighlight);
-        selectFeedback();
-        return { pieceSquare: square };
-      }
 
-      return { pieceSquare: "" };
-    });
+        // Defer updateGameStatus and AI move to after setState completes
+        setTimeout(() => {
+          this.updateGameStatus();
+          if (this.state.gameMode === "ai" || this.state.gameMode === "coach") {
+            setTimeout(() => this.makeAIMove(), 300);
+          }
+          // Update analysis for both AI and coach mode (for hint button)
+          setTimeout(() => this.updateAnalysis(), 100);
+        }, 0);
+        return;
+      }
+    }
+
+    const piece = this.game.get(square);
+    if (piece && piece.color === this.game.turn()) {
+      const moves = this.game.moves({
+        square: square,
+        verbose: true,
+      });
+      const squaresToHighlight = moves.map((move) => move.to);
+      this.highlightSquare(square, squaresToHighlight);
+      selectFeedback();
+      this.setState({ pieceSquare: square });
+      return;
+    }
+
+    this.setState({ pieceSquare: "" });
   };
 
   onDrop = ({ sourceSquare, targetSquare }) => {

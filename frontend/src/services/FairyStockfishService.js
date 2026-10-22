@@ -311,8 +311,10 @@ class FairyStockfishService {
    */
   _loadEngineScript() {
     return new Promise(async (resolve, reject) => {
-      // Check if already loaded
-      if (window.Stockfish) {
+      // Already loaded by this instance. (A script left on the page by an earlier instance,
+      // e.g. after a hot reload in development, is not enough: the engine's worker needs
+      // this instance's blob URL, or it tries to import a relative URL and never starts.)
+      if (window.Stockfish && this._engineScriptBlobUrl) {
         resolve(window.Stockfish);
         return;
       }

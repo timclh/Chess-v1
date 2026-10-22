@@ -61,6 +61,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  jest.useRealTimers();
   ReactDOM.unmountComponentAtNode(container);
   container.remove();
 });
@@ -168,6 +169,66 @@ describe('recommended moves', () => {
     await settle(400); // far less than the 4 s the engine would be given
 
     expect(chess.state.suggestedMoves.length).toBe(2);
+  });
+});
+
+describe('slow engine', () => {
+  test('answers with the built-in search after the wait, then the engine replaces that answer once it is up', async () => {
+    jest.useFakeTimers('modern');
+    mockEngineReady = false;
+    let finish;
+    mockPrewarm = () => new Promise((r) => { finish = () => { mockEngineReady = true; r(true); }; });
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    const ref = React.createRef();
+    await act(async () => { ReactDOM.render(<ChessGame ref={ref} />, container); });
+    chess = ref.current;
+    expect(chess.state.coachAnalyzing).toBe(true);
+
+    await act(async () => { jest.advanceTimersByTime(4100); }); // the engine is taking too long
+    expect(chess.state.coachAnalyzing).toBe(false);
+    expect(chess.state.suggestedMoves).toHaveLength(2);
+    expect(chess.state.suggestedMoves[0].engineDepth).toBeUndefined(); // the built-in search's
+
+    await act(async () => { finish(); await Promise.resolve(); await Promise.resolve(); });
+    expect(chess.state.suggestedMoves.map((m) => m.san)).toEqual(['e4', 'd4']); // the engine's
+    expect(chess.state.suggestedMoves[0].engineDepth).toBe(12);
+  });
+});
+
+describe('clicking squares', () => {
+  test('selecting, deselecting and moving a piece never sets state from inside a state updater', async () => {
+    const err = jest.spyOn(console, 'error').mockImplementation(() => {});
+    await mount();
+    await act(async () => { chess.setState({ gameMode: 'human' }); }); // no AI reply to wait for
+
+    await act(async () => { chess.onSquareClick('e2'); });
+    expect(chess.state.pieceSquare).toBe('e2');
+    await act(async () => { chess.onSquareClick('e2'); });
+    expect(chess.state.pieceSquare).toBe('');
+    await act(async () => { chess.onSquareClick('e2'); });
+    await act(async () => { chess.onSquareClick('e4'); });
+
+    expect(chess.game.history()).toEqual(['e4']);
+    expect(chess.state.fen).toBe(chess.game.fen());
+    expect(chess.state.history.map((m) => m.san)).toEqual(['e4']);
+    expect(chess.state.pieceSquare).toBe('');
+    const updaterWarnings = err.mock.calls.filter((c) => String(c[0]).includes('update function'));
+    expect(updaterWarnings).toEqual([]);
+    err.mockRestore();
+  });
+
+  test('clicking another piece of your own reselects; an empty square after a failed move deselects', async () => {
+    await mount();
+    await act(async () => { chess.setState({ gameMode: 'human' }); });
+
+    await act(async () => { chess.onSquareClick('e2'); });
+    await act(async () => { chess.onSquareClick('d2'); }); // not a legal move for the e-pawn: picks the d-pawn
+    expect(chess.state.pieceSquare).toBe('d2');
+    await act(async () => { chess.onSquareClick('e5'); }); // not reachable by it either: nothing selected
+    expect(chess.state.pieceSquare).toBe('');
+    expect(chess.game.history()).toEqual([]);
   });
 });
 
