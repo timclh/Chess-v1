@@ -232,6 +232,65 @@ describe('clicking squares', () => {
   });
 });
 
+describe('coach panel layout', () => {
+  test('placeholder cards stand where the suggestions go while the engine thinks, then become them', async () => {
+    let release;
+    mockEngineMoves = (game) => new Promise((r) => { release = () => r([suggestion(game, 'e4'), suggestion(game, 'd4', 20)].map((m, i) => ({ ...m, rank: i + 1 }))); });
+    await mount();
+    await act(async () => { chess.setState({ gameMode: 'coach' }); });
+
+    expect(container.querySelectorAll('.suggestion.skeleton')).toHaveLength(2);
+    expect(container.querySelector('.analysis-pending')).toBeNull(); // no one-line "Analyzing…"
+    expect(container.querySelectorAll('.win-probability .prob-bar')).toHaveLength(1); // an empty bar holds the place
+
+    await act(async () => { release(); await sleep(0); });
+
+    expect(container.querySelectorAll('.suggestion.skeleton')).toHaveLength(0);
+    expect(container.querySelectorAll('.suggestion')).toHaveLength(2);
+    expect(container.querySelector('.analysis-section.pending .win-probability')).toBeNull();
+  });
+
+  test('the previous evaluation stays (dimmed) until the engine answers, instead of a built-in guess', async () => {
+    await mount();
+    await act(async () => { chess.setState({ gameMode: 'coach' }); });
+    await settle();
+    const settled = chess.state.analysis;
+    expect(settled.score).toBe(30); // the engine's
+
+    let release;
+    mockEngineMoves = (game) => new Promise((r) => { release = () => r([suggestion(game, 'd4', 50)].map((m) => ({ ...m, rank: 1 }))); });
+    await act(async () => { chess.updateAnalysis(); });
+
+    expect(chess.state.analysis).toBe(settled); // not replaced by the built-in evaluation
+    expect(container.querySelector('.analysis-section.pending .win-probability')).not.toBeNull();
+
+    await act(async () => { release(); await sleep(0); });
+    expect(chess.state.analysis.score).toBe(50);
+    expect(container.querySelector('.analysis-section.pending .win-probability')).toBeNull();
+  });
+
+  test('without an engine the built-in evaluation is shown', async () => {
+    mockEngineReady = false;
+    mockPrewarm = async () => false;
+    await mount();
+    await settle(400);
+
+    expect(chess.state.analysis).not.toBeNull();
+    expect(chess.state.coachAnalyzing).toBe(false);
+  });
+
+  test('the opponent\'s explanation keeps its place while the opponent and the coach work', async () => {
+    await mount();
+    await act(async () => { chess.setState({ gameMode: 'coach', history: [{ san: 'e4' }], lastAIExplanation: '', aiThinking: true }); });
+
+    expect(container.querySelector('.analysis-section.pending .ai-explanation-box')).not.toBeNull();
+    expect(container.querySelector('.ai-explanation-box').textContent).toBe('…');
+
+    await act(async () => { chess.setState({ aiThinking: false, lastAIExplanation: 'Controls the center' }); });
+    expect(container.querySelector('.ai-explanation-box').textContent).toBe('Controls the center');
+  });
+});
+
 describe('3D board', () => {
   test('is on by default, can be switched off, and the choice is remembered', async () => {
     await mount();

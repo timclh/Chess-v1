@@ -8492,3 +8492,32 @@ svg.lucide { vertical-align: -0.2em; flex: none; }
   .tilt-stage.tilted .tilt-stage-board { transition: none; }
   .analysis-pending { animation: none; }
 }
+
+/* ── Coach panel: nothing moves while the coach thinks ──
+   Placeholder cards have the size of real suggestions, and the win bar keeps its place,
+   so the panel (and the page, when it is scrolled to the bottom) does not jump. */
+.suggestion.skeleton { cursor: default; pointer-events: none; }
+.skeleton-text {
+  color: transparent !important;
+  background: rgba(120, 130, 150, 0.24) !important;
+  border-radius: 4px;
+  user-select: none;
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+}
+.suggestion.skeleton .suggestion-move .san { flex: 0 1 auto; }
+.suggestion.skeleton .suggestion-move .win-prob { margin-left: auto; }
+@keyframes skeleton-pulse { 50% { opacity: 0.5; } }
+.analysis-section.pending .win-probability { opacity: 0.55; }
+.coach-status {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  animation: skeleton-pulse 1.3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-text, .coach-status { animation: none; }
+}
+.analysis-section.pending .ai-explanation-box { opacity: 0.55; }
+.analysis-section.pending .threat-item { opacity: 0.55; }

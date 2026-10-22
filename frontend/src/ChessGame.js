@@ -18,6 +18,7 @@ import { GameResultDialog } from "./components/GameResultDialog";
 import { Icon } from './components/Icon';
 import CoachSheet from './components/CoachSheet';
 import TiltStage from './components/TiltStage';
+import { SuggestionSkeleton, StableHeight } from './components/CoachLayout';
 import { prewarmChessEngine, isChessEngineReady, getTopMovesEngineChess } from './services/ChessCoachService';
 
 // How long a recommendation waits for the engine to finish starting before the
@@ -272,7 +273,6 @@ class ChessGame extends Component {
 
     // The quick built-in read of the position shows at once; the recommended moves follow
     // from the engine (or the built-in search) a moment later
-    const analysis = analyzePosition(this.game);
     const strategicAdvice = getStrategicAdvice(this.game);
 
     const historyMoves = this.game.history();
@@ -294,11 +294,19 @@ class ChessGame extends Component {
 
     // Recommendations are for the player to move; while the opponent thinks there is nothing to show
     if (!this.isPlayerTurn() || this.game.game_over()) {
-      this.setState({ analysis, strategicAdvice, suggestedMoves: [], coachAnalyzing: false });
+      this.setState({ analysis: analyzePosition(this.game), strategicAdvice, suggestedMoves: [], coachAnalyzing: false });
       return;
     }
 
-    this.setState({ analysis, strategicAdvice, suggestedMoves: [], coachAnalyzing: true });
+    // With the engine on its way its evaluation replaces the previous one when it arrives;
+    // the built-in guess in between made the win bar swing. Without it the guess is the answer.
+    const engineComing = isChessEngineReady() || this._engineLoading;
+    this.setState({
+      ...(engineComing ? null : { analysis: analyzePosition(this.game) }),
+      strategicAdvice,
+      suggestedMoves: [],
+      coachAnalyzing: true,
+    });
     const key = this.game.fen();
 
     if (isChessEngineReady()) {
@@ -337,7 +345,7 @@ class ChessGame extends Component {
   // It is the fallback where the engine cannot run.
   _suggestBuiltin = (key) => {
     if (!this.game || this.game.fen() !== key) return;
-    this._finishSuggestions(key, getTopMoves(this.game, 2, 2));
+    this._finishSuggestions(key, getTopMoves(this.game, 2, 2), { analysis: analyzePosition(this.game) });
   };
 
   _finishSuggestions = (key, found, extra = {}) => {
@@ -1207,6 +1215,13 @@ class ChessGame extends Component {
       isFullscreen, boardWidth, coachAnalyzing,
     } = this.state;
 
+    // The coach has nothing final to show yet: the previous evaluation stays (dimmed) or an empty
+    // bar holds its place, so the panel does not change size under the player
+    const opponentToMove = !!this.game && !this.isPlayerTurn();
+    const working = !!coachAnalyzing || !!aiThinking || (opponentToMove && !gameOver);
+    const statusText = coachAnalyzing && !aiThinking && !opponentToMove ? 'Analyzing…' : 'Opponent…';
+    const winShown = analysis ? analysis.winProbability : { white: 0.5, black: 0.5 };
+
     const boardOrientation = (gameMode === "ai" || gameMode === "coach") && playerColor === "b" ? "black" : "white";
     const currentTutorialLesson = TUTORIAL_LESSONS[currentLesson];
 
@@ -1359,32 +1374,33 @@ class ChessGame extends Component {
               onClose={() => this.setState({ showFullscreenCoach: false })}
             >
               <>
-                {analysis && (
-                  <div className="analysis-section">
+                {(analysis || working) && (
+                  <div className={`analysis-section ${working || !analysis ? 'pending' : ''}`}>
                     <div className="section-label">Win Probability</div>
                     <div className="win-probability">
                       <div className="prob-bar">
-                        <div className="prob-white" style={{ width: `${analysis.winProbability.white * 100}%` }}>
-                          {analysis.winProbability.white >= 0.15 && <span>{Math.round(analysis.winProbability.white * 100)}%</span>}
+                        <div className="prob-white" style={{ width: `${winShown.white * 100}%` }}>
+                          {analysis && winShown.white >= 0.15 && <span>{Math.round(winShown.white * 100)}%</span>}
                         </div>
-                        <div className="prob-black" style={{ width: `${analysis.winProbability.black * 100}%` }}>
-                          {analysis.winProbability.black >= 0.15 && <span>{Math.round(analysis.winProbability.black * 100)}%</span>}
+                        <div className="prob-black" style={{ width: `${winShown.black * 100}%` }}>
+                          {analysis && winShown.black >= 0.15 && <span>{Math.round(winShown.black * 100)}%</span>}
                         </div>
                       </div>
-                      <div className="evaluation-text">{analysis.evaluation}</div>
+                      <div className="evaluation-text">{analysis ? analysis.evaluation : '\u00a0'}</div>
                     </div>
                   </div>
                 )}
-                {lastAIExplanation && (
-                  <div className="analysis-section">
+                {(lastAIExplanation || (working && history.length > 0)) && (
+                  <div className={`analysis-section ${lastAIExplanation ? '' : 'pending'}`}>
                     <div className="section-label"><Icon name="coach" size={16} /> AI Move</div>
-                    <div className="ai-explanation-box">{lastAIExplanation}</div>
+                    <div className="ai-explanation-box">{lastAIExplanation || '…'}</div>
                   </div>
                 )}
-                {coachAnalyzing && !aiThinking && this.isPlayerTurn() && (
+                {working && (
                   <div className="analysis-section">
-                    <div className="section-label">Recommended Moves</div>
-                    <div className="analysis-pending" role="status">Analyzing…</div>
+                    <div className="section-label">Recommended Moves <span className="coach-status" role="status">{statusText}</span></div>
+                    <SuggestionSkeleton count={2} label="Analyzing" />
+                    <div className="suggestion-footnote" style={{ visibility: 'hidden' }}>.</div>
                   </div>
                 )}
                 {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
@@ -1780,52 +1796,52 @@ class ChessGame extends Component {
 
         {/* Right Panel - Analysis (Coach Mode) */}
         {gameMode === "coach" && (
-          <div className="analysis-panel-right">
+          <StableHeight className="analysis-panel-right" resetKey={`${gameMode}|${playerColor}|${this.state.gameStartTime}`}>
             <div className="panel-title">AI Analysis</div>
 
             {/* Win Probability */}
-            {analysis && (
-              <div className="analysis-section">
+            {(analysis || working) && (
+              <div className={`analysis-section ${working || !analysis ? 'pending' : ''}`}>
                 <div className="section-label">Win Probability</div>
                 <div className="win-probability">
                   <div className="prob-bar">
                     <div
                       className="prob-white"
-                      style={{ width: `${analysis.winProbability.white * 100}%` }}
+                      style={{ width: `${winShown.white * 100}%` }}
                     >
-                      {analysis.winProbability.white >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.white * 100)}%</span>
+                      {analysis && winShown.white >= 0.15 && (
+                        <span>{Math.round(winShown.white * 100)}%</span>
                       )}
                     </div>
                     <div
                       className="prob-black"
-                      style={{ width: `${analysis.winProbability.black * 100}%` }}
+                      style={{ width: `${winShown.black * 100}%` }}
                     >
-                      {analysis.winProbability.black >= 0.15 && (
-                        <span>{Math.round(analysis.winProbability.black * 100)}%</span>
+                      {analysis && winShown.black >= 0.15 && (
+                        <span>{Math.round(winShown.black * 100)}%</span>
                       )}
                     </div>
                   </div>
-                  <div className="evaluation-text">{analysis.evaluation}</div>
+                  <div className="evaluation-text">{analysis ? analysis.evaluation : '\u00a0'}</div>
                 </div>
               </div>
             )}
 
             {/* AI Explanation */}
-            {lastAIExplanation && (
-              <div className="analysis-section">
+            {(lastAIExplanation || (working && history.length > 0)) && (
+              <div className={`analysis-section ${lastAIExplanation ? '' : 'pending'}`}>
                 <div className="section-label"><Icon name="coach" size={16} /> AI Move Explanation</div>
                 <div className="ai-explanation-box">
-                  {lastAIExplanation}
+                  {lastAIExplanation || '…'}
                 </div>
               </div>
             )}
 
             {/* Suggested Moves */}
-            {coachAnalyzing && !aiThinking && this.isPlayerTurn() && (
+            {working && (
               <div className="analysis-section">
-                <div className="section-label"><Icon name="hint" size={16} /> Recommended Moves</div>
-                <div className="analysis-pending" role="status">Analyzing…</div>
+                <div className="section-label"><Icon name="hint" size={16} /> Recommended Moves <span className="coach-status" role="status">{statusText}</span></div>
+                <SuggestionSkeleton count={2} label="Analyzing" />
               </div>
             )}
             {suggestedMoves.length > 0 && !aiThinking && this.isPlayerTurn() && (
@@ -1873,7 +1889,7 @@ class ChessGame extends Component {
                 Start playing to see AI analysis and recommendations
               </div>
             )}
-          </div>
+          </StableHeight>
         )}
 
         {/* Right Panel - Tutorial Mode */}
