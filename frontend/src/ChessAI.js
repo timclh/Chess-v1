@@ -415,7 +415,7 @@ export function getTopMoves(game, n = 3, depth = 3) {
 }
 
 // Generate explanation for a move
-function generateMoveExplanation(game, move, score, isBest) {
+export function generateMoveExplanation(game, move, score, isBest) {
   const reasons = [];
   const piece = pieceNames[move.piece] || 'Piece';
 
@@ -484,9 +484,10 @@ function generateMoveExplanation(game, move, score, isBest) {
   return reasons.join(', ');
 }
 
-// Analyze the current position
-export function analyzePosition(game) {
-  const score = evaluateBoard(game);
+// Analyze the current position. `scoreOverride` (centipawns, White's view) replaces the
+// built-in evaluation, e.g. with the engine's.
+export function analyzePosition(game, scoreOverride) {
+  const score = scoreOverride === undefined ? evaluateBoard(game) : scoreOverride;
   const isWhite = game.turn() === 'w';
   const winProb = scoreToWinProbability(score, true);
 

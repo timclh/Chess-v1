@@ -559,7 +559,7 @@ class XiangqiGame extends Component {
   _applyBuiltinCoach = (key, source) => {
     if (!this.game || this._positionKey() !== key) return;
     const history = this.game.history_moves();
-    const suggestedMoves = getTopMoves(this.game, 3, history);
+    const suggestedMoves = getTopMoves(this.game, 2, history);
     this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: source });
   };
 
@@ -584,7 +584,7 @@ class XiangqiGame extends Component {
     try {
       // Run engine analysis - get moves first (this also gives us the score)
       // DON'T run in parallel - they share singleton state and would race!
-      const engineMoves = await getTopMovesEngine(this.game, 3);
+      const engineMoves = await getTopMovesEngine(this.game, 2);
 
       // Component unmounted, or the position changed while the engine was thinking
       if (!this.game || this._positionKey() !== key) return;
@@ -641,7 +641,7 @@ class XiangqiGame extends Component {
       } else {
         // Engine returned no moves — fall back to built-in
         const history = this.game.history_moves();
-        const suggestedMoves = getTopMoves(this.game, 3, history);
+        const suggestedMoves = getTopMoves(this.game, 2, history);
         this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
       }
     } catch (err) {
@@ -649,7 +649,7 @@ class XiangqiGame extends Component {
       // Fallback to built-in AI
       if (!this.game) return;
       const history = this.game.history_moves();
-      const suggestedMoves = getTopMoves(this.game, 3, history);
+      const suggestedMoves = getTopMoves(this.game, 2, history);
       this.setState({ suggestedMoves, coachAnalyzing: false, coachSource: 'builtin' });
     }
   };
@@ -766,10 +766,24 @@ class XiangqiGame extends Component {
         }, 50);
       } else if (this.state.gameMode === 'ai' && this.state.showCoachInAI) {
         this.updateAnalysisForAI();
+      } else if (this.state.gameMode === 'ai') {
+        this._prefetchHint();
       }
     } else {
       this.setState({ aiThinking: false });
     }
+  };
+
+  // The engine is idle while the player thinks, so work out the hint for their move now:
+  // pressing 💡 then answers at once from the cache (or joins the search still running).
+  _prefetchHint = () => {
+    const game = this.game;
+    if (!game || !this.state.engineReady || !isEngineReady() || (typeof document !== 'undefined' && document.hidden)) return;
+    setTimeout(() => {
+      if (this.game === game && !this.state.gameOver && game.turn === this.state.playerColor) {
+        getTopMovesEngine(game, 2).catch(() => {});
+      }
+    }, 300);
   };
 
   // Sound for the move that was just played (this.game already reflects it)
