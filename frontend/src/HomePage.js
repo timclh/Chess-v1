@@ -20,6 +20,31 @@ class HomePage extends Component {
 
     return (
       <div className="home-page">
+        {/* Featured Mode: Tiangong Celestial Court Tower Defense */}
+        <div
+          className="home-tiangong-hero"
+          data-testid="home-tiangong-hero"
+          onClick={() => onNavigate('tiangong')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('tiangong'); }}
+        >
+          <div className="hth-left">
+            <div className="hth-badge-row">
+              <span className="hth-pill">NEW · 仙界肉鸽塔防</span>
+              <span className="hth-sub-pill">3★ 法天象地</span>
+            </div>
+            <div className="hth-title brush">天宫弈 · 南天门守卫战</div>
+            <div className="hth-desc">
+              召唤【兵/車/馬/炮/相】合阵化神，敕封天道法旨，镇压十五波九幽妖潮！
+            </div>
+          </div>
+          <div className="hth-right" aria-hidden="true">
+            <span className="hth-seal brush">天</span>
+            <span className="hth-cta">立即镇守 ▶</span>
+          </div>
+        </div>
+
         {/* Game Selection - big tappable cards */}
         <div className="home-games">
           <div className="home-game-card hgc-chess" onClick={() => onNavigate('game')}>

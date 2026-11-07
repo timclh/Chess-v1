@@ -3,6 +3,7 @@ import "./App.css";
 import ChessGame from "./ChessGame";
 import XiangqiGame from "./XiangqiGame";
 import WuziQiGame from "./WuziQiGame";
+import TiangongTD from "./TiangongTD";
 import HomePage from "./HomePage";
 import Leaderboard from "./Leaderboard";
 import Login from "./Login";
@@ -26,6 +27,7 @@ const ROUTES = {
   '/chess': 'game',
   '/xiangqi': 'xiangqi',
   '/wuziqi': 'wuziqi',
+  '/tiangong': 'tiangong',
   '/puzzles': 'puzzles',
   '/openings': 'openings',
   '/multiplayer': 'multiplayer',
@@ -148,7 +150,7 @@ class AppContent extends Component {
     const configured = isFirebaseConfigured();
 
     // Pages that show in bottom tab bar (primary nav)
-    const isGamePage = ['game', 'xiangqi', 'wuziqi'].includes(currentPage);
+    const isGamePage = ['game', 'xiangqi', 'wuziqi', 'tiangong'].includes(currentPage);
     const isLearnPage = ['puzzles', 'openings', 'learn', 'coach'].includes(currentPage);
 
     // One list drives both the bottom tab bar (phones) and the header tabs (wide screens)
@@ -236,9 +238,16 @@ class AppContent extends Component {
 
         {isGamePage && (
           <div className="sub-nav-bar">
+            <button className={`sub-nav-btn ${currentPage === 'tiangong' ? 'active' : ''}`} onClick={() => this.navigateTo('tiangong')}><Icon name="crown" size={16} /> <span className="brush">天宫塔防</span></button>
             <button className={`sub-nav-btn ${currentPage === 'game' ? 'active' : ''}`} onClick={() => this.navigateTo('game')}><Icon name="play" size={16} /> Chess</button>
             <button className={`sub-nav-btn ${currentPage === 'xiangqi' ? 'active' : ''}`} onClick={() => this.navigateTo('xiangqi')} {...prewarmOnIntent}><span className="brush">象棋</span> Xiangqi</button>
             <button className={`sub-nav-btn ${currentPage === 'wuziqi' ? 'active' : ''}`} onClick={() => this.navigateTo('wuziqi')}><Icon name="games" size={16} /> Gomoku</button>
+          </div>
+        )}
+
+        {currentPage === "tiangong" && (
+          <div className="App-content tiangong-page">
+            <TiangongTD />
           </div>
         )}
 
